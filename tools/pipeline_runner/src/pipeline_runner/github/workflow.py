@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
-from github import Github
+if TYPE_CHECKING:
+    from github import Github
 
 logger = logging.getLogger(__name__)
 

@@ -65,7 +65,9 @@ class Pipeline:
 
             if not stage.validate(context):
                 logger.error("Stage validation failed: %s", stage.name)
-                result = StageResult(stage_name=stage.name, success=False, message="Validation failed")
+                result = StageResult(
+                    stage_name=stage.name, success=False, message="Validation failed"
+                )
             else:
                 result = stage.run(context)
 

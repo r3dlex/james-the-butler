@@ -1,69 +1,103 @@
 # Architecture
 
+For the full platform specification, see [platform.md](platform.md).
+
 ## Overview
 
-James the Butler is a multi-platform assistant application. The system follows a client-server architecture with a single backend serving multiple clients.
+James the Butler is an AI-native agent platform with a multi-host, planner-first architecture. A single Elixir/Phoenix backend serves web, desktop (Tauri), mobile (Flutter), Office add-in, and Telegram clients.
 
 ```
-┌─────────────┐     ┌─────────────┐
-│  Vue Web UI │     │ Flutter App │
-└──────┬──────┘     └──────┬──────┘
-       │                   │
-       └────────┬──────────┘
-                │  HTTPS / WebSocket
-        ┌───────▼────────┐
-        │ Phoenix Backend │
-        │  (JSON API +    │
-        │   Channels)     │
-        └───────┬─────────┘
-                │
-        ┌───────▼────────┐
-        │   PostgreSQL    │
-        └────────────────┘
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
+│  Vue Web/    │  │ Flutter App  │  │ Office.js    │  │  Telegram    │
+│  Tauri Desk  │  │ (iOS/Android)│  │ Add-ins      │  │  Bot         │
+└──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └──────┬───────┘
+       │                 │                 │                  │
+       └─────────┬───────┴─────────┬───────┘                 │
+                 │  HTTPS / WS     │                          │
+         ┌───────▼─────────────────▼──────────────────────────▼───┐
+         │              Phoenix Backend (Primary Host)            │
+         │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+         │  │ Meta-Planner │  │   OpenClaw   │  │ Telegram Bot │ │
+         │  │  (GenServer)  │  │ (GenServer)  │  │  (Phoenix)   │ │
+         │  └──────┬───────┘  └──────┬───────┘  └──────────────┘ │
+         │         │                 │                            │
+         │  ┌──────▼─────────────────▼──────┐                    │
+         │  │   Agent Sub-Sessions          │                    │
+         │  │   (Supervised GenServers)     │                    │
+         │  └───────────────────────────────┘                    │
+         │                                                        │
+         │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐ │
+         │  │  PostgreSQL  │  │   pgvector   │  │     Oban     │ │
+         │  │  (Ecto)      │  │  (memories)  │  │   (jobs)     │ │
+         │  └──────────────┘  └──────────────┘  └──────────────┘ │
+         └────────────────────────┬───────────────────────────────┘
+                                  │ mTLS
+         ┌────────────────────────▼───────────────────────────────┐
+         │              Worker Host(s)                            │
+         │  ┌──────────────┐  ┌──────────────┐                   │
+         │  │   OpenClaw   │  │ Agent Workers│                   │
+         │  │ (GenServer)  │  │ (GenServers) │                   │
+         │  └──────────────┘  └──────────────┘                   │
+         └────────────────────────────────────────────────────────┘
 
-┌──────────────────────────┐
-│  Pipeline Runner (Python)│──▶ GitHub Actions
-└──────────────────────────┘
+┌──────────────────────────────┐
+│  Pipeline Runner (Python)    │──▶ GitHub Actions
+└──────────────────────────────┘
 ```
 
 ## Component Responsibilities
 
-### Backend (Elixir/Phoenix)
-- REST API and WebSocket channels for real-time updates
-- Authentication and authorization
-- Business logic via Phoenix contexts
-- Database access (Ecto + PostgreSQL)
+### Backend (Elixir/Phoenix) — `james-server`
+- REST API and WebSocket channels (Phoenix Channels) for all clients
+- Meta-planner: task decomposition, risk tagging, host routing
+- OpenClaw: local session lifecycle, agent worker supervision
+- Telegram bot: thread-to-session routing, voice transcription (Whisper)
+- Memory: extraction via Oban jobs, vector storage via pgvector, semantic retrieval
+- Embeddings: `/embeddings` endpoint for all clients
+- Auth: OAuth 2.0 (Google/Microsoft/GitHub), MFA (TOTP/WebAuthn), JWT with refresh rotation
+- Token ledger: per-session cost tracking, budget alerts
 
-### Frontend (Vue 3)
-- Web-based UI consuming the backend API
-- Real-time updates via Phoenix channels (WebSocket)
-- Responsive design for desktop and tablet
+### Frontend (Vue 3) — `james-app`
+- Web UI and Tauri desktop app (same codebase)
+- Session management, project dashboards, memory review
+- Real-time streaming via Phoenix socket client
+- VitePress documentation site
 
-### Mobile (Dart/Flutter)
-- Native mobile experience on iOS and Android
-- Consumes the same backend API as the web frontend
-- Offline-first where feasible, syncing when connectivity is restored
+### Mobile (Flutter) — `james-mobile`
+- Remote viewer and controller (no local agents)
+- QR code host binding with secure enclave storage
+- WebRTC live stream for computer use sessions
+- Multi-host switching
 
-### Pipeline Runner (Python)
-- Orchestrates CI/CD pipelines
-- Integrates with GitHub Actions as both a trigger and a step
-- Provides reusable pipeline stages (build, test, deploy)
+### Office Add-ins (Office.js) — `james-office`
+- Word, Excel, PowerPoint integration (shared repo)
+- Progressive document retrieval (chunk → embed → semantic search)
+- Device code auth, session picker, structured diff view
+
+### Pipeline Runner (Python) — `tools/pipeline_runner`
+- CI/CD orchestration for all components
+- Architecture gate enforcement (archgate)
+- GitHub Actions integration
 
 ## Data Flow
 
-1. **Client → Backend**: Clients send HTTP requests or connect via WebSocket
-2. **Backend → Database**: Ecto queries against PostgreSQL
-3. **Backend → Clients**: JSON responses or channel broadcasts
-4. **Pipeline Runner → GitHub Actions**: Triggers workflows and collects results
+1. **Client → Meta-Planner**: All input routes through the planner first
+2. **Meta-Planner → OpenClaw**: Tasks dispatched to target host's OpenClaw
+3. **OpenClaw → Agent Workers**: Sub-sessions run as supervised GenServers
+4. **Agent → Backend**: Results stored in PostgreSQL, streamed to clients via Channels
+5. **Memory Extraction**: Oban background jobs process conversation deltas into pgvector
+6. **Memory Retrieval**: Semantic search on session start and per-message
 
-## Integration Points
+## Multi-Host Communication
 
-| Producer        | Consumer         | Protocol         | Contract               |
-|-----------------|------------------|------------------|------------------------|
-| Backend         | Frontend         | REST + WebSocket | OpenAPI spec (planned) |
-| Backend         | Mobile           | REST + WebSocket | Same OpenAPI spec      |
-| Pipeline Runner | GitHub Actions   | GitHub API       | Workflow YAML          |
+| Producer | Consumer | Protocol | Purpose |
+|---|---|---|---|
+| Primary Meta-Planner | Worker OpenClaw | mTLS | Task dispatch |
+| Worker OpenClaw | Primary | mTLS | Status/results |
+| Backend | All clients | HTTPS + WS | API + streaming |
+| Mobile | Backend | WebRTC | Computer use live stream |
+| Pipeline Runner | GitHub Actions | GitHub API | CI/CD |
 
 ## Environment Requirements
 
-All components follow a **zero-install** principle: given the base runtime (Elixir, Node.js, Flutter SDK, Python + Poetry), running the component's setup command installs everything locally with no global side effects.
+All components follow a **zero-install** principle (see [ADR-002](../docs/adr/002-zero-install-principle.md)). Given the base runtime, running the component's setup command installs everything locally with no global side effects.

@@ -29,3 +29,22 @@ def stages() -> None:
 
     for name, stage_cls in BUILTIN_STAGES.items():
         click.echo(f"  {name}: {stage_cls.__doc__ or 'No description'}")
+
+
+@main.command()
+def archgate() -> None:
+    """Run architecture gate checks."""
+    from pipeline_runner.stages.archgate import run_all_rules
+
+    results = run_all_rules()
+    failed = [r for r in results if not r.passed]
+
+    for r in results:
+        status = click.style("PASS", fg="green") if r.passed else click.style("FAIL", fg="red")
+        click.echo(f"  [{status}] {r.rule}: {r.message}")
+
+    if failed:
+        click.echo(f"\n{len(failed)} rule(s) failed.")
+        raise SystemExit(1)
+    else:
+        click.echo(f"\nAll {len(results)} rules passed.")

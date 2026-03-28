@@ -1,8 +1,8 @@
-.PHONY: setup dev test lint clean \
-       backend-setup backend-dev backend-test backend-lint \
-       frontend-setup frontend-dev frontend-test frontend-lint \
-       mobile-setup mobile-dev mobile-test mobile-lint \
-       pipeline-setup pipeline-test pipeline-lint
+.PHONY: setup dev test test-coverage lint archgate clean \
+       backend-setup backend-dev backend-test backend-test-coverage backend-lint \
+       frontend-setup frontend-dev frontend-test frontend-test-coverage frontend-lint \
+       mobile-setup mobile-dev mobile-test mobile-test-coverage mobile-lint \
+       pipeline-setup pipeline-test pipeline-test-coverage pipeline-lint
 
 # ── Aggregate targets ────────────────────────────────────────────────
 
@@ -13,7 +13,12 @@ dev:
 
 test: backend-test frontend-test mobile-test pipeline-test
 
+test-coverage: backend-test-coverage frontend-test-coverage mobile-test-coverage pipeline-test-coverage
+
 lint: backend-lint frontend-lint mobile-lint pipeline-lint
+
+archgate:
+	cd tools/pipeline_runner && poetry run pipeline-runner archgate
 
 clean:
 	cd backend && mix deps.clean --all || true
@@ -32,6 +37,9 @@ backend-dev:
 backend-test:
 	cd backend && mix test
 
+backend-test-coverage:
+	cd backend && mix test --cover
+
 backend-lint:
 	cd backend && mix format --check-formatted && mix credo --strict
 
@@ -45,6 +53,9 @@ frontend-dev:
 
 frontend-test:
 	cd frontend && npm test
+
+frontend-test-coverage:
+	cd frontend && npm run test:coverage
 
 frontend-lint:
 	cd frontend && npm run lint
@@ -60,6 +71,9 @@ mobile-dev:
 mobile-test:
 	cd mobile && flutter test
 
+mobile-test-coverage:
+	cd mobile && flutter test --coverage
+
 mobile-lint:
 	cd mobile && dart format --set-exit-if-changed . && flutter analyze
 
@@ -70,6 +84,9 @@ pipeline-setup:
 
 pipeline-test:
 	cd tools/pipeline_runner && poetry run pytest
+
+pipeline-test-coverage:
+	cd tools/pipeline_runner && poetry run pytest --cov --cov-report=term-missing --cov-fail-under=90
 
 pipeline-lint:
 	cd tools/pipeline_runner && poetry run ruff check . && poetry run ruff format --check .
