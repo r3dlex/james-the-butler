@@ -3,8 +3,7 @@ import Config
 config :james,
   ecto_repos: [James.Repo]
 
-config :james, James.Repo,
-  adapter: Ecto.Adapters.Postgres
+config :james, James.Repo, adapter: Ecto.Adapters.Postgres
 
 config :james, JamesWeb.Endpoint,
   url: [host: "localhost"],
