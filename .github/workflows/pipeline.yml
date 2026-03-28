@@ -134,12 +134,12 @@ jobs:
         run: mix credo --strict
 
       - name: Setup database
-        run: mix ecto.create --quiet && mix ecto.migrate --quiet
+        run: mix ecto.create && mix ecto.migrate
         env:
           MIX_ENV: test
 
-      - name: Run tests with coverage
-        run: mix test --cover
+      - name: Run tests
+        run: mix test --trace
         env:
           MIX_ENV: test
 
