@@ -109,7 +109,7 @@ jobs:
         run: mix credo --strict
 
       - name: Run tests
-        run: mix test
+        run: mix test --trace 2>&1 || (echo "--- Test failed. Checking DB connectivity ---" && mix ecto.create 2>&1; mix ecto.migrate 2>&1; exit 1)
         env:
           MIX_ENV: test
 
