@@ -1,8 +1,10 @@
 # Frontend Specification (Vue 3)
 
+For the full platform specification, see [platform.md](platform.md) §4.2, §21.
+
 ## Purpose
 
-The web frontend provides a responsive browser-based interface to James the Butler.
+The web frontend (`james-app`) provides the primary UI for James the Butler. The same codebase runs as a web app and as a Tauri desktop app (macOS and Linux).
 
 ## Technology
 
@@ -10,40 +12,61 @@ The web frontend provides a responsive browser-based interface to James the Butl
 - **Framework**: Vue 3 with Composition API (`<script setup>`)
 - **Language**: TypeScript
 - **Build**: Vite
+- **Desktop**: Tauri (macOS and Linux)
+- **Documentation**: VitePress
 - **State**: Pinia
+- **Real-time**: Phoenix channels JS client
 - **Testing**: Vitest + Vue Test Utils
 - **Linting**: ESLint + Prettier
 
 ## Key Features
 
-- Dashboard with real-time updates via WebSocket
-- Task management interface
-- User settings and preferences
-- Responsive layout (desktop + tablet)
+- Session management (chat, code, research, computer use, security agents)
+- Project dashboards with repository health, agent activity, token cost
+- Planner task list with risk levels and live status
+- Memory review panel (view, edit, delete, search)
+- Multi-host management with session pinning
+- Execution mode toggle (Direct / Confirmed) with structured diff view
+- Personality preset selection and custom profile editor
+- Token usage dashboard with budget alerts
+- MCP server and skill configuration
+- Mobile QR code generation for host binding
+
+## UI Structure
+
+```
+Sidebar
+├── Sessions (ordered by last used, searchable)
+├── Projects (chat, sessions, dashboard, settings)
+├── Task List (planner — global, risk levels)
+├── Memory
+├── Hosts (status, sessions, settings)
+├── OpenClaw Activity
+├── Settings (models, MCP, directories, skills, personality, auth, billing)
+└── Mobile App Setup (QR)
+```
+
+## Session View
+
+- **Left panel**: Context — host, project, working directories, MCP servers, skills, personality, execution mode
+- **Center panel**: Conversation or agent output stream
+- **Right panel**: Task list, token counter, sub-session activity, memories
 
 ## Zero-Install
 
 ```bash
 cd frontend
-npm ci          # Install exact dependency tree from lockfile
+npm ci          # Install exact dependency tree
 ```
-
-No global npm packages required. All tooling (Vite, ESLint, Vitest) is installed as devDependencies.
-
-## API Integration
-
-The frontend connects to the backend via:
-
-- **REST**: Fetch/Axios for CRUD operations
-- **WebSocket**: Phoenix channels client for real-time updates
 
 ## Testing
 
 ```bash
-npm test        # Run Vitest suite
-npm run lint    # ESLint + Prettier check
+npm test             # Vitest suite
+npm run test:coverage  # With coverage (target: 70%)
+npm run lint         # ESLint + Prettier
 ```
 
 ## Internal Details
 
-See `frontend/spec/README.md` for component tree, routing, and store design.
+See `frontend/spec/README.md` for component tree, routing, store design, and Tauri integration.
