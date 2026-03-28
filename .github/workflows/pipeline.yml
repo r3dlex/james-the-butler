@@ -124,7 +124,17 @@ jobs:
         run: mix deps.get
 
       - name: Compile
-        run: mix compile --warnings-as-errors
+        run: |
+          mix compile --warnings-as-errors 2>&1 | tee /tmp/compile.log
+          exit ${PIPESTATUS[0]}
+
+      - name: Show compile errors
+        if: failure()
+        run: |
+          echo '## Compile Output' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat /tmp/compile.log >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
 
       - name: Check formatting
         run: mix format --check-formatted
