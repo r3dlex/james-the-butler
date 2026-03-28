@@ -6,7 +6,9 @@ defmodule James.Application do
   @impl true
   def start(_type, _args) do
     children = [
-      James.Repo
+      James.Repo,
+      {Phoenix.PubSub, name: James.PubSub},
+      JamesWeb.Endpoint
     ]
 
     opts = [strategy: :one_for_one, name: James.Supervisor]
