@@ -1,6 +1,6 @@
 # James the Butler — Platform Specification
 
-**Version:** 1.2
+**Version:** 1.3
 **Status:** Final — Ready for Implementation
 **Owner:** Andre / EPL R&D
 
@@ -8,9 +8,9 @@
 
 ## 1. Vision
 
-James the Butler is an AI-native agent platform. It gives you a single surface to run, observe, and interact with AI agents across chat, coding, research, computer use, Office, and mobile — all orchestrated by a central planner and routed through OpenClaw.
+James the Butler is an AI-native agent platform. It gives you a single surface to run, observe, and interact with AI agents across chat, coding, research, full desktop control, browser control, Office, and mobile — all orchestrated by a central planner and routed through OpenClaw.
 
-You run it as a web app, a desktop app (macOS and Linux), from your phone, or from inside Word, Excel, and PowerPoint. Every session is persistent and named. Every action is planned before it executes. Every cost is visible. James remembers context across sessions, adapts his personality to your preferences, and asks before doing only when you ask him to.
+You run it as a web app, a desktop app (macOS and Linux), from your phone, from inside Word, Excel, and PowerPoint, or from a Chrome extension controlling a dedicated browser session. Every session is persistent and named. Every action is planned before it executes. Every cost is visible. James remembers context across sessions, adapts his personality to your preferences, and asks before doing only when you ask him to.
 
 ---
 
@@ -34,7 +34,7 @@ You run it as a web app, a desktop app (macOS and Linux), from your phone, or fr
 
 ## 3. Execution Modes
 
-James operates in one of two execution modes at all times. The active mode is visible as a persistent toggle on every surface — web, desktop, mobile, Office add-ins, and Telegram.
+James operates in one of two execution modes at all times. The active mode is visible as a persistent toggle on every surface — web, desktop, mobile, Office add-ins, Chrome extension, and Telegram.
 
 ### 3.1 Direct Mode (Default)
 
@@ -48,7 +48,7 @@ The planner tags every task with a risk level:
 - **Additive** — creates new content without modifying or deleting existing content. Executes immediately even in Confirmed mode.
 - **Destructive** — modifies, deletes, overwrites, or performs irreversible operations.
 
-Only destructive tasks require approval in Confirmed mode. The approval request lists the destructive tasks specifically, not the full task breakdown. Read-only and additive tasks proceed without interruption.
+Only destructive tasks require approval in Confirmed mode.
 
 **Approval mechanisms by surface:**
 
@@ -57,11 +57,12 @@ Only destructive tasks require approval in Confirmed mode. The approval request 
 | Web / Desktop | Structured diff view — approve or reject before changes apply |
 | Mobile | Tap-to-confirm screen |
 | Office add-ins | Structured diff view at the slide / cell range / paragraph level |
-| Telegram | James sends a summary message listing proposed destructive actions and waits for a reply. Timeout: 10 minutes (configurable). If no reply, task moves to blocked status. |
+| Chrome extension | Inline approval panel in the extension sidebar |
+| Telegram | Summary message with 10-minute configurable timeout |
 
 ### 3.3 Mode Inheritance
 
-Execution mode follows the same three-level inheritance hierarchy as personality: account level, project level, session level. The most specific level wins. You change mode mid-session at any time — the change applies to the next action forward, not retroactively.
+Execution mode follows the same three-level inheritance hierarchy as personality: account level, project level, session level. The most specific level wins.
 
 ---
 
@@ -71,10 +72,10 @@ Execution mode follows the same three-level inheritance hierarchy as personality
 
 - **Runtime:** Elixir with Phoenix
 - **Real-time:** Phoenix Channels (WebSocket) for streaming agent output, live command logs, and session state updates
-- **Database:** PostgreSQL via Ecto — sessions, tasks, agent runs, token ledger, user accounts, MCP configs, skills registry, host registry, Telegram thread mappings, memory store, personality profiles, execution mode settings
-- **Vector search:** pgvector extension on the existing PostgreSQL instance — semantic memory retrieval and document chunk retrieval. No separate vector store.
-- **Embeddings:** `james-server` exposes a `/embeddings` endpoint used by all clients (web, mobile, Office add-ins) to generate vectors. Consistent embedding model across the platform.
-- **Background jobs:** Oban for durable task queuing including memory extraction jobs
+- **Database:** PostgreSQL via Ecto — sessions, tasks, agent runs, token ledger, user accounts, MCP configs, skills registry, host registry, Telegram thread mappings, memory store, personality profiles, execution mode settings, tab group state
+- **Vector search:** pgvector extension on the existing PostgreSQL instance
+- **Embeddings:** `/embeddings` endpoint used by all clients (web, mobile, Office add-ins, Chrome extension)
+- **Background jobs:** Oban for durable task queuing including memory extraction jobs and tab lifecycle management
 - **Process model:** Each agent sub-session runs as a supervised Elixir GenServer. Each host's OpenClaw is the local orchestrator process. The global meta-planner runs as a GenServer on the designated primary host.
 
 ### 4.2 Frontend
@@ -82,52 +83,35 @@ Execution mode follows the same three-level inheritance hierarchy as personality
 - **Framework:** Vue 3 (Composition API)
 - **Build tool:** Vite
 - **Documentation and support pages:** VitePress
-- **Desktop packaging:** Tauri (macOS and Linux). The same Vue codebase runs in both web and desktop modes. Platform-specific capabilities (filesystem access, native notifications) are gated behind Tauri API calls.
+- **Desktop packaging:** Tauri (macOS and Linux)
 - **State management:** Pinia
 - **Real-time:** Phoenix socket client for live session streaming
 
 ### 4.3 Mobile Application
 
 - **Framework:** Flutter / Dart (iOS and Android)
-- **Access model:** Remote viewer and controller. The mobile app connects to your running James instance. It does not run agents locally.
-- **Setup:** One-time QR code scan binds the app to a specific host. The QR encodes a signed, time-limited token (5-minute expiry, single-use). The app stores the binding as a named computer profile in the device's secure enclave.
-- **Computer switching:** You bind to multiple hosts. Switch between them from the app settings. Each host shows its sessions independently, ordered by last used.
-- **Live stream:** WebRTC. The host captures the Wayland compositor output via PipeWire, encodes it with H.264, and pushes it as a WebRTC track. The mobile app receives it via Flutter's WebRTC package. Resolution and frame rate adapt automatically on degraded connections. A bundled STUN/TURN server ships with the Phoenix deployment. The stream is scoped to a single application window or the full desktop.
+- **Access model:** Remote viewer and controller. Does not run agents locally.
+- **Setup:** One-time QR code scan binds the app to a host. 5-minute expiry, single-use token in device secure enclave.
+- **Live stream:** WebRTC via PipeWire (Linux) or macOS screen capture daemon. H.264, adaptive resolution.
 
 ### 4.4 Office Add-ins
 
-- **Standard:** Office.js (Microsoft Add-in standard). Works on Word, Excel, and PowerPoint on desktop and web. No COM automation — cross-platform by default.
-- **Repository:** `james-office` — all three add-ins in one repo, sharing auth, session management, API client, and chunking logic.
-- **Transport:** Office.js add-ins run inside a sandboxed iframe. All agent communication goes to `james-server` over the existing REST and WebSocket API.
-- **Authentication:** Device code flow, one-time per add-in installation.
-- **Session integration:** Add-ins connect to existing sessions or create new ones.
-- **Execution mode in Office:** Direct mode relies on native undo. Confirmed mode shows a structured diff before writing.
-- **Default personality:** The "Editor" preset is pre-selected when creating a new session from an Office add-in.
-- **Memory:** Memory extraction is on by default for Office sessions. A visible toggle in the sidebar turns it off per session for sensitive documents.
+- **Standard:** Office.js (Microsoft Add-in standard). Word, Excel, PowerPoint.
+- **Repository:** `james-office`
+- **Authentication:** Device code flow, one-time per installation.
 
 ### 4.5 Document Context — Progressive Retrieval
 
-Document content is never passed to the agent in full unless the document is very small (under a configurable token threshold). Instead:
-
-1. On document load (or on save), the add-in sends document chunks to `james-server`'s `/embeddings` endpoint.
-2. Chunks are stored in session-scoped add-in storage as vectors.
-3. When you send a message, the add-in runs a semantic search against the stored chunks and injects only the top-N most relevant ones into the agent's context window.
-4. As the conversation evolves, different chunks surface based on the current query.
-
-**Chunking strategy by application:**
-
-| Application | Chunk unit |
-|---|---|
-| Word | Paragraph |
-| Excel | Named range first. If no named ranges exist, sheet. |
-| PowerPoint | One slide per chunk |
+Chunk → embed → semantic search. Chunks by paragraph (Word), named range/sheet (Excel), slide (PowerPoint).
 
 ### 4.6 OpenClaw — Local Orchestrator
 
 Each host runs one OpenClaw instance. It:
 
 - Manages local session lifecycle: start, suspend, resume, terminate
-- Runs local agent workers (Claude Code, research agents, computer use, etc.)
+- Runs local agent workers (Claude Code, research agents, desktop control, browser control, etc.)
+- Manages the CDP-controlled Chrome instance lifecycle on its host
+- Manages the desktop control daemon on its host
 - Executes tasks routed to it by the global meta-planner
 - Streams session state to the frontend, mobile clients, and the primary host
 - Exposes a Telegram bot interface for direct interaction with local sessions
@@ -135,109 +119,89 @@ Each host runs one OpenClaw instance. It:
 
 ### 4.7 Global Meta-Planner
 
-The meta-planner runs on the designated primary host. It is the single coordinator for cross-host work.
+The meta-planner runs on the designated primary host. Receives all input — user messages, Telegram commands, Office add-in requests, Chrome extension requests, scheduled triggers. Decomposes into tasks, tags risk levels, routes to hosts, surfaces destructive tasks for approval in Confirmed mode.
 
-**Responsibilities:**
-
-1. Receive all input — user messages, Telegram commands, Office add-in requests, scheduled triggers
-2. Decompose input into tasks and tag each with a risk level (read-only, additive, destructive)
-3. Determine which host each task should run on, based on session location and host capabilities
-4. In Confirmed mode, surface destructive tasks for approval before dispatch
-5. Route approved tasks to the appropriate OpenClaw instance
-6. Aggregate status across all hosts and surface it in the UI
-7. Maintain the Telegram thread-to-session mapping
-
-**Failure behavior:** If the primary host goes down, all other hosts continue running their active sessions. They stop receiving routed tasks from the meta-planner until the primary recovers.
+**Failure behavior:** If the primary host goes down, all other hosts continue running their active sessions independently.
 
 ---
 
 ## 5. Multi-Host Architecture
 
-### 5.1 Host Configuration
-
-You configure each host in settings with a name, address, and connection credentials. One host is designated as primary. The others are workers.
-
-### 5.2 Session Pinning
-
-Sessions are pinned to the host they start on. They do not migrate.
-
-### 5.3 Cross-Host Task Execution
-
-When the meta-planner fans a task across multiple hosts, it dispatches sub-tasks to each host's OpenClaw. Each host runs its sub-task as a local background sub-session. Results aggregate back to the primary and surface in the global task list.
+Sessions are pinned to the host they start on. The meta-planner dispatches cross-host sub-tasks. Each host runs its own OpenClaw with its own configuration.
 
 ---
 
 ## 6. Authentication and Security
 
-### 6.1 SSO Providers
-
-Google, Microsoft, and GitHub OAuth 2.0.
-
-### 6.2 MFA
-
-MFA is mandatory. TOTP and WebAuthn supported. No SMS.
-
-### 6.3 Session Security
-
+- OAuth 2.0: Google, Microsoft, GitHub
+- MFA mandatory: TOTP + WebAuthn. No SMS.
 - Short-lived JWTs with refresh token rotation
 - Mobile credentials in device secure enclave
-- QR setup tokens: 5-minute expiry, single-use
-- All inter-host communication uses mTLS
+- QR tokens: 5-minute expiry, single-use
+- Inter-host communication: mTLS
 
 ---
 
 ## 7. Model Configuration
 
-### 7.1 Supported Providers
-
 | Provider | Auth Method |
 |---|---|
 | Anthropic (Claude) | API key |
 | OpenAI (GPT series) | API key |
-| OpenAI Codex | API key |
+| OpenAI Codex | API key (Responses API, no OAuth) |
 | Google (Gemini) | API key |
 | MiniMax | OAuth or API key |
 | Ollama | Local endpoint |
 | LM Studio | Local endpoint |
 | Any OpenAI-compatible endpoint | API key or none |
 
-### 7.2 Model Assignment
-
-Each agent type has a default model per host. Override at host or session level.
-
-### 7.3 Local Models
-
-Configure by entering base URL. No special setup beyond the running server.
+Each agent type (chat, code, research, desktop control, browser control, security) has a default model per host. Override at host or session level.
 
 ---
 
 ## 8. Agent Modalities
 
-| Agent | Description |
-|---|---|
-| **Chat** | Persistent multi-turn conversation with file uploads and memory |
-| **Code** | Full filesystem + shell access, PR creation, architecture diagrams |
-| **Research** | Web search, source synthesis, structured reports |
-| **Computer Use** | Wayland desktop control, browser automation, WebRTC live stream |
-| **Security** | Source code and PR analysis, structured findings with severity |
+### 8.1 Chat Agent
+
+Persistent multi-turn conversation with file uploads and memory context.
+
+### 8.2 Code Agent
+
+Full filesystem + shell access, PR creation, architecture diagrams. Claude Code-equivalent.
+
+### 8.3 Research Agent
+
+Web search, source synthesis, structured reports (Markdown/PDF export).
+
+### 8.4 Desktop Control Agent
+
+Full control of the host desktop — macOS or Linux. Replaces the previous sandboxed computer use agent. See §20 for full implementation detail.
+
+### 8.5 Browser Control Agent
+
+Controls a dedicated CDP-controlled Chrome instance on the host. Navigates pages, interacts with DOM elements, fills forms, extracts content. See §21 for full implementation detail.
+
+### 8.6 Security Agent
+
+Source code and PR analysis, structured findings with severity ratings and remediation steps.
 
 ---
 
 ## 9. Session Management
 
-Every session has: name, host assignment, project assignment, agent type, personality, execution mode, timestamps, status (active/idle/suspended/terminated). Sessions persist across host restarts via PostgreSQL.
+Every session has: name, host assignment, project assignment, agent type, personality, execution mode, timestamps, status (active/idle/suspended/terminated). Sessions persist across host restarts via PostgreSQL. Tab group state is persisted for browser control sessions. Session lists on all surfaces (web, desktop, mobile, Office, Chrome extension, Telegram) are ordered by last used.
 
 ---
 
 ## 10. Planner
 
-Every input enters the meta-planner before any agent acts. The planner: parses input into tasks, tags risk levels, checks conflicts, routes to hosts, surfaces destructive tasks for approval in Confirmed mode, dispatches background tasks, maintains the visible task list.
+Every input — user messages, Telegram commands, Office add-in requests, Chrome extension requests, scheduled triggers — enters the meta-planner before any agent acts. The planner: parses input into tasks, tags risk levels, checks conflicts, routes to hosts, surfaces destructive tasks for approval in Confirmed mode, dispatches background tasks, maintains the visible task list.
 
 ---
 
 ## 11. Sub-Sessions and Background Execution
 
-Each background task runs in its own sub-session (supervised Elixir GenServer). Shows: live command log, status, token cost, file diff view. Visible in Sessions panel.
+Each background task runs in its own sub-session (supervised Elixir GenServer). Shows: live command log (shell commands, tool calls, file writes, DOM interactions, desktop actions), status, token cost, file diff view.
 
 ---
 
@@ -283,55 +247,195 @@ Per-host filesystem paths. Sessions can have multiple. Git status displayed in s
 
 ## 18. Token Usage and Cost
 
-Per-session/task tracking: input tokens, output tokens, model, cost in configured currency. Dashboard by model, agent type, host, time period. Budget alerts.
+Per-session/task tracking. Dashboard by model, agent type, host, time period. Budget alerts.
 
 ---
 
 ## 19. Telegram Integration
 
-Phoenix process on primary host. Full platform access. Voice messages transcribed via Whisper. Thread-to-session routing. Confirmed mode with configurable timeout.
+Phoenix process on primary host. Full platform access including desktop control and browser control. Voice transcription via Whisper. Thread-to-session routing. Confirmed mode with configurable timeout.
 
 ---
 
-## 20. Computer Use — Linux Sandbox
+## 20. Desktop Control Agent
 
-Wayland compositor per session. PipeWire capture for WebRTC. GPU acceleration. Process isolation.
+The Desktop Control Agent gives James full control of the host desktop on behalf of the user. The execution mode toggle is the safety mechanism — not process isolation.
+
+### 20.1 Vision Loop
+
+Screenshot-per-action cycle:
+
+1. Capture screenshot of current desktop state
+2. Send screenshot + task context to model
+3. Receive next action (click, type, scroll, key combo, drag)
+4. Execute action via platform-specific input injection
+5. Capture new screenshot and repeat
+
+A configurable debug option switches vision input from screenshots to the live WebRTC stream (testing/debugging only).
+
+### 20.2 Linux Implementation
+
+- **Display capture:** PipeWire captures Wayland compositor output
+- **Input injection:** Wayland input protocols (libinput / wlroots virtual input)
+- **GPU acceleration:** Via Wayland compositor
+- **Isolation:** Each session in its own Wayland compositor namespace
+- **Live stream:** PipeWire → WebRTC (H.264, STUN/TURN bundled in Phoenix)
+
+### 20.3 macOS Implementation
+
+- **Helper process:** Privileged launchd daemon installed via guided setup wizard (Accessibility + Screen Recording permissions)
+- **Display capture:** macOS Screen Capture API via launchd daemon
+- **Input injection:** Accessibility API (AXUIElement) + CGEvent for low-level mouse/keyboard
+- **Communication:** mTLS to james-server
+- **Live stream:** Screen capture → WebRTC (H.264)
+
+### 20.4 Shared Behaviour
+
+Both implementations share the same session interface. Desktop control sessions look and behave identically on macOS and Linux.
+
+### 20.5 Live Stream Vision Mode
+
+Toggle in session settings switches vision source from screenshots to live WebRTC stream. For testing/debugging only — stream latency and encoding artifacts can degrade model decision quality.
 
 ---
 
-## 21. UI Structure
+## 21. Browser Control Agent
 
-Sidebar: Sessions, Projects, Task List, Memory, Hosts, OpenClaw Activity, Settings, Mobile Setup. Session view: Context (left), Conversation (center), Tasks/Tokens/Memories (right).
+### 21.1 Architecture
+
+Uses Chrome DevTools Protocol (CDP) to control a dedicated Chrome instance on the host. One shared Chrome instance per host, launched and managed by OpenClaw. The James Chrome extension is installed inside this CDP-controlled instance only.
+
+### 21.2 Chrome Instance Lifecycle
+
+- **Launch:** On demand when first browser control session starts
+- **Persistence:** Stays alive until host shutdown or OpenClaw stop
+- **Crash recovery:** OpenClaw relaunches automatically, restores tab groups from PostgreSQL
+- **Minimum footprint:** James keeps minimum tabs needed for active tasks (never zero)
+
+### 21.3 Tab Groups
+
+Chrome Tab Groups API. Every browser control session has its own named, color-coded tab group.
+
+- Tab group closes after 24 hours of session inactivity
+- James proactively closes irrelevant tabs within a group
+- Suspended sessions: tab group collapses but does not close
+- Extension always maintains at least one open tab
+
+### 21.4 Chrome Extension
+
+- **Repository:** `james-chrome` — standalone repo, Manifest V3
+- **Scope:** Runs exclusively inside the CDP-controlled Chrome instance (not Chrome Web Store)
+- **Sidebar:** Session conversation, active tab group, task status, token cost, execution mode toggle
+- **Authentication:** Device code flow (same as Office add-ins)
+- **Communication:** WebSocket (real-time) + REST (session management)
+
+### 21.5 CDP Control Layer
+
+CDP for precision automation: URL navigation, DOM element clicks by selector, form filling, page content reading, JavaScript execution, network interception, full-page screenshots for vision loop. CDP connection managed by OpenClaw, not the extension.
+
+### 21.6 Agent Vision Loop
+
+Same screenshot-per-action cycle as desktop control, scoped to active browser tab. CDP `Page.captureScreenshot` provides visual input. Debug live stream option available.
 
 ---
 
-## 22. Repository Structure
+## 22. UI Structure
+
+### 22.1 Primary Navigation
+
+```
+Sidebar
+├── Sessions (ordered by last used, searchable)
+│   ├── Chat
+│   ├── Code
+│   ├── Research
+│   ├── Desktop Control
+│   └── Browser Control
+├── Projects
+│   ├── Project chat
+│   ├── Project sessions
+│   ├── Project dashboard
+│   └── Project settings
+├── Task List (planner — global, risk levels)
+├── Memory
+├── Hosts
+│   ├── Host status
+│   ├── Per-host session list
+│   └── Host settings
+├── OpenClaw Activity
+├── Settings
+│   ├── Models (per host)
+│   ├── MCP Servers
+│   ├── Working Directories (per host)
+│   ├── Skills (conflict resolution mode)
+│   ├── Personality (account-level default + custom profiles)
+│   ├── Execution Mode (account-level default)
+│   ├── Memory (extraction prompt override)
+│   ├── Security (SSO, MFA)
+│   ├── Telegram (Confirmed mode timeout)
+│   ├── Desktop Control (macOS daemon setup wizard)
+│   └── Billing / Token Usage
+└── Mobile App Setup (QR code generation)
+```
+
+### 22.2 Session View
+
+- **Left:** Context — host, project, working directories, MCP servers, skills, personality, execution mode toggle
+- **Center:** Conversation or agent output stream
+- **Right:** Task list with risk levels, token counter, sub-session activity, memories
+
+### 22.3 Project View
+
+- **Top:** Repository matrix with health indicators and host assignments
+- **Left:** Project-level chat
+- **Right:** Agent activity feed across all project sessions
+
+---
+
+## 23. Repository Structure
 
 | Repository | Contents |
 |---|---|
-| `james-server` | Elixir/Phoenix backend, OpenClaw, meta-planner, Telegram bot, Oban jobs, PostgreSQL migrations, `/embeddings` endpoint, Docker Compose |
+| `james-server` | Elixir/Phoenix backend, OpenClaw, meta-planner, Telegram bot, Oban jobs, PostgreSQL migrations, `/embeddings` endpoint, CDP process manager, desktop daemon communication layer, Docker Compose |
 | `james-app` | Vue 3 frontend, Tauri desktop wrapper, VitePress docs |
 | `james-mobile` | Flutter/Dart iOS and Android app |
 | `james-office` | Office.js add-ins for Word, Excel, PowerPoint |
+| `james-chrome` | Chrome extension (Manifest V3) for the CDP-controlled browser instance |
 
 ---
 
-## 23. Deployment
+## 24. Deployment
 
-Phoenix release with env var config. Tauri desktop with Phoenix sidecar. Docker Compose for self-hosted. Ecto migrations run on startup. Multi-host via shared secret + mTLS.
+### 24.1 Web and Desktop
+
+Phoenix release with env var config. Tauri desktop with Phoenix sidecar. Self-contained.
+
+### 24.2 Docker
+
+Docker Compose for Phoenix app + PostgreSQL (pgvector). Multi-host via shared secret + mTLS.
+
+### 24.3 macOS Desktop Control Setup
+
+Signed and notarized installer package. Registers launchd daemon and launches guided permission wizard (Accessibility + Screen Recording). No admin password beyond initial installation.
+
+### 24.4 Database Migrations
+
+Ecto migrations run automatically on startup.
 
 ---
 
-## 24. Out of Scope for v1.0
+## 25. Out of Scope for v1.0
 
 - Windows desktop support
-- Voice input in chat agent
-- Agent-to-agent tool delegation across providers
-- Built-in billing/subscription management
-- Public API beyond Telegram
+- Voice input in the chat agent (voice messages via Telegram are supported)
+- Agent-to-agent tool delegation across provider boundaries
+- Built-in billing and subscription management
+- Public API for third-party integrations beyond Telegram
 - Session migration between hosts
 - Memory isolation between projects
+- Chrome Web Store distribution of the James extension
+- Firefox or Safari browser control support
 
 ---
 
-*End of specification v1.2*
+*End of specification v1.3*

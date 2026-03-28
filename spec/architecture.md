@@ -50,12 +50,13 @@ James the Butler is an AI-native agent platform with a multi-host, planner-first
 ### Backend (Elixir/Phoenix) — `james-server`
 - REST API and WebSocket channels (Phoenix Channels) for all clients
 - Meta-planner: task decomposition, risk tagging, host routing
-- OpenClaw: local session lifecycle, agent worker supervision
+- OpenClaw: local session lifecycle, agent worker supervision, CDP Chrome management, desktop control daemon
 - Telegram bot: thread-to-session routing, voice transcription (Whisper)
 - Memory: extraction via Oban jobs, vector storage via pgvector, semantic retrieval
-- Embeddings: `/embeddings` endpoint for all clients
+- Embeddings: `/embeddings` endpoint for all clients (web, mobile, Office, Chrome extension)
 - Auth: OAuth 2.0 (Google/Microsoft/GitHub), MFA (TOTP/WebAuthn), JWT with refresh rotation
 - Token ledger: per-session cost tracking, budget alerts
+- Tab group state persistence for browser control sessions
 
 ### Frontend (Vue 3) — `james-app`
 - Web UI and Tauri desktop app (same codebase)
@@ -66,13 +67,19 @@ James the Butler is an AI-native agent platform with a multi-host, planner-first
 ### Mobile (Flutter) — `james-mobile`
 - Remote viewer and controller (no local agents)
 - QR code host binding with secure enclave storage
-- WebRTC live stream for computer use sessions
+- WebRTC live stream for desktop and browser control sessions
 - Multi-host switching
 
 ### Office Add-ins (Office.js) — `james-office`
 - Word, Excel, PowerPoint integration (shared repo)
 - Progressive document retrieval (chunk → embed → semantic search)
 - Device code auth, session picker, structured diff view
+
+### Chrome Extension — `james-chrome`
+- Manifest V3 extension for CDP-controlled Chrome instance
+- Session sidebar: conversation, tab groups, task status, token cost, execution mode toggle
+- Device code auth (same mechanism as Office add-ins)
+- WebSocket + REST communication with james-server
 
 ### Pipeline Runner (Python) — `tools/pipeline_runner`
 - CI/CD orchestration for all components
