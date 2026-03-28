@@ -1,0 +1,8 @@
+/_build/
+/deps/
+/doc/
+*.ez
+*.beam
+/priv/static/
+james-*.tar
+.elixir_ls/

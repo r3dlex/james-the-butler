@@ -1,0 +1,28 @@
+name: james_the_butler
+description: James the Butler mobile client.
+publish_to: "none"
+version: 0.1.0
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.16.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_riverpod: ^2.4.0
+  go_router: ^14.0.0
+  dio: ^5.4.0
+  drift: ^2.14.0
+  sqlite3_flutter_libs: ^0.5.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  mockito: ^5.4.0
+  build_runner: ^2.4.0
+  drift_dev: ^2.14.0
+
+flutter:
+  uses-material-design: true
