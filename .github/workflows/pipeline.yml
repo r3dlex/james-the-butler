@@ -31,7 +31,6 @@ jobs:
 
       - name: Run architecture gate
         run: poetry run pipeline-runner archgate
-        working-directory: ${{ github.workspace }}
 
   pipeline-lint:
     name: Pipeline Runner Lint
