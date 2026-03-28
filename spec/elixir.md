@@ -4,7 +4,7 @@ For the full platform specification, see [platform.md](platform.md) §4.1, §4.6
 
 ## Purpose
 
-The backend (`james-server`) is the central platform server. It runs the meta-planner, OpenClaw orchestrators, Telegram bot, memory system, and all API endpoints.
+The backend (`james-server`) is the central platform server. It runs the meta-planner, OpenClaw orchestrators, Telegram bot, memory system, CDP Chrome process manager, desktop control daemon communication, and all API endpoints.
 
 ## Technology
 
@@ -27,9 +27,23 @@ The backend (`james-server`) is the central platform server. It runs the meta-pl
 ### OpenClaw — Local Orchestrator (GenServer)
 - One per host
 - Manages local session lifecycle: start, suspend, resume, terminate
-- Supervises agent worker GenServers (chat, code, research, computer use, security)
+- Supervises agent worker GenServers (chat, code, research, desktop control, browser control, security)
+- Manages CDP-controlled Chrome instance lifecycle
+- Manages desktop control daemon (Linux Wayland / macOS launchd)
 - Streams session state to clients and primary host
 - Registers with primary host on startup
+
+### CDP Chrome Process Manager
+- Launches dedicated Chrome instance on demand (first browser control session)
+- Monitors and restarts on crash, restoring tab groups from PostgreSQL
+- Manages tab group lifecycle (24-hour inactivity cleanup)
+- CDP connection pool for browser automation commands
+
+### Desktop Control Daemon
+- Linux: PipeWire capture + Wayland input injection (wlroots virtual input)
+- macOS: Privileged launchd daemon with Accessibility + Screen Recording permissions
+- Screenshot-per-action vision loop
+- WebRTC live stream feed for mobile viewing
 
 ### Memory System
 - Extraction: Oban jobs process conversation deltas with a fixed extraction prompt
@@ -61,6 +75,8 @@ The backend (`james-server`) is the central platform server. It runs the meta-pl
 | `Hosts` | Host registry, health checks, mTLS |
 | `Tokens` | Usage tracking, cost calculation, budget alerts |
 | `Telegram` | Bot process, thread mapping, voice transcription |
+| `Browser` | CDP Chrome lifecycle, tab groups, crash recovery |
+| `Desktop` | Desktop control daemon, vision loop, input injection |
 | `Skills` | Skill registry, versioning, conflict resolution |
 
 ## Zero-Install
