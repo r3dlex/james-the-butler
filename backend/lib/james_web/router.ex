@@ -1,4 +1,6 @@
 defmodule JamesWeb.Router do
+  @moduledoc false
+
   use Phoenix.Router
 
   pipeline :api do

@@ -8,6 +8,31 @@ on:
   workflow_dispatch:
 
 jobs:
+  archgate:
+    name: Architecture Gate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/pipeline_runner
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Poetry
+        run: pipx install poetry
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: poetry
+          cache-dependency-path: tools/pipeline_runner/poetry.lock
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Run architecture gate
+        run: poetry run pipeline-runner archgate
+        working-directory: ${{ github.workspace }}
+
   pipeline-lint:
     name: Pipeline Runner Lint
     runs-on: ubuntu-latest
@@ -59,8 +84,8 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
-      - name: Run tests
-        run: poetry run pytest --cov=pipeline_runner
+      - name: Run tests with coverage
+        run: poetry run pytest --cov=pipeline_runner --cov-report=term-missing
 
   backend-test:
     name: Backend Tests
@@ -113,8 +138,8 @@ jobs:
         env:
           MIX_ENV: test
 
-      - name: Run tests
-        run: mix test
+      - name: Run tests with coverage
+        run: mix test --cover
         env:
           MIX_ENV: test
 

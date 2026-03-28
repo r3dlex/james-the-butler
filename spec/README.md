@@ -21,8 +21,13 @@ Each component also maintains its own `spec/` directory with internal design det
 - `mobile/spec/README.md` — Flutter widget tree, navigation, platform integration
 - `tools/pipeline_runner/spec/README.md` — Pipeline stages, plugin architecture
 
+## Architecture Decision Records
+
+All significant decisions are documented as ADRs in [`docs/adr/`](../docs/adr/README.md). Key decisions include coverage targets ([ADR-007](../docs/adr/007-test-coverage-targets.md)), architecture gate enforcement ([ADR-008](../docs/adr/008-archgate-enforcement.md)), and git identity for James commits ([ADR-009](../docs/adr/009-git-identity-and-repo-awareness.md)).
+
 ## How to Read
 
 1. Start with **architecture.md** for the big picture
 2. Read the relevant **component spec** (e.g., `elixir.md`) for system-level requirements
 3. Dive into the component's own **`spec/README.md`** for implementation details
+4. Check **`docs/adr/`** for the rationale behind key decisions

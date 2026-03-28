@@ -8,4 +8,12 @@ export default defineConfig({
       "@": new URL("./src", import.meta.url).pathname,
     },
   },
+  test: {
+    coverage: {
+      provider: "v8",
+      thresholds: {
+        lines: 70,
+      },
+    },
+  },
 });
