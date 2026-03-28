@@ -1,5 +1,5 @@
 defmodule JamesWeb.HealthController do
-  use Phoenix.Controller, formats: [:json]
+  use Phoenix.Controller
 
   def index(conn, _params) do
     json(conn, %{status: "ok"})

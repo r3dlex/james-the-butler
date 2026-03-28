@@ -6,6 +6,7 @@ config :james,
 config :james, James.Repo, adapter: Ecto.Adapters.Postgres
 
 config :james, JamesWeb.Endpoint,
+  adapter: Bandit.PhoenixAdapter,
   url: [host: "localhost"],
   render_errors: [formats: [json: JamesWeb.ErrorJSON], layout: false],
   pubsub_server: James.PubSub
