@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- James the Butler — GitHub Avatar (square with background) -->
+  <rect width="200" height="200" rx="16" fill="#1a1a2e"/>
+  <polygon points="100,80 60,62 60,98" fill="#ffffff"/>
+  <polygon points="100,80 140,62 140,98" fill="#ffffff"/>
+  <circle cx="100" cy="80" r="10" fill="#d4a574"/>
+  <rect x="72" y="112" width="56" height="6" rx="3" fill="#ffffff"/>
+  <rect x="80" y="124" width="40" height="6" rx="3" fill="#ffffff" opacity="0.5"/>
+</svg>
