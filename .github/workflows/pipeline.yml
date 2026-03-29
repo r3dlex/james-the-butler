@@ -124,17 +124,32 @@ jobs:
         run: mix deps.get
 
       - name: Compile
+        id: compile
         run: |
           mix compile --warnings-as-errors 2>&1 | tee /tmp/compile.log
           exit ${PIPESTATUS[0]}
 
-      - name: Show compile errors
-        if: failure()
-        run: |
-          echo '## Compile Output' >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat /tmp/compile.log >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+      - name: Post compile errors to PR
+        if: failure() && steps.compile.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const log = fs.readFileSync('/tmp/compile.log', 'utf8');
+            const body = `## Backend Compile Failure\n\`\`\`\n${log}\n\`\`\``;
+            const { data: prs } = await github.rest.repos.listPullRequestsAssociatedWithCommit({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              commit_sha: context.sha,
+            });
+            if (prs.length > 0) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prs[0].number,
+                body: body,
+              });
+            }
 
       - name: Check formatting
         run: mix format --check-formatted
