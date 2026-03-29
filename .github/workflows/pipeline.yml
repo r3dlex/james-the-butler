@@ -129,20 +129,12 @@ jobs:
           mix compile --warnings-as-errors 2>&1 | tee /tmp/compile.log
           exit ${PIPESTATUS[0]}
 
-      - name: Post compile errors to PR
-        if: failure() && steps.compile.outcome == 'failure' && github.event.pull_request.number
-        uses: actions/github-script@v7
+      - name: Upload compile log
+        if: failure() && steps.compile.outcome == 'failure'
+        uses: actions/upload-artifact@v4
         with:
-          script: |
-            const fs = require('fs');
-            const log = fs.readFileSync('/tmp/compile.log', 'utf8');
-            const body = `## Backend Compile Failure\n\`\`\`\n${log}\n\`\`\``;
-            await github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: body,
-            });
+          name: backend-compile-log
+          path: /tmp/compile.log
 
       - name: Check formatting
         run: mix format --check-formatted
