@@ -7,9 +7,7 @@ config :james, James.Repo,
   database: "james_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool_size: 10
 
-config :james, JamesWeb.Endpoint,
-  secret_key_base: "test-secret-key-base-that-is-at-least-64-bytes-long-for-phoenix-to-accept-it",
-  server: false
+config :james, skip_endpoint: true
 
 # Print only warnings and errors during test
 config :logger, level: :warning
