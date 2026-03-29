@@ -133,7 +133,18 @@ jobs:
         run: mix credo --strict
 
       - name: Setup database
-        run: mix ecto.migrate --quiet
+        shell: bash --noprofile --norc {0}
+        run: |
+          mix ecto.create 2>&1
+          CREATE_EXIT=$?
+          echo "ecto.create exit: $CREATE_EXIT"
+          mix ecto.migrate 2>&1
+          MIGRATE_EXIT=$?
+          echo "ecto.migrate exit: $MIGRATE_EXIT"
+          if [ $MIGRATE_EXIT -ne 0 ]; then
+            echo "::error::ecto.migrate failed with exit $MIGRATE_EXIT"
+            exit 1
+          fi
         env:
           MIX_ENV: test
 
