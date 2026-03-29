@@ -1,6 +1,6 @@
 # Frontend Specification (Vue 3)
 
-For the full platform specification, see [platform.md](platform.md) §4.2, §21.
+For the full platform specification, see [platform.md](platform.md) §4.2, §24.
 
 ## Purpose
 
@@ -31,6 +31,9 @@ The web frontend (`james-app`) provides the primary UI for James the Butler. The
 - Token usage dashboard with budget alerts
 - MCP server and skill configuration
 - Mobile QR code generation for host binding
+- View Mode panel (live WebRTC stream, multi-agent thumbnails, artifact preview)
+- Planner reasoning stream in center panel
+- Task list with strikethrough completion and 30-min auto-collapse
 
 ## UI Structure
 

@@ -1,6 +1,6 @@
 # Backend Specification (Elixir/Phoenix)
 
-For the full platform specification, see [platform.md](platform.md) §4.1, §4.6, §4.7.
+For the full platform specification, see [platform.md](platform.md) §4.1, §4.6, §4.7, §13.
 
 ## Purpose
 
@@ -69,7 +69,7 @@ The backend (`james-server`) is the central platform server. It runs the meta-pl
 |---|---|
 | `Accounts` | User registration, OAuth, MFA, JWT management |
 | `Sessions` | Session CRUD, persistence, host pinning |
-| `Planner` | Task decomposition, risk tagging, routing |
+| `Planner` | Task decomposition, risk tagging, routing, reasoning streaming, task list lifecycle |
 | `Agents` | Agent worker lifecycle, sub-session management |
 | `Memory` | Extraction, storage, retrieval, review |
 | `Hosts` | Host registry, health checks, mTLS |
@@ -78,6 +78,7 @@ The backend (`james-server`) is the central platform server. It runs the meta-pl
 | `Browser` | CDP Chrome lifecycle, tab groups, crash recovery |
 | `Desktop` | Desktop control daemon, vision loop, input injection |
 | `Skills` | Skill registry, versioning, conflict resolution |
+| `Artifacts` | Output artifact management, working file cleanup, narrative summaries |
 
 ## Zero-Install
 
