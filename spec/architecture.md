@@ -57,6 +57,10 @@ James the Butler is an AI-native agent platform with a multi-host, planner-first
 - Auth: OAuth 2.0 (Google/Microsoft/GitHub), MFA (TOTP/WebAuthn), JWT with refresh rotation
 - Token ledger: per-session cost tracking, budget alerts
 - Tab group state persistence for browser control sessions
+- Planner reasoning streaming to all clients
+- Working file cleanup via Oban jobs
+- Execution history (structured logs + narrative summaries)
+- Output artifact metadata management
 
 ### Frontend (Vue 3) — `james-app`
 - Web UI and Tauri desktop app (same codebase)

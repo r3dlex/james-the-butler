@@ -1,6 +1,6 @@
 # James the Butler — Platform Specification
 
-**Version:** 1.3
+**Version:** 1.4
 **Status:** Final — Ready for Implementation
 **Owner:** Andre / EPL R&D
 
@@ -29,6 +29,8 @@ You run it as a web app, a desktop app (macOS and Linux), from your phone, from 
 **Persistent memory.** James extracts context from all interactions automatically and uses it to inform new sessions and tasks. You review and correct what he retains.
 
 **Direct by default.** James acts without confirmation unless you switch to Confirmed mode. When he does act, he tells you exactly what he did.
+
+**Minimal footprint.** James uses the minimum resources needed for the current task. Working files are cleaned up after use. Intermediate artifacts are discarded unless explicitly retained.
 
 ---
 
@@ -71,11 +73,11 @@ Execution mode follows the same three-level inheritance hierarchy as personality
 ### 4.1 Backend
 
 - **Runtime:** Elixir with Phoenix
-- **Real-time:** Phoenix Channels (WebSocket) for streaming agent output, live command logs, and session state updates
-- **Database:** PostgreSQL via Ecto — sessions, tasks, agent runs, token ledger, user accounts, MCP configs, skills registry, host registry, Telegram thread mappings, memory store, personality profiles, execution mode settings, tab group state
+- **Real-time:** Phoenix Channels (WebSocket) for streaming agent output, planner reasoning steps, live command logs, and session state updates
+- **Database:** PostgreSQL via Ecto — sessions, tasks, agent runs, token ledger, user accounts, MCP configs, skills registry, host registry, Telegram thread mappings, memory store, personality profiles, execution mode settings, tab group state, execution history, output artifact metadata
 - **Vector search:** pgvector extension on the existing PostgreSQL instance
 - **Embeddings:** `/embeddings` endpoint used by all clients (web, mobile, Office add-ins, Chrome extension)
-- **Background jobs:** Oban for durable task queuing including memory extraction jobs and tab lifecycle management
+- **Background jobs:** Oban for durable task queuing including memory extraction jobs, tab lifecycle management, working file cleanup, and narrative summary generation
 - **Process model:** Each agent sub-session runs as a supervised Elixir GenServer. Each host's OpenClaw is the local orchestrator process. The global meta-planner runs as a GenServer on the designated primary host.
 
 ### 4.2 Frontend
@@ -119,7 +121,7 @@ Each host runs one OpenClaw instance. It:
 
 ### 4.7 Global Meta-Planner
 
-The meta-planner runs on the designated primary host. Receives all input — user messages, Telegram commands, Office add-in requests, Chrome extension requests, scheduled triggers. Decomposes into tasks, tags risk levels, routes to hosts, surfaces destructive tasks for approval in Confirmed mode.
+The meta-planner runs on the designated primary host. Receives all input — user messages, Telegram commands, Office add-in requests, Chrome extension requests, scheduled triggers. Streams decomposition steps to the UI in real time. Decomposes into tasks, tags risk levels, routes to hosts, surfaces destructive tasks for approval in Confirmed mode. Dispatches parallelizable tasks as parallel sub-sessions.
 
 **Failure behavior:** If the primary host goes down, all other hosts continue running their active sessions independently.
 
@@ -175,11 +177,11 @@ Web search, source synthesis, structured reports (Markdown/PDF export).
 
 ### 8.4 Desktop Control Agent
 
-Full control of the host desktop — macOS or Linux. Replaces the previous sandboxed computer use agent. See §20 for full implementation detail.
+Full control of the host desktop — macOS or Linux. Replaces the previous sandboxed computer use agent. See §21 for full implementation detail.
 
 ### 8.5 Browser Control Agent
 
-Controls a dedicated CDP-controlled Chrome instance on the host. Navigates pages, interacts with DOM elements, fills forms, extracts content. See §21 for full implementation detail.
+Controls a dedicated CDP-controlled Chrome instance on the host. Navigates pages, interacts with DOM elements, fills forms, extracts content. See §22 for full implementation detail.
 
 ### 8.6 Security Agent
 
@@ -189,13 +191,27 @@ Source code and PR analysis, structured findings with severity ratings and remed
 
 ## 9. Session Management
 
+### 9.1 Session Properties
+
 Every session has: name, host assignment, project assignment, agent type, personality, execution mode, timestamps, status (active/idle/suspended/terminated). Sessions persist across host restarts via PostgreSQL. Tab group state is persisted for browser control sessions. Session lists on all surfaces (web, desktop, mobile, Office, Chrome extension, Telegram) are ordered by last used.
+
+**Keep Intermediates flag.** Each session has a "Keep Intermediates" toggle (default: off). When off, working files are cleaned up after task completion and only final deliverables are retained. When on, all intermediate artifacts are preserved for the session's lifetime.
 
 ---
 
 ## 10. Planner
 
+### 10.1 Core Behaviour
+
 Every input — user messages, Telegram commands, Office add-in requests, Chrome extension requests, scheduled triggers — enters the meta-planner before any agent acts. The planner: parses input into tasks, tags risk levels, checks conflicts, routes to hosts, surfaces destructive tasks for approval in Confirmed mode, dispatches background tasks, maintains the visible task list.
+
+### 10.2 Planner Visibility
+
+The planner's reasoning process streams to the UI in real time. As the planner decomposes a request, each reasoning step appears in the center panel so the user can follow the decision-making process before tasks begin executing.
+
+### 10.3 Task List Behaviour
+
+The task list shows all current and recent tasks with risk levels and live status. Completed tasks show strikethrough styling. Task groups auto-collapse 30 minutes after all tasks in the group complete. The task list is visible in the right panel of the session view and in the global Task List sidebar entry.
 
 ---
 
@@ -205,7 +221,41 @@ Each background task runs in its own sub-session (supervised Elixir GenServer). 
 
 ---
 
-## 12. Projects
+## 12. View Mode
+
+View Mode provides a live observation panel for active agent sessions.
+
+- **Live WebRTC panel:** Real-time video stream of desktop control or browser control sessions, embedded directly in the session view.
+- **Multi-agent view:** Thumbnail grid showing all active agent sub-sessions. Click any thumbnail to expand to full view.
+- **Artifact preview:** Inline preview of output artifacts (documents, images, code files) as they are produced, without leaving the session view.
+
+View Mode is accessible from the right panel of the session view (switchable with the Task List).
+
+---
+
+## 13. Output Artifact Management
+
+### 13.1 Artifact Types
+
+- **Deliverables:** Final outputs requested by the user (documents, code, reports, images). Always retained.
+- **Working files:** Intermediate files created during task execution (drafts, temp data, scratch files). Cleaned up automatically unless Keep Intermediates is enabled on the session (see §9.1).
+
+### 13.2 Keep Intermediates
+
+When the session-level "Keep Intermediates" flag is on, all working files are preserved for the session's lifetime. When off (default), an Oban job runs after task completion to clean up working files.
+
+### 13.3 Execution History
+
+Every session maintains an execution history consisting of:
+
+- **Structured log:** Machine-readable record of every agent action, tool call, file operation, and decision point.
+- **Narrative summary:** Human-readable summary generated by an Oban background job after task completion. Summarizes what was done, key decisions, and final outcomes.
+
+Both are stored in PostgreSQL and viewable in the session detail panel.
+
+---
+
+## 14. Projects
 
 Projects group sessions, repositories, shared context, and a project-level chat across hosts.
 
@@ -215,53 +265,47 @@ Projects group sessions, repositories, shared context, and a project-level chat 
 
 ---
 
-## 13. Memory
+## 15. Memory
 
 Implicit extraction from all interactions via background Oban jobs. Stored as vectors in PostgreSQL/pgvector. Semantic retrieval at session start and on each message. Review surface for viewing, editing, and deleting memories.
 
 ---
 
-## 14. Personality and Style
+## 16. Personality and Style
 
 Three-level hierarchy (account > project > session). Built-in presets: Butler, Collaborator, Analyst, Coach, Editor, Silent. Custom profiles via natural language.
 
 ---
 
-## 15. MCP Integration
+## 17. MCP Integration
 
 Pre-configured: JIRA, Figma, GitHub, Filesystem. Custom servers via name + transport + params. Per-session MCP scope.
 
 ---
 
-## 16. Skills
+## 18. Skills
 
 Reusable instruction bundles as Markdown files. Versioned by content hash. Attach at project, session, or task level.
 
 ---
 
-## 17. Working Directory Management
+## 19. Working Directory Management
 
 Per-host filesystem paths. Sessions can have multiple. Git status displayed in session panel.
 
 ---
 
-## 18. Token Usage and Cost
+## 20. Token Usage and Cost
 
 Per-session/task tracking. Dashboard by model, agent type, host, time period. Budget alerts.
 
 ---
 
-## 19. Telegram Integration
+## 21. Desktop Control Agent
 
-Phoenix process on primary host. Full platform access including desktop control and browser control. Voice transcription via Whisper. Thread-to-session routing. Confirmed mode with configurable timeout.
+The Desktop Control Agent gives James full control of the host desktop — macOS or Linux — on your behalf.
 
----
-
-## 20. Desktop Control Agent
-
-The Desktop Control Agent gives James full control of the host desktop on behalf of the user. The execution mode toggle is the safety mechanism — not process isolation.
-
-### 20.1 Vision Loop
+### 21.1 Vision Loop
 
 Screenshot-per-action cycle:
 
@@ -271,9 +315,11 @@ Screenshot-per-action cycle:
 4. Execute action via platform-specific input injection
 5. Capture new screenshot and repeat
 
+Screenshots used by the agent for its vision loop are not stored in the database. They are transient — used for the current action step only and discarded.
+
 A configurable debug option switches vision input from screenshots to the live WebRTC stream (testing/debugging only).
 
-### 20.2 Linux Implementation
+### 21.2 Linux Implementation
 
 - **Display capture:** PipeWire captures Wayland compositor output
 - **Input injection:** Wayland input protocols (libinput / wlroots virtual input)
@@ -281,38 +327,50 @@ A configurable debug option switches vision input from screenshots to the live W
 - **Isolation:** Each session in its own Wayland compositor namespace
 - **Live stream:** PipeWire → WebRTC (H.264, STUN/TURN bundled in Phoenix)
 
-### 20.3 macOS Implementation
+### 21.3 macOS Implementation
 
-- **Helper process:** Privileged launchd daemon installed via guided setup wizard (Accessibility + Screen Recording permissions)
-- **Display capture:** macOS Screen Capture API via launchd daemon
-- **Input injection:** Accessibility API (AXUIElement) + CGEvent for low-level mouse/keyboard
-- **Communication:** mTLS to james-server
-- **Live stream:** Screen capture → WebRTC (H.264)
+- **Helper process:** A privileged launchd daemon installed via a guided setup wizard. Starts automatically at login. Communicates with `james-server` over mTLS.
+- **Display capture:** macOS Screen Capture API.
+- **Primary input injection:** Accessibility API (AXUIElement) for UI element targeting by role and label.
+- **Fallback input injection:** CGEvent for low-level coordinate-based mouse and keyboard injection when the Accessibility tree is unavailable or incomplete.
+- **Live stream:** Screen capture frames feed into WebRTC via H.264, same pipeline as Linux.
 
-### 20.4 Shared Behaviour
+### 21.4 macOS Accessibility Fallback Cases
+
+The Accessibility API fails or returns incomplete trees for the following categories of applications. The agent falls back to CGEvent coordinate-based targeting in all cases, using the screenshot as the visual grounding source for element location.
+
+| Application type | Reason AX fails | Fallback |
+|---|---|---|
+| Electron apps (VS Code, Slack, Discord, Notion, Figma desktop) | Chromium renders UI in a sandboxed web layer with no native AX tree | CGEvent + visual grounding. For Electron specifically: CDP injection into the Electron renderer process is also available, giving full DOM access identical to the browser control agent. |
+| GPU-rendered apps and games | Metal / OpenGL surfaces are opaque to AX | CGEvent + visual grounding only |
+| Web content inside browsers | Rendered in a sandboxed process; AX sees the frame but not the DOM | Use the Browser Control Agent instead — CDP provides full DOM access |
+| Java apps (Swing / AWT) | AX support inconsistent on modern macOS | CGEvent + visual grounding |
+| Terminal emulators (iTerm2, Alacritty, Kitty) | Expose minimal AX structure | CGEvent + visual grounding |
+
+### 21.5 Shared Behaviour
 
 Both implementations share the same session interface. Desktop control sessions look and behave identically on macOS and Linux.
 
-### 20.5 Live Stream Vision Mode
+### 21.6 Live Stream Vision Mode
 
 Toggle in session settings switches vision source from screenshots to live WebRTC stream. For testing/debugging only — stream latency and encoding artifacts can degrade model decision quality.
 
 ---
 
-## 21. Browser Control Agent
+## 22. Browser Control Agent
 
-### 21.1 Architecture
+### 22.1 Architecture
 
 Uses Chrome DevTools Protocol (CDP) to control a dedicated Chrome instance on the host. One shared Chrome instance per host, launched and managed by OpenClaw. The James Chrome extension is installed inside this CDP-controlled instance only.
 
-### 21.2 Chrome Instance Lifecycle
+### 22.2 Chrome Instance Lifecycle
 
 - **Launch:** On demand when first browser control session starts
 - **Persistence:** Stays alive until host shutdown or OpenClaw stop
 - **Crash recovery:** OpenClaw relaunches automatically, restores tab groups from PostgreSQL
 - **Minimum footprint:** James keeps minimum tabs needed for active tasks (never zero)
 
-### 21.3 Tab Groups
+### 22.3 Tab Groups
 
 Chrome Tab Groups API. Every browser control session has its own named, color-coded tab group.
 
@@ -321,7 +379,7 @@ Chrome Tab Groups API. Every browser control session has its own named, color-co
 - Suspended sessions: tab group collapses but does not close
 - Extension always maintains at least one open tab
 
-### 21.4 Chrome Extension
+### 22.4 Chrome Extension
 
 - **Repository:** `james-chrome` — standalone repo, Manifest V3
 - **Scope:** Runs exclusively inside the CDP-controlled Chrome instance (not Chrome Web Store)
@@ -329,19 +387,25 @@ Chrome Tab Groups API. Every browser control session has its own named, color-co
 - **Authentication:** Device code flow (same as Office add-ins)
 - **Communication:** WebSocket (real-time) + REST (session management)
 
-### 21.5 CDP Control Layer
+### 22.5 CDP Control Layer
 
 CDP for precision automation: URL navigation, DOM element clicks by selector, form filling, page content reading, JavaScript execution, network interception, full-page screenshots for vision loop. CDP connection managed by OpenClaw, not the extension.
 
-### 21.6 Agent Vision Loop
+### 22.6 Agent Vision Loop
 
-Same screenshot-per-action cycle as desktop control, scoped to active browser tab. CDP `Page.captureScreenshot` provides visual input. Debug live stream option available.
+Same screenshot-per-action cycle as desktop control, scoped to active browser tab. CDP `Page.captureScreenshot` provides visual input. Screenshots are transient — used for the current action step, not stored. Debug live stream option available.
 
 ---
 
-## 22. UI Structure
+## 23. Telegram Integration
 
-### 22.1 Primary Navigation
+Phoenix process on primary host. Full platform access including desktop control and browser control. Voice transcription via Whisper. Thread-to-session routing. Confirmed mode with configurable timeout.
+
+---
+
+## 24. UI Structure
+
+### 24.1 Primary Navigation
 
 ```
 Sidebar
@@ -378,13 +442,13 @@ Sidebar
 └── Mobile App Setup (QR code generation)
 ```
 
-### 22.2 Session View
+### 24.2 Session View
 
-- **Left:** Context — host, project, working directories, MCP servers, skills, personality, execution mode toggle
-- **Center:** Conversation or agent output stream
-- **Right:** Task list with risk levels, token counter, sub-session activity, memories
+- **Left:** Context — host, project, working directories, MCP servers, skills, personality, execution mode toggle, Keep Intermediates toggle
+- **Center:** Planner reasoning stream (decomposition steps shown in real time), then conversation or agent output stream
+- **Right:** Switchable between Task List (risk levels, token counter, sub-session activity, memories) and View Mode (live WebRTC panel, multi-agent thumbnails, artifact preview)
 
-### 22.3 Project View
+### 24.3 Project View
 
 - **Top:** Repository matrix with health indicators and host assignments
 - **Left:** Project-level chat
@@ -392,7 +456,7 @@ Sidebar
 
 ---
 
-## 23. Repository Structure
+## 25. Repository Structure
 
 | Repository | Contents |
 |---|---|
@@ -404,27 +468,27 @@ Sidebar
 
 ---
 
-## 24. Deployment
+## 26. Deployment
 
-### 24.1 Web and Desktop
+### 26.1 Web and Desktop
 
 Phoenix release with env var config. Tauri desktop with Phoenix sidecar. Self-contained.
 
-### 24.2 Docker
+### 26.2 Docker
 
 Docker Compose for Phoenix app + PostgreSQL (pgvector). Multi-host via shared secret + mTLS.
 
-### 24.3 macOS Desktop Control Setup
+### 26.3 macOS Desktop Control Setup
 
 Signed and notarized installer package. Registers launchd daemon and launches guided permission wizard (Accessibility + Screen Recording). No admin password beyond initial installation.
 
-### 24.4 Database Migrations
+### 26.4 Database Migrations
 
 Ecto migrations run automatically on startup.
 
 ---
 
-## 25. Out of Scope for v1.0
+## 27. Out of Scope for v1.0
 
 - Windows desktop support
 - Voice input in the chat agent (voice messages via Telegram are supported)
@@ -438,4 +502,4 @@ Ecto migrations run automatically on startup.
 
 ---
 
-*End of specification v1.3*
+*End of specification v1.4*
