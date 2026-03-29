@@ -5,17 +5,21 @@ defmodule James.Application do
 
   @impl true
   def start(_type, _args) do
-    children =
-      [
-        James.Repo,
-        {Phoenix.PubSub, name: James.PubSub}
-      ] ++ endpoint_children()
+    children = children_for_env()
 
     opts = [strategy: :one_for_one, name: James.Supervisor]
     Supervisor.start_link(children, opts)
   end
 
-  defp endpoint_children do
-    if Application.get_env(:james, :skip_endpoint), do: [], else: [JamesWeb.Endpoint]
+  defp children_for_env do
+    if Application.get_env(:james, :minimal_start) do
+      []
+    else
+      [
+        James.Repo,
+        {Phoenix.PubSub, name: James.PubSub},
+        JamesWeb.Endpoint
+      ]
+    end
   end
 end
