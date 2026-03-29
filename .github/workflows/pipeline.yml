@@ -151,8 +151,6 @@ jobs:
         run: mix test
         env:
           MIX_ENV: test
-        env:
-          MIX_ENV: test
 
   frontend-test:
     name: Frontend Tests
