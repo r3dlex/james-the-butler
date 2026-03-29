@@ -123,18 +123,16 @@ jobs:
       - name: Install dependencies
         run: mix deps.get
 
-      - name: Compile
-        id: compile
-        run: |
-          mix compile --warnings-as-errors 2>&1 | tee /tmp/compile.log
-          exit ${PIPESTATUS[0]}
+      - name: Compile (check warnings)
+        run: mix compile 2>&1 | tee /tmp/compile.log
 
-      - name: Upload compile log
-        if: failure() && steps.compile.outcome == 'failure'
-        uses: actions/upload-artifact@v4
-        with:
-          name: backend-compile-log
-          path: /tmp/compile.log
+      - name: Fail on warnings
+        run: |
+          if grep -q "warning:" /tmp/compile.log; then
+            echo "::error::Compile warnings found:"
+            grep "warning:" /tmp/compile.log
+            exit 1
+          fi
 
       - name: Check formatting
         run: mix format --check-formatted
