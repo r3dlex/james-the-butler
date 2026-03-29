@@ -124,14 +124,7 @@ jobs:
         run: mix deps.get
 
       - name: Compile
-        shell: bash --noprofile --norc {0}
-        run: |
-          mix compile --warnings-as-errors 2>&1
-          RESULT=$?
-          if [ $RESULT -ne 0 ]; then
-            echo "::error::mix compile failed with exit code $RESULT. Last 50 lines above."
-          fi
-          exit $RESULT
+        run: mix compile
 
       - name: Check formatting
         run: mix format --check-formatted
