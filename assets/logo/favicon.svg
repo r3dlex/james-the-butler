@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- James the Butler — Favicon -->
+  <polygon points="16,13 6,8 6,18" fill="#1a1a2e"/>
+  <polygon points="16,13 26,8 26,18" fill="#1a1a2e"/>
+  <circle cx="16" cy="13" r="2" fill="#d4a574"/>
+  <rect x="10" y="21" width="12" height="1.5" rx="0.75" fill="#1a1a2e"/>
+</svg>
