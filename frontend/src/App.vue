@@ -8,7 +8,13 @@
     <main class="chat-container">
       <div class="messages" ref="messagesRef">
         <div v-if="messages.length === 0" class="welcome">
-          <img src="/logo.svg" alt="" width="64" height="64" class="welcome-logo" />
+          <img
+            src="/logo.svg"
+            alt=""
+            width="64"
+            height="64"
+            class="welcome-logo"
+          />
           <p>How can I help you today?</p>
         </div>
         <div
@@ -16,7 +22,9 @@
           :key="i"
           :class="['message', msg.role]"
         >
-          <div class="message-role">{{ msg.role === 'user' ? 'You' : 'James' }}</div>
+          <div class="message-role">
+            {{ msg.role === "user" ? "You" : "James" }}
+          </div>
           <div class="message-content">{{ msg.displayText }}</div>
         </div>
         <div v-if="loading" class="message assistant">
@@ -42,76 +50,76 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
+import { ref, nextTick } from "vue";
 
 interface ChatMessage {
-  role: 'user' | 'assistant'
-  content: string
-  displayText: string
+  role: "user" | "assistant";
+  content: string;
+  displayText: string;
 }
 
-const messages = ref<ChatMessage[]>([])
-const input = ref('')
-const loading = ref(false)
-const messagesRef = ref<HTMLElement | null>(null)
+const messages = ref<ChatMessage[]>([]);
+const input = ref("");
+const loading = ref(false);
+const messagesRef = ref<HTMLElement | null>(null);
 
-const API_URL = 'http://localhost:4000/api/chat'
+const API_URL = "http://localhost:4000/api/chat";
 
 function scrollToBottom() {
   nextTick(() => {
     if (messagesRef.value) {
-      messagesRef.value.scrollTop = messagesRef.value.scrollHeight
+      messagesRef.value.scrollTop = messagesRef.value.scrollHeight;
     }
-  })
+  });
 }
 
 async function sendMessage() {
-  const text = input.value.trim()
-  if (!text || loading.value) return
+  const text = input.value.trim();
+  if (!text || loading.value) return;
 
-  messages.value.push({ role: 'user', content: text, displayText: text })
-  input.value = ''
-  loading.value = true
-  scrollToBottom()
+  messages.value.push({ role: "user", content: text, displayText: text });
+  input.value = "";
+  loading.value = true;
+  scrollToBottom();
 
   const apiMessages = messages.value.map((m) => ({
     role: m.role,
     content: m.content,
-  }))
+  }));
 
   try {
     const res = await fetch(API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ messages: apiMessages }),
-    })
+    });
 
-    const data = await res.json()
+    const data = await res.json();
 
     if (!res.ok) {
       messages.value.push({
-        role: 'assistant',
-        content: data.error || 'Something went wrong',
-        displayText: data.error || 'Something went wrong',
-      })
+        role: "assistant",
+        content: data.error || "Something went wrong",
+        displayText: data.error || "Something went wrong",
+      });
     } else {
-      const textBlock = data.content?.find((b: any) => b.type === 'text')
-      const reply = textBlock?.text || JSON.stringify(data)
+      const textBlock = data.content?.find((b: any) => b.type === "text");
+      const reply = textBlock?.text || JSON.stringify(data);
       messages.value.push({
-        role: 'assistant',
+        role: "assistant",
         content: reply,
         displayText: reply,
-      })
+      });
     }
   } catch (err: any) {
     messages.value.push({
-      role: 'assistant',
-      content: 'Failed to reach the server.',
-      displayText: 'Failed to reach the server.',
-    })
+      role: "assistant",
+      content: "Failed to reach the server.",
+      displayText: "Failed to reach the server.",
+    });
   } finally {
-    loading.value = false
-    scrollToBottom()
+    loading.value = false;
+    scrollToBottom();
   }
 }
 </script>
@@ -126,7 +134,8 @@ async function sendMessage() {
 body {
   background: #0d0d1a;
   color: #e0e0e0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 #app {
@@ -145,7 +154,7 @@ body {
 }
 
 .app-header h1 {
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: Georgia, "Times New Roman", serif;
   font-size: 18px;
   color: #d4a574;
   font-weight: normal;
@@ -237,12 +246,24 @@ body {
   animation: pulse 1.4s ease-in-out infinite;
 }
 
-.typing span:nth-child(2) { animation-delay: 0.2s; }
-.typing span:nth-child(3) { animation-delay: 0.4s; }
+.typing span:nth-child(2) {
+  animation-delay: 0.2s;
+}
+.typing span:nth-child(3) {
+  animation-delay: 0.4s;
+}
 
 @keyframes pulse {
-  0%, 80%, 100% { opacity: 0.3; transform: scale(0.8); }
-  40% { opacity: 1; transform: scale(1); }
+  0%,
+  80%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.8);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .input-bar {
