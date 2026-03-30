@@ -11,5 +11,6 @@ defmodule JamesWeb.Router do
     pipe_through :api
 
     get "/health", HealthController, :index
+    post "/chat", ChatController, :create
   end
 end

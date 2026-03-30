@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
+  <!-- James the Butler — Badge: Circular badge with icon and text arc -->
+  <circle cx="60" cy="60" r="58" fill="#1a1a2e" stroke="#d4a574" stroke-width="1.5"/>
+  <circle cx="60" cy="60" r="52" fill="none" stroke="#d4a574" stroke-width="0.5" opacity="0.3"/>
+  <!-- Icon centered -->
+  <g transform="translate(28, 14)">
+    <path d="M12 14 Q12 6 20 6 L44 6 Q52 6 52 14 L52 36 Q52 44 44 44 L30 44 L22 54 L23 44 Q12 44 12 36 Z" fill="#ffffff"/>
+    <rect x="20" y="20" width="2.5" height="12" rx="1" fill="#d4a574"/>
+    <rect x="26" y="20" width="14" height="2" rx="1" fill="#d4a574" opacity="0.6"/>
+    <rect x="26" y="25" width="10" height="2" rx="1" fill="#d4a574" opacity="0.4"/>
+    <rect x="26" y="30" width="18" height="2" rx="1" fill="#d4a574" opacity="0.3"/>
+    <circle cx="37" cy="39" r="1.5" fill="#d4a574" opacity="0.5"/>
+    <circle cx="42" cy="39" r="1.5" fill="#d4a574" opacity="0.35"/>
+    <circle cx="47" cy="39" r="1.5" fill="#d4a574" opacity="0.2"/>
+    <polygon points="52,6 56,3 56,9" fill="#d4a574"/>
+  </g>
+  <!-- Curved text at bottom — wider arc for full text -->
+  <defs>
+    <path id="bottomArc" d="M12,80 A52,52 0 0,0 108,80"/>
+  </defs>
+  <text font-family="Georgia,'Times New Roman',serif" font-size="9" fill="#d4a574" letter-spacing="1.5">
+    <textPath href="#bottomArc" startOffset="50%" text-anchor="middle">JAMES THE BUTLER</textPath>
+  </text>
+</svg>

@@ -1,0 +1,30 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--host", "0.0.0.0"],
+      "cwd": "frontend",
+      "port": 5173
+    },
+    {
+      "name": "full-stack",
+      "runtimeExecutable": "docker-compose",
+      "runtimeArgs": ["up", "--build"],
+      "port": 4000
+    },
+    {
+      "name": "backend",
+      "runtimeExecutable": "docker-compose",
+      "runtimeArgs": ["up", "--build", "db", "backend"],
+      "port": 4000
+    },
+    {
+      "name": "db",
+      "runtimeExecutable": "docker-compose",
+      "runtimeArgs": ["up", "db"],
+      "port": 5432
+    }
+  ]
+}

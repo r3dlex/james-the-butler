@@ -11,7 +11,10 @@
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "lint": "eslint . && prettier --check src/",
-    "format": "prettier --write src/"
+    "format": "prettier --write src/",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "pinia": "^2.1.0",
@@ -19,6 +22,8 @@
     "vue-router": "^4.3.0"
   },
   "devDependencies": {
+    "@tauri-apps/api": "^2.0.0",
+    "@tauri-apps/cli": "^2.0.0",
     "@vitejs/plugin-vue": "^5.0.0",
     "@vue/test-utils": "^2.4.0",
     "eslint": "^9.0.0",

@@ -2,14 +2,31 @@
        backend-setup backend-dev backend-test backend-test-coverage backend-lint \
        frontend-setup frontend-dev frontend-test frontend-test-coverage frontend-lint \
        mobile-setup mobile-dev mobile-test mobile-test-coverage mobile-lint \
-       pipeline-setup pipeline-test pipeline-test-coverage pipeline-lint
+       pipeline-setup pipeline-test pipeline-test-coverage pipeline-lint \
+       up down logs build
+
+# ── Docker targets ──────────────────────────────────────────────────
+
+COMPOSE := $(shell command -v docker-compose 2>/dev/null || echo "docker compose")
+
+up:
+	$(COMPOSE) up --build -d
+
+down:
+	$(COMPOSE) down
+
+logs:
+	$(COMPOSE) logs -f
+
+build:
+	$(COMPOSE) build
 
 # ── Aggregate targets ────────────────────────────────────────────────
 
 setup: backend-setup frontend-setup mobile-setup pipeline-setup
 
-dev:
-	@echo "Start services individually: make backend-dev / frontend-dev / mobile-dev"
+dev: up
+	@echo "Services starting via docker-compose. Use 'make logs' to follow output."
 
 test: backend-test frontend-test mobile-test pipeline-test
 
@@ -59,6 +76,14 @@ frontend-test-coverage:
 
 frontend-lint:
 	cd frontend && npm run lint
+
+# ── Desktop (Tauri) ─────────────────────────────────────────────────
+
+desktop-dev:
+	cd frontend && npm run tauri:dev
+
+desktop-build:
+	cd frontend && npm run tauri:build
 
 # ── Mobile (Flutter) ────────────────────────────────────────────────
 

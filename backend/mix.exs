@@ -34,6 +34,8 @@ defmodule James.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:bandit, "~> 1.0"},
+      {:req, "~> 0.5"},
+      {:cors_plug, "~> 3.0"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end
