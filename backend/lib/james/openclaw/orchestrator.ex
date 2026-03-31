@@ -8,7 +8,7 @@ defmodule James.OpenClaw.Orchestrator do
   use GenServer
 
   alias James.OpenClaw.Supervisor, as: AgentSupervisor
-  alias James.Agents.ChatAgent
+  alias James.Agents.{ChatAgent, CodeAgent, ResearchAgent, SecurityAgent, DesktopAgent, BrowserAgent}
 
   # --- Client API ---
 
@@ -72,9 +72,10 @@ defmodule James.OpenClaw.Orchestrator do
   # --- Private ---
 
   defp agent_for_type("chat"), do: ChatAgent
-  defp agent_for_type("code"), do: ChatAgent  # Fallback to chat for now
-  defp agent_for_type("research"), do: ChatAgent
-  defp agent_for_type("desktop"), do: ChatAgent
-  defp agent_for_type("browser"), do: ChatAgent
+  defp agent_for_type("code"), do: CodeAgent
+  defp agent_for_type("research"), do: ResearchAgent
+  defp agent_for_type("security"), do: SecurityAgent
+  defp agent_for_type("desktop"), do: DesktopAgent
+  defp agent_for_type("browser"), do: BrowserAgent
   defp agent_for_type(_), do: ChatAgent
 end
