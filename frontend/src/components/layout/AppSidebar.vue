@@ -54,6 +54,9 @@
     <!-- Bottom navigation -->
     <nav class="space-y-0.5 px-2 py-2">
       <SidebarNavItem label="Settings" path="/settings" icon="settings" />
+      <SidebarNavItem label="Plugins" path="/settings/plugins" icon="puzzle" />
+      <SidebarNavItem label="Hooks" path="/settings/hooks" icon="zap" />
+      <SidebarNavItem label="Channels" path="/settings/channels" icon="radio" />
       <SidebarNavItem
         label="Mobile Setup"
         path="/mobile-setup"

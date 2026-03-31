@@ -22,6 +22,7 @@ defmodule James.Application do
         James.OpenClaw.Supervisor,
         James.OpenClaw.Orchestrator,
         James.Planner.MetaPlanner,
+        James.Plugins.Registry,
         JamesWeb.Endpoint
       ]
     end

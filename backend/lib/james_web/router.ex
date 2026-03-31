@@ -79,5 +79,16 @@ defmodule JamesWeb.Router do
 
     # Embeddings
     post "/embeddings", EmbeddingController, :create
+
+    # Plugins
+    resources "/plugins", PluginController, only: [:index, :create, :delete]
+    post "/plugins/:id/enable", PluginController, :enable
+    post "/plugins/:id/disable", PluginController, :disable
+
+    # Hooks
+    resources "/hooks", HookController, only: [:index, :create, :update, :delete]
+
+    # Channel configs
+    resources "/channel-configs", ChannelConfigController, only: [:index, :create, :delete]
   end
 end

@@ -115,6 +115,18 @@ const router = createRouter({
       path: "/settings/billing",
       component: () => import("@/pages/settings/SettingsBillingPage.vue"),
     },
+    {
+      path: "/settings/plugins",
+      component: () => import("@/pages/settings/SettingsPluginsPage.vue"),
+    },
+    {
+      path: "/settings/hooks",
+      component: () => import("@/pages/settings/SettingsHooksPage.vue"),
+    },
+    {
+      path: "/settings/channels",
+      component: () => import("@/pages/settings/SettingsChannelsPage.vue"),
+    },
   ],
 });
 
