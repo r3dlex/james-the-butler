@@ -18,7 +18,13 @@ config :james, JamesWeb.Endpoint,
 
 config :james, Oban,
   repo: James.Repo,
-  plugins: [Oban.Plugins.Pruner],
+  plugins: [
+    Oban.Plugins.Pruner,
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"* * * * *", James.Workers.HostHealthWorker}
+     ]}
+  ],
   queues: [default: 10, memory: 5, summaries: 3]
 
 # Configures the Phoenix JSON library

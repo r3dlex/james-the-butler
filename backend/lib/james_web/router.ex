@@ -26,6 +26,7 @@ defmodule JamesWeb.Router do
     post "/auth/dev_login", AuthController, :dev_login
     post "/auth/refresh", AuthController, :refresh
     post "/auth/device-code", AuthController, :device_code
+    post "/auth/device-code/token", AuthController, :device_code_token
 
     # OAuth 2.0 — browser-based redirect flow
     get "/auth/:provider", AuthController, :oauth_redirect
@@ -38,6 +39,7 @@ defmodule JamesWeb.Router do
     # Auth (protected)
     post "/auth/logout", AuthController, :logout
     get "/auth/me", AuthController, :me
+    post "/auth/device-code/verify", AuthController, :device_code_verify
 
     # Sessions
     get "/sessions", SessionController, :index

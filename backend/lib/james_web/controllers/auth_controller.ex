@@ -108,11 +108,55 @@ defmodule JamesWeb.AuthController do
     conn |> json(%{user: user_json(user)})
   end
 
-  # POST /api/auth/device-code
+  # POST /api/auth/device-code — generate a new device code pair
   def device_code(conn, _params) do
-    conn
-    |> put_status(:not_implemented)
-    |> json(%{error: "Device code flow not yet implemented"})
+    alias James.Auth.DeviceCode
+
+    case DeviceCode.generate_code() do
+      {:ok, result} ->
+        json(conn, %{
+          device_code: result.device_code,
+          user_code: result.user_code,
+          verification_uri: "#{frontend_url()}/auth/device",
+          expires_in: result.expires_in,
+          interval: result.interval
+        })
+
+      {:error, _} ->
+        conn |> put_status(:internal_server_error) |> json(%{error: "failed to generate code"})
+    end
+  end
+
+  # POST /api/auth/device-code/verify — user approves the code in browser
+  def device_code_verify(conn, %{"user_code" => user_code}) do
+    alias James.Auth.DeviceCode
+    user = conn.assigns.current_user
+
+    case DeviceCode.verify_code(user_code, user.id) do
+      {:ok, _} -> json(conn, %{ok: true, message: "Device authorized."})
+      {:error, :invalid_or_expired} -> conn |> put_status(:not_found) |> json(%{error: "Invalid or expired code."})
+    end
+  end
+
+  # POST /api/auth/device-code/token — client polls for approval
+  def device_code_token(conn, %{"device_code" => device_code}) do
+    alias James.Auth.DeviceCode
+
+    case DeviceCode.check_code(device_code) do
+      {:ok, user_id} ->
+        user = Accounts.get_user(user_id)
+        {:ok, token} = Auth.generate_token(user)
+        json(conn, %{access_token: token, token_type: "bearer"})
+
+      {:error, :pending} ->
+        conn |> put_status(428) |> json(%{error: "authorization_pending"})
+
+      {:error, :expired} ->
+        conn |> put_status(:gone) |> json(%{error: "expired_token"})
+
+      {:error, _} ->
+        conn |> put_status(:bad_request) |> json(%{error: "invalid_grant"})
+    end
   end
 
   defp user_json(user) do
