@@ -92,7 +92,7 @@ defmodule James.Search do
     end
   end
 
-  defp semantic_search(query_text, user_id, opts, limit) do
+  defp semantic_search(query_text, user_id, _opts, limit) do
     case Embeddings.generate(query_text) do
       {:ok, embedding} ->
         from(m in James.Memories.Memory,

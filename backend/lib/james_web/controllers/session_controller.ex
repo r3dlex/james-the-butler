@@ -4,6 +4,7 @@ defmodule JamesWeb.SessionController do
   alias James.Sessions
   alias James.Hosts
   alias James.Planner.MetaPlanner
+  alias James.Commands.Processor
 
   # GET /api/sessions
   def index(conn, params) do
@@ -95,10 +96,30 @@ defmodule JamesWeb.SessionController do
       # Broadcast the user message over PubSub so the channel picks it up.
       Phoenix.PubSub.broadcast(James.PubSub, "session:#{id}", {:user_message, message})
 
-      # Dispatch to the meta-planner for task decomposition and agent execution
-      MetaPlanner.process_message(id, message)
+      # Check for slash commands before dispatching to the planner
+      case Processor.process(content, id) do
+        {:command, response_text} ->
+          # Save the command response as an assistant message
+          {:ok, cmd_msg} =
+            Sessions.create_message(%{
+              session_id: id,
+              role: "assistant",
+              content: response_text
+            })
 
-      conn |> put_status(:accepted) |> json(%{message: message_json(message)})
+          Phoenix.PubSub.broadcast(
+            James.PubSub,
+            "session:#{id}",
+            {:assistant_message, cmd_msg}
+          )
+
+          conn |> put_status(:ok) |> json(%{message: message_json(message), command_response: message_json(cmd_msg)})
+
+        :not_command ->
+          # Dispatch to the meta-planner for task decomposition and agent execution
+          MetaPlanner.process_message(id, message)
+          conn |> put_status(:accepted) |> json(%{message: message_json(message)})
+      end
     else
       nil -> conn |> put_status(:not_found) |> json(%{error: "not found"})
       false -> conn |> put_status(:forbidden) |> json(%{error: "forbidden"})

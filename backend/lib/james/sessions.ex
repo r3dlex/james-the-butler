@@ -5,7 +5,7 @@ defmodule James.Sessions do
 
   import Ecto.Query
   alias James.Repo
-  alias James.Sessions.{Session, Message}
+  alias James.Sessions.{Session, Message, Checkpoint}
 
   def list_sessions(user_id, opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
@@ -68,5 +68,72 @@ defmodule James.Sessions do
 
   def message_count(session_id) do
     Repo.aggregate(from(m in Message, where: m.session_id == ^session_id), :count)
+  end
+
+  # --- Checkpoints ---
+
+  def create_checkpoint(attrs) do
+    %Checkpoint{}
+    |> Checkpoint.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def list_checkpoints(session_id) do
+    from(c in Checkpoint, where: c.session_id == ^session_id, order_by: [desc: c.inserted_at])
+    |> Repo.all()
+  end
+
+  def get_checkpoint(id), do: Repo.get(Checkpoint, id)
+
+  def create_implicit_checkpoint(session_id) do
+    messages = list_messages(session_id)
+    snapshot = Enum.map(messages, fn m ->
+      %{role: m.role, content: m.content, inserted_at: m.inserted_at}
+    end)
+
+    create_checkpoint(%{
+      session_id: session_id,
+      type: "implicit",
+      conversation_snapshot: %{messages: snapshot}
+    })
+  end
+
+  def create_explicit_checkpoint(session_id, name) do
+    messages = list_messages(session_id)
+    snapshot = Enum.map(messages, fn m ->
+      %{role: m.role, content: m.content, inserted_at: m.inserted_at}
+    end)
+
+    create_checkpoint(%{
+      session_id: session_id,
+      type: "explicit",
+      name: name,
+      conversation_snapshot: %{messages: snapshot}
+    })
+  end
+
+  def rewind_to_checkpoint(checkpoint_id) do
+    case get_checkpoint(checkpoint_id) do
+      nil ->
+        {:error, :not_found}
+
+      checkpoint ->
+        # Delete all messages in the session
+        from(m in Message, where: m.session_id == ^checkpoint.session_id)
+        |> Repo.delete_all()
+
+        # Restore messages from snapshot
+        messages = get_in(checkpoint.conversation_snapshot, ["messages"]) || []
+
+        Enum.each(messages, fn msg ->
+          create_message(%{
+            session_id: checkpoint.session_id,
+            role: msg["role"],
+            content: msg["content"]
+          })
+        end)
+
+        {:ok, checkpoint}
+    end
   end
 end

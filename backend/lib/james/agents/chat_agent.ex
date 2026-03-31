@@ -7,7 +7,7 @@ defmodule James.Agents.ChatAgent do
 
   use GenServer, restart: :temporary
 
-  alias James.{Sessions, Tokens, Memories, Embeddings}
+  alias James.{Sessions, Tokens, Memories, Embeddings, Personality}
   alias James.Providers.Anthropic
 
   defstruct [:session_id, :task_id, :messages, :system_prompt, :model]
@@ -25,7 +25,8 @@ defmodule James.Agents.ChatAgent do
     session_id = Keyword.fetch!(opts, :session_id)
     task_id = Keyword.get(opts, :task_id)
     model = Keyword.get(opts, :model)
-    system_prompt = Keyword.get(opts, :system_prompt, default_system_prompt())
+    session = Sessions.get_session(session_id)
+    system_prompt = Keyword.get(opts, :system_prompt) || resolve_system_prompt(session)
 
     # Load conversation history
     messages =
@@ -35,7 +36,6 @@ defmodule James.Agents.ChatAgent do
       end)
 
     # Inject relevant memories into system prompt
-    session = Sessions.get_session(session_id)
     memory_context = build_memory_context(session)
 
     full_system =
@@ -205,6 +205,9 @@ defmodule James.Agents.ChatAgent do
         :ok
     end
   end
+
+  defp resolve_system_prompt(nil), do: default_system_prompt()
+  defp resolve_system_prompt(session), do: Personality.resolve_system_prompt(session)
 
   defp default_system_prompt do
     """

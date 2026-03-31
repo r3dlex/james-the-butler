@@ -38,6 +38,8 @@ defmodule James.Accounts do
     |> Repo.update()
   end
 
+  def get_personality_profile(id), do: Repo.get(PersonalityProfile, id)
+
   def list_personality_profiles(%User{} = user) do
     Repo.all(from p in PersonalityProfile, where: p.user_id == ^user.id)
   end
