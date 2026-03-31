@@ -55,6 +55,24 @@ export const useTaskStore = defineStore("tasks", () => {
     if (task) task.status = status;
   }
 
+  async function approveTask(taskId: string) {
+    try {
+      const data = await api.post<{ task: Task }>(`/api/tasks/${taskId}/approve`, {});
+      updateTask(data.task);
+    } catch {
+      // TODO: error handling
+    }
+  }
+
+  async function rejectTask(taskId: string) {
+    try {
+      const data = await api.post<{ task: Task }>(`/api/tasks/${taskId}/reject`, {});
+      updateTask(data.task);
+    } catch {
+      // TODO: error handling
+    }
+  }
+
   return {
     tasks,
     loading,
@@ -64,5 +82,7 @@ export const useTaskStore = defineStore("tasks", () => {
     fetchTasks,
     updateTask,
     updateTaskStatus,
+    approveTask,
+    rejectTask,
   };
 });

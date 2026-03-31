@@ -1,7 +1,8 @@
 defmodule JamesWeb.TaskController do
   use Phoenix.Controller, formats: [:json]
 
-  alias James.Tasks
+  alias James.{Tasks, Sessions}
+  alias James.OpenClaw.Orchestrator
 
   def index(conn, params) do
     opts = [
@@ -24,6 +25,14 @@ defmodule JamesWeb.TaskController do
     with task when not is_nil(task) <- Tasks.get_task(id),
          {:ok, updated} <- Tasks.approve_task(task) do
       Phoenix.PubSub.broadcast(James.PubSub, "session:#{task.session_id}", {:task_updated, updated})
+
+      # Dispatch approved task to OpenClaw for execution
+      session = Sessions.get_session(task.session_id)
+      if session do
+        {:ok, running} = Tasks.update_task_status(updated, "running")
+        Orchestrator.dispatch_task(running, session)
+      end
+
       conn |> json(%{task: task_json(updated)})
     else
       nil -> conn |> put_status(:not_found) |> json(%{error: "not found"})

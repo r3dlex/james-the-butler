@@ -8,7 +8,7 @@ defmodule James.Planner.MetaPlanner do
 
   use GenServer
 
-  alias James.{Tasks, Sessions}
+  alias James.{Tasks, Sessions, ExecutionMode}
   alias James.OpenClaw.Orchestrator
 
   # --- Client API ---
@@ -65,7 +65,7 @@ defmodule James.Planner.MetaPlanner do
           broadcast_task_list(session_id, tasks)
 
           # Check execution mode — in confirmed mode, destructive tasks need approval
-          execution_mode = resolve_execution_mode(session)
+          execution_mode = ExecutionMode.resolve(session)
 
           if execution_mode == "confirmed" and task.risk_level == "destructive" do
             {:ok, _} = Tasks.update_task_status(task, "pending")
@@ -118,17 +118,6 @@ defmodule James.Planner.MetaPlanner do
   defp classify_risk("desktop"), do: "destructive"
   defp classify_risk("browser"), do: "destructive"
   defp classify_risk(_), do: "read_only"
-
-  defp resolve_execution_mode(session) do
-    cond do
-      session.execution_mode && session.execution_mode != "" ->
-        session.execution_mode
-
-      true ->
-        # TODO: Check project, then user defaults (Phase 2)
-        "direct"
-    end
-  end
 
   defp broadcast_planner_step(session_id, step) do
     Phoenix.PubSub.broadcast(

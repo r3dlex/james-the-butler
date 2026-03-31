@@ -114,8 +114,13 @@
       <ChatInput :disabled="isStreaming" @send="handleSend" />
     </div>
 
-    <!-- Right: task panel (kept as-is) -->
-    <SessionActivityPanel :tasks="tasks" />
+    <!-- Right: task panel -->
+    <SessionActivityPanel
+      :tasks="tasks"
+      :planner-status="plannerStatus"
+      @approve="handleApprove"
+      @reject="handleReject"
+    />
   </div>
 </template>
 
@@ -180,6 +185,7 @@ function cancelEditTitle() {
   editingTitle.value = false;
 }
 
+const plannerStatus = ref("");
 const hasSentFirstMessage = ref(false);
 
 onMounted(() => {
@@ -212,12 +218,37 @@ onMounted(() => {
     taskStore.updateTask(payload as import("@/types/task").Task);
   });
   channel.on("artifact:created", () => {});
+
+  // Join planner channel for live task decomposition
+  const plannerChannel = socketStore.joinChannel(`planner:${sessionId.value}`);
+  plannerChannel.join();
+  plannerChannel.on("planner:step", (payload: unknown) => {
+    const step = (payload as { step: { type: string; description?: string } }).step;
+    if (step.type === "decomposing") plannerStatus.value = "decomposing";
+    else if (step.type === "dispatched") plannerStatus.value = "";
+    else if (step.type === "awaiting_approval") plannerStatus.value = "awaiting approval";
+    else if (step.type === "task_created") plannerStatus.value = "dispatching";
+    else if (step.type === "error") plannerStatus.value = "";
+  });
+  plannerChannel.on("planner:tasks", (payload: unknown) => {
+    const data = payload as { tasks: import("@/types/task").Task[] };
+    data.tasks.forEach((t) => taskStore.updateTask(t));
+  });
 });
 
 onUnmounted(() => {
   socketStore.leaveChannel(`session:${sessionId.value}`);
+  socketStore.leaveChannel(`planner:${sessionId.value}`);
   sessionStore.setActive(null);
 });
+
+function handleApprove(taskId: string) {
+  taskStore.approveTask(taskId);
+}
+
+function handleReject(taskId: string) {
+  taskStore.rejectTask(taskId);
+}
 
 async function handleSend(text: string) {
   if (!hasSentFirstMessage.value) {
