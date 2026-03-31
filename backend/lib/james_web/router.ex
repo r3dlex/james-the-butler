@@ -23,10 +23,13 @@ defmodule JamesWeb.Router do
     pipe_through :api
 
     # Auth (public)
-    post "/auth/login", AuthController, :login
     post "/auth/dev_login", AuthController, :dev_login
     post "/auth/refresh", AuthController, :refresh
     post "/auth/device-code", AuthController, :device_code
+
+    # OAuth 2.0 — browser-based redirect flow
+    get "/auth/:provider", AuthController, :oauth_redirect
+    get "/auth/:provider/callback", AuthController, :oauth_callback
   end
 
   scope "/api", JamesWeb do

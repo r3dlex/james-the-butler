@@ -57,8 +57,8 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
-  async function loginWithProvider(_provider: string) {
-    error.value = `OAuth SSO is not configured yet. Use Dev Login to continue.`;
+  function loginWithProvider(provider: string) {
+    window.location.href = `http://localhost:4000/api/auth/${provider}`;
   }
 
   // Calls the real backend dev login endpoint

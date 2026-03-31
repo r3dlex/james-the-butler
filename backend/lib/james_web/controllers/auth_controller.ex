@@ -1,23 +1,61 @@
 defmodule JamesWeb.AuthController do
   use Phoenix.Controller, formats: [:json]
 
-  alias James.{Auth, Accounts}
+  alias James.{Auth, Accounts, OAuth}
 
-  # POST /api/auth/login
-  # Accepts OAuth provider + code, returns JWT + refresh token.
-  # For dev: accepts email directly.
-  def login(conn, %{"provider" => provider, "code" => _code} = _params) do
-    # In production this would exchange the OAuth code with the provider.
-    # For now we return an error directing clients to use dev login.
-    conn
-    |> put_status(:not_implemented)
-    |> json(%{error: "OAuth provider '#{provider}' not configured. Use /api/auth/dev_login."})
+  @frontend_url "http://localhost:4173"
+
+  # GET /api/auth/:provider — redirect browser to OAuth provider
+  def oauth_redirect(conn, %{"provider" => provider}) do
+    cond do
+      not OAuth.supported?(provider) ->
+        conn |> put_status(:bad_request) |> json(%{error: "Unknown provider: #{provider}"})
+
+      not OAuth.configured?(provider) ->
+        conn
+        |> put_status(:not_implemented)
+        |> json(%{error: "#{String.capitalize(provider)} OAuth credentials not configured. Set #{String.upcase(provider)}_CLIENT_ID and #{String.upcase(provider)}_CLIENT_SECRET."})
+
+      true ->
+        state = :crypto.strong_rand_bytes(16) |> Base.url_encode64(padding: false)
+        url = OAuth.authorization_url(provider, state)
+        redirect(conn, external: url)
+    end
   end
 
-  def login(conn, _params) do
-    conn
-    |> put_status(:bad_request)
-    |> json(%{error: "Missing provider or code"})
+  # GET /api/auth/:provider/callback — handle provider redirect back
+  def oauth_callback(conn, %{"provider" => provider, "code" => code}) do
+    case OAuth.exchange_code(provider, code) do
+      {:ok, %{provider: prov, uid: uid, email: email, name: name}} ->
+        user =
+          case Accounts.find_or_create_user_by_oauth(prov, uid, %{email: email, name: name}) do
+            {:ok, u} -> u
+            {:error, _} ->
+              # Fallback: try by email (provider may have changed uid representation)
+              Accounts.get_user_by_email(email)
+          end
+
+        if user do
+          {:ok, token} = Auth.generate_token(user)
+          {:ok, refresh} = Auth.generate_refresh_token(user)
+
+          # Redirect to frontend callback page with token in query params
+          redirect_url = "#{frontend_url()}/auth/callback?token=#{token}&refresh=#{refresh}"
+          redirect(conn, external: redirect_url)
+        else
+          error_url = "#{frontend_url()}/login?error=account_error"
+          redirect(conn, external: error_url)
+        end
+
+      {:error, reason} ->
+        error_url = "#{frontend_url()}/login?error=#{URI.encode(reason)}"
+        redirect(conn, external: error_url)
+    end
+  end
+
+  def oauth_callback(conn, %{"provider" => provider, "error" => error}) do
+    error_url = "#{frontend_url()}/login?error=#{URI.encode("#{provider}: #{error}")}"
+    redirect(conn, external: error_url)
   end
 
   # POST /api/auth/dev_login — dev-only bypass
@@ -43,9 +81,7 @@ defmodule JamesWeb.AuthController do
   end
 
   def dev_login(conn, _params) do
-    conn
-    |> put_status(:bad_request)
-    |> json(%{error: "email required"})
+    conn |> put_status(:bad_request) |> json(%{error: "email required"})
   end
 
   # POST /api/auth/refresh
@@ -63,8 +99,6 @@ defmodule JamesWeb.AuthController do
 
   # POST /api/auth/logout
   def logout(conn, _params) do
-    # Stateless JWTs — client drops the token. Refresh token revocation
-    # can be added via a blocklist table in a future iteration.
     conn |> json(%{ok: true})
   end
 
@@ -74,9 +108,8 @@ defmodule JamesWeb.AuthController do
     conn |> json(%{user: user_json(user)})
   end
 
-  # POST /api/auth/device-code — device authorization flow for Office/Chrome clients
+  # POST /api/auth/device-code
   def device_code(conn, _params) do
-    # Placeholder — full OAuth device flow requires a persistent code store.
     conn
     |> put_status(:not_implemented)
     |> json(%{error: "Device code flow not yet implemented"})
@@ -90,5 +123,9 @@ defmodule JamesWeb.AuthController do
       execution_mode: user.execution_mode || "direct",
       personality_id: user.personality_id
     }
+  end
+
+  defp frontend_url do
+    Application.get_env(:james, :frontend_url, @frontend_url)
   end
 end
