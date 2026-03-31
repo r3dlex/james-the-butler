@@ -185,18 +185,21 @@ onMounted(() => {
   taskStore.fetchTasks(sessionId.value);
 
   const channel = socketStore.joinChannel(`session:${sessionId.value}`);
-  channel.on("new_message", (payload: unknown) => {
+  // Load message history from channel join reply
+  channel.join().receive("ok", (resp: { messages?: Message[] }) => {
+    if (resp.messages) messageStore.setMessages(sessionId.value, resp.messages);
+  });
+  channel.on("message:new", (payload: unknown) => {
     messageStore.appendMessage(sessionId.value, payload as Message);
   });
-  channel.on("streaming_start", () => {
-    messageStore.setStreamingState(sessionId.value);
+  channel.on("message:chunk", (payload: unknown) => {
+    const { content } = payload as { content: string };
+    messageStore.setStreamingState(sessionId.value, [{ type: "text", text: content }] as never);
   });
-  channel.on("streaming_stop", () => {
-    messageStore.setStreamingState(null);
-  });
-  channel.on("task_update", (payload: unknown) => {
+  channel.on("task:updated", (payload: unknown) => {
     taskStore.updateTask(payload as import("@/types/task").Task);
   });
+  channel.on("artifact:created", () => {});
 });
 
 onUnmounted(() => {

@@ -10,8 +10,8 @@ export const useHostStore = defineStore("hosts", () => {
   async function fetchHosts() {
     loading.value = true;
     try {
-      const data = await api.get<{ data: Host[] }>("/api/hosts");
-      hosts.value = data.data;
+      const data = await api.get<{ hosts: Host[] }>("/api/hosts");
+      hosts.value = data.hosts;
     } catch {
       // TODO: error handling
     } finally {

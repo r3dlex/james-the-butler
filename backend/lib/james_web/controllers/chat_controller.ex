@@ -3,7 +3,7 @@ defmodule JamesWeb.ChatController do
   Proxies chat messages to the configured Anthropic-compatible API (e.g. MiniMax).
   """
 
-  use Phoenix.Controller
+  use Phoenix.Controller, formats: [:json]
 
   def create(conn, %{"messages" => messages}) do
     api_key = System.get_env("ANTHROPIC_API_KEY")

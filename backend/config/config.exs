@@ -1,14 +1,23 @@
 import Config
 
 config :james,
-  ecto_repos: [James.Repo]
+  ecto_repos: [James.Repo],
+  jwt_secret: System.get_env("JWT_SECRET", "dev-jwt-secret-change-in-prod-min-32-chars"),
+  anthropic_api_key: System.get_env("ANTHROPIC_API_KEY")
 
-config :james, James.Repo, adapter: Ecto.Adapters.Postgres
+config :james, James.Repo,
+  adapter: Ecto.Adapters.Postgres,
+  types: James.PostgresTypes
 
 config :james, JamesWeb.Endpoint,
   adapter: Bandit.PhoenixAdapter,
   url: [host: "localhost"],
   pubsub_server: James.PubSub
+
+config :james, Oban,
+  repo: James.Repo,
+  plugins: [Oban.Plugins.Pruner],
+  queues: [default: 10, memory: 5, summaries: 3]
 
 # Configures the Phoenix JSON library
 config :phoenix, :json_library, Jason

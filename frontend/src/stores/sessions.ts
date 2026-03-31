@@ -16,17 +16,18 @@ export const useSessionStore = defineStore("sessions", () => {
   const sortedSessions = computed(() =>
     [...sessions.value].sort(
       (a, b) =>
-        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+        new Date(b.updatedAt ?? b.createdAt).getTime() -
+        new Date(a.updatedAt ?? a.createdAt).getTime(),
     ),
   );
 
   async function fetchSessions() {
     loading.value = true;
     try {
-      const data = await api.get<{ data: Session[] }>("/api/sessions");
-      sessions.value = data.data;
+      const data = await api.get<{ sessions: Session[] }>("/api/sessions");
+      sessions.value = data.sessions;
     } catch {
-      // TODO: error handling
+      // fall through — sessions stay empty in dev mode without backend
     } finally {
       loading.value = false;
     }
@@ -34,11 +35,10 @@ export const useSessionStore = defineStore("sessions", () => {
 
   function createLocalSession(payload: CreateSessionPayload): Session {
     const now = new Date().toISOString();
-    const hasUserName = !!payload.name?.trim();
     const session: Session = {
       id: `local-${Date.now()}`,
-      name: hasUserName ? payload.name!.trim() : "New Session",
-      nameSetByUser: hasUserName,
+      name: payload.name?.trim() || "New Session",
+      nameSetByUser: !!payload.name?.trim(),
       agentType: payload.agentType,
       hostId: payload.hostId,
       projectId: payload.projectId ?? null,
@@ -57,14 +57,20 @@ export const useSessionStore = defineStore("sessions", () => {
     return session;
   }
 
-  async function createSession(
-    payload: CreateSessionPayload,
-  ): Promise<Session | null> {
+  async function createSession(payload: CreateSessionPayload): Promise<Session | null> {
     creating.value = true;
     try {
-      const data = await api.post<{ data: Session }>("/api/sessions", payload);
-      sessions.value.unshift(data.data);
-      return data.data;
+      const data = await api.post<{ session: Session }>("/api/sessions", {
+        name: payload.name,
+        agent_type: payload.agentType,
+        host_id: payload.hostId,
+        project_id: payload.projectId,
+        personality_id: payload.personalityId,
+        execution_mode: payload.executionMode,
+        keep_intermediates: payload.keepIntermediates,
+      });
+      sessions.value.unshift(data.session);
+      return data.session;
     } catch {
       // API not available — create locally for dev mode
       return createLocalSession(payload);
@@ -73,12 +79,10 @@ export const useSessionStore = defineStore("sessions", () => {
     }
   }
 
-  /** Auto-generate a session title from the first user message (if not user-set). */
   function autoNameSession(sessionId: string, firstMessage: string) {
     const session = sessions.value.find((s) => s.id === sessionId);
     if (!session || session.nameSetByUser) return;
 
-    // Truncate to a clean title: first sentence or first 60 chars
     let title = firstMessage.trim();
     const sentenceEnd = title.search(/[.!?]\s/);
     if (sentenceEnd > 0 && sentenceEnd < 60) {
@@ -90,7 +94,6 @@ export const useSessionStore = defineStore("sessions", () => {
     session.updatedAt = new Date().toISOString();
   }
 
-  /** User explicitly renames a session — locks the name from auto-updates. */
   function renameSession(sessionId: string, newName: string) {
     const session = sessions.value.find((s) => s.id === sessionId);
     if (!session) return;

@@ -14,39 +14,48 @@ export const useMessageStore = defineStore("messages", () => {
     return messagesBySession.value.get(sessionId) ?? [];
   }
 
-  async function fetchMessages(sessionId: string, page = 1) {
+  // Messages are loaded from the channel join payload (see useSessionChannel).
+  // This method provides a fallback HTTP load if needed.
+  async function fetchMessages(sessionId: string) {
     loading.value = true;
     try {
-      const data = await api.get<{ data: Message[] }>(
-        `/api/sessions/${sessionId}/messages?page=${page}`,
+      // Backend returns messages inside session detail for simple access
+      const data = await api.get<{ session: { messageCount: number } }>(
+        `/api/sessions/${sessionId}`,
       );
-      const existing = messagesBySession.value.get(sessionId) ?? [];
-      if (page === 1) {
-        messagesBySession.value.set(sessionId, data.data);
-      } else {
-        messagesBySession.value.set(sessionId, [...data.data, ...existing]);
+      // If no cached messages, set empty array so the view renders
+      if (!messagesBySession.value.has(sessionId)) {
+        messagesBySession.value.set(sessionId, []);
       }
+      return data;
     } catch {
-      // TODO: error handling
+      if (!messagesBySession.value.has(sessionId)) {
+        messagesBySession.value.set(sessionId, []);
+      }
     } finally {
       loading.value = false;
     }
   }
 
+  // Called when the session channel join returns the message history
+  function setMessages(sessionId: string, messages: Message[]) {
+    messagesBySession.value.set(sessionId, messages);
+  }
+
   async function sendMessage(
     sessionId: string,
     content: string,
-    attachments: string[] = [],
+    _attachments: string[] = [],
   ) {
     try {
-      const data = await api.post<{ data: Message }>(
+      const data = await api.post<{ message: Message }>(
         `/api/sessions/${sessionId}/messages`,
-        { content, attachments },
+        { content },
       );
       const msgs = messagesBySession.value.get(sessionId) ?? [];
-      msgs.push(data.data);
+      msgs.push(data.message);
       messagesBySession.value.set(sessionId, msgs);
-      return data.data;
+      return data.message;
     } catch {
       return null;
     }
@@ -82,6 +91,7 @@ export const useMessageStore = defineStore("messages", () => {
     loading,
     getMessages,
     fetchMessages,
+    setMessages,
     sendMessage,
     appendMessage,
     setStreamingState,

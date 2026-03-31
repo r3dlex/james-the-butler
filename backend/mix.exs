@@ -30,12 +30,15 @@ defmodule James.MixProject do
       {:phoenix_ecto, "~> 4.4"},
       {:ecto_sql, "~> 3.10"},
       {:postgrex, ">= 0.0.0"},
+      {:pgvector, "~> 0.3"},
       {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:bandit, "~> 1.0"},
       {:req, "~> 0.5"},
       {:cors_plug, "~> 3.0"},
+      {:joken, "~> 2.6"},
+      {:oban, "~> 2.17"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ]
   end

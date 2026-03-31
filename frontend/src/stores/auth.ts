@@ -7,21 +7,27 @@ export interface User {
   id: string;
   email: string;
   name: string;
-  avatarUrl: string | null;
+  executionMode: string;
+  personalityId: string | null;
 }
 
 export const useAuthStore = defineStore("auth", () => {
   const user = ref<User | null>(null);
   const token = ref<string | null>(localStorage.getItem("auth_token"));
+  const refreshToken = ref<string | null>(localStorage.getItem("refresh_token"));
   const loading = ref(false);
   const error = ref<string | null>(null);
 
   const isAuthenticated = computed(() => !!token.value);
 
-  function setAuth(newToken: string, newUser: User) {
+  function setAuth(newToken: string, newUser: User, newRefresh?: string) {
     token.value = newToken;
     user.value = newUser;
     localStorage.setItem("auth_token", newToken);
+    if (newRefresh) {
+      refreshToken.value = newRefresh;
+      localStorage.setItem("refresh_token", newRefresh);
+    }
     api.setToken(newToken);
     connectSocket();
   }
@@ -29,7 +35,9 @@ export const useAuthStore = defineStore("auth", () => {
   function logout() {
     token.value = null;
     user.value = null;
+    refreshToken.value = null;
     localStorage.removeItem("auth_token");
+    localStorage.removeItem("refresh_token");
     api.setToken(null);
     disconnectSocket();
   }
@@ -39,8 +47,8 @@ export const useAuthStore = defineStore("auth", () => {
     loading.value = true;
     try {
       api.setToken(token.value);
-      const data = await api.get<{ data: User }>("/api/me");
-      user.value = data.data;
+      const data = await api.get<{ user: User }>("/api/auth/me");
+      user.value = data.user;
       connectSocket();
     } catch {
       logout();
@@ -49,28 +57,52 @@ export const useAuthStore = defineStore("auth", () => {
     }
   }
 
-  async function loginWithProvider(provider: string) {
+  async function loginWithProvider(_provider: string) {
+    error.value = `OAuth SSO is not configured yet. Use Dev Login to continue.`;
+  }
+
+  // Calls the real backend dev login endpoint
+  async function devLogin() {
     loading.value = true;
     error.value = null;
     try {
-      const data = await api.get<{ url: string }>(`/api/auth/${provider}`);
-      window.location.href = data.url;
-    } catch (err: unknown) {
-      error.value = err instanceof Error ? err.message : "Login failed";
+      const data = await api.post<{ token: string; refreshToken: string; user: User }>(
+        "/api/auth/dev_login",
+        { email: "dev@james.local", name: "Developer" },
+      );
+      setAuth(data.token, data.user, data.refreshToken);
+    } catch {
+      // API not reachable — fall back to a local dev session so the UI stays usable
+      const devUser: User = {
+        id: "dev-user",
+        email: "dev@james.local",
+        name: "Developer",
+        executionMode: "direct",
+        personalityId: null,
+      };
+      setAuth("dev-token", devUser);
     } finally {
       loading.value = false;
     }
   }
 
-  // Dev mode: skip OAuth, auto-authenticate
-  function devLogin() {
-    const devUser: User = {
-      id: "dev-user",
-      email: "dev@james.local",
-      name: "Developer",
-      avatarUrl: null,
-    };
-    setAuth("dev-token", devUser);
+  async function refreshTokens() {
+    const rt = refreshToken.value;
+    if (!rt) return false;
+    try {
+      const data = await api.post<{ token: string; refreshToken: string }>("/api/auth/refresh", {
+        refresh_token: rt,
+      });
+      token.value = data.token;
+      refreshToken.value = data.refreshToken;
+      localStorage.setItem("auth_token", data.token);
+      localStorage.setItem("refresh_token", data.refreshToken);
+      api.setToken(data.token);
+      return true;
+    } catch {
+      logout();
+      return false;
+    }
   }
 
   return {
@@ -84,5 +116,6 @@ export const useAuthStore = defineStore("auth", () => {
     fetchCurrentUser,
     loginWithProvider,
     devLogin,
+    refreshTokens,
   };
 });

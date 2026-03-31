@@ -23,16 +23,16 @@ export const useTaskStore = defineStore("tasks", () => {
     loading.value = true;
     try {
       const path = sessionId
-        ? `/api/sessions/${sessionId}/tasks`
+        ? `/api/tasks?session_id=${sessionId}`
         : "/api/tasks";
-      const data = await api.get<{ data: Task[] }>(path);
+      const data = await api.get<{ tasks: Task[] }>(path);
       if (sessionId) {
         tasks.value = [
           ...tasks.value.filter((t) => t.sessionId !== sessionId),
-          ...data.data,
+          ...data.tasks,
         ];
       } else {
-        tasks.value = data.data;
+        tasks.value = data.tasks;
       }
     } catch {
       // TODO: error handling
