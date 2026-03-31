@@ -7,7 +7,7 @@ defmodule James.Agents.ChatAgent do
 
   use GenServer, restart: :temporary
 
-  alias James.{Sessions, Tokens}
+  alias James.{Sessions, Tokens, Memories, Embeddings}
   alias James.Providers.Anthropic
 
   defstruct [:session_id, :task_id, :messages, :system_prompt, :model]
@@ -34,11 +34,22 @@ defmodule James.Agents.ChatAgent do
         %{role: normalize_role(msg.role), content: msg.content}
       end)
 
+    # Inject relevant memories into system prompt
+    session = Sessions.get_session(session_id)
+    memory_context = build_memory_context(session)
+
+    full_system =
+      if memory_context != "" do
+        system_prompt <> "\n\n## Relevant context from previous sessions:\n" <> memory_context
+      else
+        system_prompt
+      end
+
     state = %__MODULE__{
       session_id: session_id,
       task_id: task_id,
       messages: messages,
-      system_prompt: system_prompt,
+      system_prompt: full_system,
       model: model
     }
 
@@ -88,6 +99,9 @@ defmodule James.Agents.ChatAgent do
 
         # Record token usage
         record_tokens(state, usage)
+
+        # Enqueue memory extraction
+        enqueue_memory_extraction(session_id)
 
         # Mark task completed
         broadcast_task_status(session_id, state.task_id, "completed")
@@ -150,6 +164,46 @@ defmodule James.Agents.ChatAgent do
       Decimal.div(Decimal.new(input * 3), Decimal.new(1_000_000)),
       Decimal.div(Decimal.new(output * 15), Decimal.new(1_000_000))
     )
+  end
+
+  defp build_memory_context(nil), do: ""
+
+  defp build_memory_context(session) do
+    # Get the last user message to use as query for memory retrieval
+    messages = Sessions.list_messages(session.id)
+    last_user_msg = messages |> Enum.filter(&(&1.role == "user")) |> List.last()
+
+    if last_user_msg do
+      case Embeddings.generate(last_user_msg.content) do
+        {:ok, embedding} ->
+          memories = Memories.search_similar(session.user_id, embedding, 5)
+
+          if memories != [] do
+            memories
+            |> Enum.map(& &1.content)
+            |> Enum.map_join("\n", fn c -> "- #{c}" end)
+          else
+            ""
+          end
+
+        {:error, _} ->
+          ""
+      end
+    else
+      ""
+    end
+  end
+
+  defp enqueue_memory_extraction(session_id) do
+    case James.Sessions.get_session(session_id) do
+      %{user_id: user_id} ->
+        %{session_id: session_id, user_id: user_id}
+        |> James.Workers.MemoryExtractionWorker.new()
+        |> Oban.insert()
+
+      _ ->
+        :ok
+    end
   end
 
   defp default_system_prompt do

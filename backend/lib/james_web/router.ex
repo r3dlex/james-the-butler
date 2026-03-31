@@ -74,6 +74,9 @@ defmodule JamesWeb.Router do
     get "/tokens/usage", TokenController, :usage
     get "/tokens/usage/summary", TokenController, :summary
 
+    # Search
+    get "/search", SearchController, :index
+
     # Embeddings
     post "/embeddings", EmbeddingController, :create
   end
