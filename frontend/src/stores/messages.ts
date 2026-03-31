@@ -6,6 +6,7 @@ import type { Message, ContentBlock, PlannerStep } from "@/types/message";
 export const useMessageStore = defineStore("messages", () => {
   const messagesBySession = ref<Map<string, Message[]>>(new Map());
   const streamingSessionId = ref<string | null>(null);
+  const streamingContent = ref("");
   const streamingBlocks = ref<ContentBlock[]>([]);
   const plannerSteps = ref<PlannerStep[]>([]);
   const loading = ref(false);
@@ -67,6 +68,23 @@ export const useMessageStore = defineStore("messages", () => {
     messagesBySession.value.set(sessionId, msgs);
   }
 
+  function startStreaming(sessionId: string) {
+    streamingSessionId.value = sessionId;
+    streamingContent.value = "";
+    streamingBlocks.value = [{ type: "text", text: "" }];
+  }
+
+  function appendStreamChunk(chunk: string) {
+    streamingContent.value += chunk;
+    streamingBlocks.value = [{ type: "text", text: streamingContent.value }];
+  }
+
+  function stopStreaming() {
+    streamingSessionId.value = null;
+    streamingContent.value = "";
+    streamingBlocks.value = [];
+  }
+
   function setStreamingState(
     sessionId: string | null,
     blocks: ContentBlock[] = [],
@@ -86,6 +104,7 @@ export const useMessageStore = defineStore("messages", () => {
   return {
     messagesBySession,
     streamingSessionId,
+    streamingContent,
     streamingBlocks,
     plannerSteps,
     loading,
@@ -94,6 +113,9 @@ export const useMessageStore = defineStore("messages", () => {
     setMessages,
     sendMessage,
     appendMessage,
+    startStreaming,
+    appendStreamChunk,
+    stopStreaming,
     setStreamingState,
     setPlannerSteps,
     clearSession,

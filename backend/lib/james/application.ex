@@ -19,6 +19,9 @@ defmodule James.Application do
         James.Repo,
         {Phoenix.PubSub, name: James.PubSub},
         {Oban, Application.fetch_env!(:james, Oban)},
+        James.OpenClaw.Supervisor,
+        James.OpenClaw.Orchestrator,
+        James.Planner.MetaPlanner,
         JamesWeb.Endpoint
       ]
     end

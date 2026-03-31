@@ -39,6 +39,11 @@ defmodule JamesWeb.SessionChannel do
     {:noreply, socket}
   end
 
+  def handle_info({:assistant_message, message}, socket) do
+    push(socket, "message:new", message_payload(message))
+    {:noreply, socket}
+  end
+
   def handle_info({:task_updated, task}, socket) do
     push(socket, "task:updated", task_payload(task))
     {:noreply, socket}

@@ -11,7 +11,7 @@
 
     <MessageBubble v-for="msg in messages" :key="msg.id" :message="msg" />
 
-    <!-- Streaming indicator -->
+    <!-- Streaming assistant response -->
     <div v-if="isStreaming" class="px-4 py-3">
       <div
         class="mb-1 text-xs font-semibold uppercase tracking-wide"
@@ -19,7 +19,10 @@
       >
         James
       </div>
-      <div class="flex gap-1 py-2">
+      <div v-if="streamingText" class="text-sm leading-relaxed" style="color: var(--color-text)">
+        <div class="prose-invert whitespace-pre-wrap" v-html="renderMarkdown(streamingText)" />
+      </div>
+      <div v-else class="flex gap-1 py-2">
         <span
           v-for="n in 3"
           :key="n"
@@ -34,25 +37,33 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
+import MarkdownIt from "markdown-it";
 import type { Message } from "@/types/message";
 import MessageBubble from "./MessageBubble.vue";
 import EmptyState from "@/components/common/EmptyState.vue";
 
+const md = new MarkdownIt({ html: false, linkify: true, breaks: true });
+
+function renderMarkdown(text: string): string {
+  return md.render(text);
+}
+
 const props = defineProps<{
   messages: Message[];
   isStreaming: boolean;
+  streamingText?: string;
 }>();
 
 const containerRef = ref<HTMLElement | null>(null);
 
-watch(
-  () => props.messages.length,
-  () => {
-    nextTick(() => {
-      if (containerRef.value) {
-        containerRef.value.scrollTop = containerRef.value.scrollHeight;
-      }
-    });
-  },
-);
+function scrollToBottom() {
+  nextTick(() => {
+    if (containerRef.value) {
+      containerRef.value.scrollTop = containerRef.value.scrollHeight;
+    }
+  });
+}
+
+watch(() => props.messages.length, scrollToBottom);
+watch(() => props.streamingText, scrollToBottom);
 </script>

@@ -110,7 +110,7 @@
         </div>
       </div>
 
-      <ChatMessageStream :messages="messages" :is-streaming="isStreaming" />
+      <ChatMessageStream :messages="messages" :is-streaming="isStreaming" :streaming-text="streamingText" />
       <ChatInput :disabled="isStreaming" @send="handleSend" />
     </div>
 
@@ -127,7 +127,7 @@ import { useMessageStore } from "@/stores/messages";
 import { useTaskStore } from "@/stores/tasks";
 import { useSocketStore } from "@/stores/socket";
 import { useTokenStore } from "@/stores/tokens";
-import type { Message, ContentBlock } from "@/types/message";
+import type { Message } from "@/types/message";
 import SessionActivityPanel from "@/components/session/SessionActivityPanel.vue";
 import ChatMessageStream from "@/components/session/ChatMessageStream.vue";
 import ChatInput from "@/components/session/ChatInput.vue";
@@ -146,6 +146,9 @@ const session = computed(
 const messages = computed(() => messageStore.getMessages(sessionId.value));
 const isStreaming = computed(
   () => messageStore.streamingSessionId === sessionId.value,
+);
+const streamingText = computed(() =>
+  isStreaming.value ? messageStore.streamingContent : "",
 );
 const tasks = computed(() => taskStore.getTasksForSession(sessionId.value));
 
@@ -186,15 +189,24 @@ onMounted(() => {
 
   const channel = socketStore.joinChannel(`session:${sessionId.value}`);
   // Load message history from channel join reply
-  channel.join().receive("ok", (resp: { messages?: Message[] }) => {
-    if (resp.messages) messageStore.setMessages(sessionId.value, resp.messages);
+  channel.join().receive("ok", (resp: unknown) => {
+    const data = resp as { messages?: Message[] };
+    if (data.messages) messageStore.setMessages(sessionId.value, data.messages);
   });
   channel.on("message:new", (payload: unknown) => {
-    messageStore.appendMessage(sessionId.value, payload as Message);
+    const msg = payload as Message;
+    // When assistant message completes, stop streaming and add the final message
+    if (msg.role === "assistant" && messageStore.streamingSessionId === sessionId.value) {
+      messageStore.stopStreaming();
+    }
+    messageStore.appendMessage(sessionId.value, msg);
   });
   channel.on("message:chunk", (payload: unknown) => {
     const { content } = payload as { content: string };
-    messageStore.setStreamingState(sessionId.value, [{ type: "text", text: content }] as never);
+    if (messageStore.streamingSessionId !== sessionId.value) {
+      messageStore.startStreaming(sessionId.value);
+    }
+    messageStore.appendStreamChunk(content);
   });
   channel.on("task:updated", (payload: unknown) => {
     taskStore.updateTask(payload as import("@/types/task").Task);
@@ -213,6 +225,7 @@ async function handleSend(text: string) {
     sessionStore.autoNameSession(sessionId.value, text);
   }
 
+  // Optimistic local user message
   const userMsg: Message = {
     id: `temp-${Date.now()}`,
     sessionId: sessionId.value,
@@ -223,61 +236,26 @@ async function handleSend(text: string) {
     createdAt: new Date().toISOString(),
   };
   messageStore.appendMessage(sessionId.value, userMsg);
-  messageStore.setStreamingState(sessionId.value);
 
+  // Start streaming state — chunks will arrive via channel
+  messageStore.startStreaming(sessionId.value);
+
+  // Send via REST — backend saves the message, dispatches to planner,
+  // agent response streams back via the WebSocket channel
   const response = await messageStore.sendMessage(sessionId.value, text);
   if (!response) {
-    try {
-      const res = await fetch("http://localhost:4000/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          messages: messages.value
-            .filter((m) => m.role !== "system")
-            .map((m) => ({
-              role: m.role,
-              content: m.content
-                .filter((b) => b.type === "text")
-                .map((b) => b.text)
-                .join("\n"),
-            })),
-        }),
-      });
-      const data = await res.json();
-      const textBlock = data.content?.find(
-        (b: ContentBlock) => b.type === "text",
-      );
-      const cost = ((data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0)) * 0.000003;
-      tokenStore.updateUsage(sessionId.value, {
-        sessionId: sessionId.value,
-        inputTokens: data.usage?.input_tokens ?? 0,
-        outputTokens: data.usage?.output_tokens ?? 0,
-        cost,
-      });
-      const assistantMsg: Message = {
-        id: `temp-${Date.now()}`,
-        sessionId: sessionId.value,
-        role: "assistant",
-        content: [
-          { type: "text", text: textBlock?.text ?? JSON.stringify(data) },
-        ],
-        attachments: [],
-        tokenCount: data.usage?.output_tokens ?? 0,
-        createdAt: new Date().toISOString(),
-      };
-      messageStore.appendMessage(sessionId.value, assistantMsg);
-    } catch {
-      messageStore.appendMessage(sessionId.value, {
-        id: `error-${Date.now()}`,
-        sessionId: sessionId.value,
-        role: "assistant",
-        content: [{ type: "text", text: "Failed to reach the server." }],
-        attachments: [],
-        tokenCount: 0,
-        createdAt: new Date().toISOString(),
-      });
-    }
+    messageStore.stopStreaming();
+    messageStore.appendMessage(sessionId.value, {
+      id: `error-${Date.now()}`,
+      sessionId: sessionId.value,
+      role: "assistant",
+      content: [{ type: "text", text: "Failed to reach the server." }],
+      attachments: [],
+      tokenCount: 0,
+      createdAt: new Date().toISOString(),
+    });
   }
-  messageStore.setStreamingState(null);
+  // Note: streaming stops when "message:new" arrives (assistant_message)
+  // which is handled by the channel listener above
 }
 </script>

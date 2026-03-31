@@ -3,6 +3,7 @@ defmodule JamesWeb.SessionController do
 
   alias James.Sessions
   alias James.Hosts
+  alias James.Planner.MetaPlanner
 
   # GET /api/sessions
   def index(conn, params) do
@@ -93,7 +94,11 @@ defmodule JamesWeb.SessionController do
          {:ok, _} <- Sessions.touch_session(session) do
       # Broadcast the user message over PubSub so the channel picks it up.
       Phoenix.PubSub.broadcast(James.PubSub, "session:#{id}", {:user_message, message})
-      conn |> put_status(:created) |> json(%{message: message_json(message)})
+
+      # Dispatch to the meta-planner for task decomposition and agent execution
+      MetaPlanner.process_message(id, message)
+
+      conn |> put_status(:accepted) |> json(%{message: message_json(message)})
     else
       nil -> conn |> put_status(:not_found) |> json(%{error: "not found"})
       false -> conn |> put_status(:forbidden) |> json(%{error: "forbidden"})

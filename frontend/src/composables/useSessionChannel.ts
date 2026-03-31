@@ -25,19 +25,27 @@ export function useSessionChannel(sessionId: () => string | null) {
 
     // Load message history from channel join reply
     ch.join()
-      .receive("ok", (resp: { messages: Message[] }) => {
-        messageStore.setMessages(id, resp.messages ?? []);
+      .receive("ok", (resp: unknown) => {
+        const data = resp as { messages?: Message[] };
+        messageStore.setMessages(id, data.messages ?? []);
       });
 
     // New message pushed from backend (user echo or assistant response)
     on("message:new", (payload: unknown) => {
-      messageStore.appendMessage(id, payload as Message);
+      const msg = payload as Message;
+      if (msg.role === "assistant" && messageStore.streamingSessionId === id) {
+        messageStore.stopStreaming();
+      }
+      messageStore.appendMessage(id, msg);
     });
 
     // Streaming assistant text chunk
     on("message:chunk", (payload: unknown) => {
       const { content } = payload as { content: string };
-      messageStore.setStreamingState(id, [{ type: "text", text: content }] as never);
+      if (messageStore.streamingSessionId !== id) {
+        messageStore.startStreaming(id);
+      }
+      messageStore.appendStreamChunk(content);
     });
 
     // Task status update
