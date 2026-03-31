@@ -105,8 +105,8 @@ function handleProvider(providerId: string) {
   auth.error = `${providerId.charAt(0).toUpperCase() + providerId.slice(1)} SSO is not configured yet. Use Dev Login to continue.`;
 }
 
-function devLogin() {
-  auth.devLogin();
+async function devLogin() {
+  await auth.devLogin();
   router.push("/sessions");
 }
 </script>

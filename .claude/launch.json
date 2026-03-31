@@ -6,7 +6,7 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "--host", "0.0.0.0"],
       "cwd": "frontend",
-      "port": 5173
+      "port": 4173
     },
     {
       "name": "full-stack",

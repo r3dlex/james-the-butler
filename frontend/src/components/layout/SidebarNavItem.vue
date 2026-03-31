@@ -23,6 +23,7 @@ import {
   Server,
   Activity,
   Settings,
+  Smartphone,
 } from "lucide-vue-next";
 
 const props = defineProps<{
@@ -42,6 +43,7 @@ const iconMap: Record<string, unknown> = {
   server: Server,
   activity: Activity,
   settings: Settings,
+  smartphone: Smartphone,
 };
 
 const iconComponent = computed(() => iconMap[props.icon] ?? MessageSquare);
