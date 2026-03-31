@@ -57,7 +57,10 @@ export const useTaskStore = defineStore("tasks", () => {
 
   async function approveTask(taskId: string) {
     try {
-      const data = await api.post<{ task: Task }>(`/api/tasks/${taskId}/approve`, {});
+      const data = await api.post<{ task: Task }>(
+        `/api/tasks/${taskId}/approve`,
+        {},
+      );
       updateTask(data.task);
     } catch {
       // TODO: error handling
@@ -66,7 +69,10 @@ export const useTaskStore = defineStore("tasks", () => {
 
   async function rejectTask(taskId: string) {
     try {
-      const data = await api.post<{ task: Task }>(`/api/tasks/${taskId}/reject`, {});
+      const data = await api.post<{ task: Task }>(
+        `/api/tasks/${taskId}/reject`,
+        {},
+      );
       updateTask(data.task);
     } catch {
       // TODO: error handling

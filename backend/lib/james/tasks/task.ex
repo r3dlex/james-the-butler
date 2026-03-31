@@ -23,9 +23,24 @@ defmodule James.Tasks.Task do
 
   def changeset(task, attrs) do
     task
-    |> cast(attrs, [:session_id, :parent_task_id, :description, :risk_level, :status, :host_id, :completed_at])
+    |> cast(attrs, [
+      :session_id,
+      :parent_task_id,
+      :description,
+      :risk_level,
+      :status,
+      :host_id,
+      :completed_at
+    ])
     |> validate_required([:session_id])
     |> validate_inclusion(:risk_level, ["read_only", "additive", "destructive"])
-    |> validate_inclusion(:status, ["pending", "approved", "running", "completed", "rejected", "failed"])
+    |> validate_inclusion(:status, [
+      "pending",
+      "approved",
+      "running",
+      "completed",
+      "rejected",
+      "failed"
+    ])
   end
 end

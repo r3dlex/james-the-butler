@@ -5,8 +5,10 @@ defmodule James.Auth do
 
   use Joken.Config
 
-  @token_ttl 60 * 60  # 1 hour in seconds
-  @refresh_ttl 30 * 24 * 60 * 60  # 30 days
+  # 1 hour in seconds
+  @token_ttl 60 * 60
+  # 30 days
+  @refresh_ttl 30 * 24 * 60 * 60
 
   def token_config do
     default_claims(skip: [:iss, :aud])
@@ -48,6 +50,7 @@ defmodule James.Auth do
         else
           {:error, :wrong_token_type}
         end
+
       {:error, reason} ->
         {:error, reason}
     end
@@ -61,6 +64,7 @@ defmodule James.Auth do
         else
           {:error, :wrong_token_type}
         end
+
       {:error, reason} ->
         {:error, reason}
     end

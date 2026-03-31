@@ -5,34 +5,8 @@
 <h1 align="center">James the Butler</h1>
 
 <p align="center">
-  An AI-native agent platform with Elixir/Phoenix backend, Vue 3 frontend (web + Tauri desktop), Flutter mobile client, and Python CI/CD tooling.
+  An AI-native agent platform with Elixir/Phoenix backend, Vue 3 frontend (web + Tauri desktop), Flutter mobile client, and Python CI/CD tooling. All 7 phases of the platform specification are implemented.
 </p>
-
----
-
-## Brand Assets
-
-<table>
-  <tr>
-    <td align="center"><strong>Icon</strong><br><img src="assets/logo/logo.svg" width="64" height="64"></td>
-    <td align="center"><strong>Icon (Light)</strong><br><img src="assets/logo/logo-light.svg" width="64" height="64"></td>
-    <td align="center"><strong>Favicon</strong><br><img src="assets/logo/favicon.svg" width="32" height="32"></td>
-    <td align="center"><strong>Badge</strong><br><img src="assets/logo/logo-badge.svg" width="64" height="64"></td>
-  </tr>
-  <tr>
-    <td align="center" colspan="2"><strong>Horizontal</strong><br><img src="assets/logo/logo-horizontal.svg" width="240"></td>
-    <td align="center" colspan="2"><strong>Stacked</strong><br><img src="assets/logo/logo-stacked.svg" width="100"></td>
-  </tr>
-  <tr>
-    <td align="center" colspan="4"><strong>Inline</strong><br><img src="assets/logo/logo-inline.svg" width="280"></td>
-  </tr>
-  <tr>
-    <td align="center" colspan="2" style="background:#1a1a2e;padding:12px"><strong style="color:#fff">Horizontal (Light)</strong><br><img src="assets/logo/logo-horizontal-light.svg" width="240"></td>
-    <td align="center" colspan="2" style="background:#1a1a2e;padding:12px"><strong style="color:#fff">Stacked (Light)</strong><br><img src="assets/logo/logo-stacked-light.svg" width="100"></td>
-  </tr>
-</table>
-
-**Colors:** Navy `#1a1a2e` / Gold `#d4a574` / White `#ffffff`
 
 ---
 

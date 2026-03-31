@@ -3,9 +3,11 @@ defmodule James.Workers.HostHealthWorker do
 
   use Oban.Worker, queue: :default, max_attempts: 1
 
+  alias James.Hosts.Cluster
+
   @impl Oban.Worker
   def perform(_job) do
-    James.Hosts.Cluster.health_check_all()
+    Cluster.health_check_all()
     :ok
   end
 end

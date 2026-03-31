@@ -46,7 +46,9 @@ defmodule James.Commands.Processor do
       {:command, "Usage: /rename <new name>"}
     else
       case Sessions.get_session(session_id) do
-        nil -> {:command, "Session not found."}
+        nil ->
+          {:command, "Session not found."}
+
         session ->
           Sessions.update_session(session, %{name: args})
           {:command, "Session renamed to \"#{args}\"."}
@@ -118,17 +120,20 @@ defmodule James.Commands.Processor do
   end
 
   defp execute("plan", _args, _session_id) do
-    {:command, "Switched to **planning mode**. The agent will propose actions but not execute them."}
+    {:command,
+     "Switched to **planning mode**. The agent will propose actions but not execute them."}
   end
 
   defp execute("checkpoint", args, session_id) do
     name = if args == "", do: nil, else: args
+
     case name do
       nil ->
         case Sessions.create_implicit_checkpoint(session_id) do
           {:ok, _} -> {:command, "Checkpoint created."}
           {:error, _} -> {:command, "Failed to create checkpoint."}
         end
+
       name ->
         case Sessions.create_explicit_checkpoint(session_id, name) do
           {:ok, _} -> {:command, "Checkpoint \"#{name}\" created."}
@@ -139,18 +144,27 @@ defmodule James.Commands.Processor do
 
   defp execute("rewind", args, session_id) do
     if args == "" do
-      # Rewind to most recent checkpoint
-      case Sessions.list_checkpoints(session_id) do
-        [latest | _] ->
-          case Sessions.rewind_to_checkpoint(latest.id) do
-            {:ok, _} -> {:command, "Rewound to checkpoint#{if latest.name, do: " \"#{latest.name}\"", else: ""}."}
-            {:error, _} -> {:command, "Failed to rewind."}
-          end
-        [] ->
-          {:command, "No checkpoints found for this session."}
-      end
+      rewind_to_latest_checkpoint(session_id)
     else
       {:command, "Usage: /rewind (rewinds to most recent checkpoint)"}
+    end
+  end
+
+  defp rewind_to_latest_checkpoint(session_id) do
+    case Sessions.list_checkpoints(session_id) do
+      [latest | _] -> do_rewind(latest)
+      [] -> {:command, "No checkpoints found for this session."}
+    end
+  end
+
+  defp do_rewind(latest) do
+    case Sessions.rewind_to_checkpoint(latest.id) do
+      {:ok, _} ->
+        {:command,
+         "Rewound to checkpoint#{if latest.name, do: " \"#{latest.name}\"", else: ""}."}
+
+      {:error, _} ->
+        {:command, "Failed to rewind."}
     end
   end
 

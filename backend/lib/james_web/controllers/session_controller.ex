@@ -1,18 +1,20 @@
 defmodule JamesWeb.SessionController do
   use Phoenix.Controller, formats: [:json]
 
-  alias James.Sessions
+  alias James.Commands.Processor
   alias James.Hosts
   alias James.Planner.MetaPlanner
-  alias James.Commands.Processor
+  alias James.Sessions
 
   # GET /api/sessions
   def index(conn, params) do
     user = conn.assigns.current_user
+
     opts = [
       limit: String.to_integer(Map.get(params, "limit", "50")),
       cursor: Map.get(params, "cursor")
     ]
+
     sessions = Sessions.list_sessions(user.id, opts)
     conn |> json(%{sessions: Enum.map(sessions, &session_json/1)})
   end
@@ -35,6 +37,7 @@ defmodule JamesWeb.SessionController do
     case Sessions.create_session(attrs) do
       {:ok, session} ->
         conn |> put_status(:created) |> json(%{session: session_json(session)})
+
       {:error, changeset} ->
         conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
     end
@@ -47,8 +50,10 @@ defmodule JamesWeb.SessionController do
     case Sessions.get_session(id) do
       nil ->
         conn |> put_status(:not_found) |> json(%{error: "not found"})
+
       session when session.user_id != user.id ->
         conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
+
       session ->
         count = Sessions.message_count(session.id)
         conn |> json(%{session: session_json(session, %{message_count: count})})
@@ -61,12 +66,21 @@ defmodule JamesWeb.SessionController do
 
     with session when not is_nil(session) <- Sessions.get_session(id),
          true <- session.user_id == user.id,
-         {:ok, updated} <- Sessions.update_session(session, Map.take(params, ["name", "execution_mode", "personality_id"])) do
+         {:ok, updated} <-
+           Sessions.update_session(
+             session,
+             Map.take(params, ["name", "execution_mode", "personality_id"])
+           ) do
       conn |> json(%{session: session_json(updated)})
     else
-      nil -> conn |> put_status(:not_found) |> json(%{error: "not found"})
-      false -> conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
-      {:error, changeset} -> conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
+      nil ->
+        conn |> put_status(:not_found) |> json(%{error: "not found"})
+
+      false ->
+        conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
+
+      {:error, changeset} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
     end
   end
 
@@ -91,7 +105,8 @@ defmodule JamesWeb.SessionController do
 
     with session when not is_nil(session) <- Sessions.get_session(id),
          true <- session.user_id == user.id,
-         {:ok, message} <- Sessions.create_message(%{session_id: id, role: "user", content: content}),
+         {:ok, message} <-
+           Sessions.create_message(%{session_id: id, role: "user", content: content}),
          {:ok, _} <- Sessions.touch_session(session) do
       # Broadcast the user message over PubSub so the channel picks it up.
       Phoenix.PubSub.broadcast(James.PubSub, "session:#{id}", {:user_message, message})
@@ -113,7 +128,9 @@ defmodule JamesWeb.SessionController do
             {:assistant_message, cmd_msg}
           )
 
-          conn |> put_status(:ok) |> json(%{message: message_json(message), command_response: message_json(cmd_msg)})
+          conn
+          |> put_status(:ok)
+          |> json(%{message: message_json(message), command_response: message_json(cmd_msg)})
 
         :not_command ->
           # Dispatch to the meta-planner for task decomposition and agent execution
@@ -121,9 +138,14 @@ defmodule JamesWeb.SessionController do
           conn |> put_status(:accepted) |> json(%{message: message_json(message)})
       end
     else
-      nil -> conn |> put_status(:not_found) |> json(%{error: "not found"})
-      false -> conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
-      {:error, changeset} -> conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
+      nil ->
+        conn |> put_status(:not_found) |> json(%{error: "not found"})
+
+      false ->
+        conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
+
+      {:error, changeset} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
     end
   end
 
@@ -139,6 +161,7 @@ defmodule JamesWeb.SessionController do
       inserted_at: session.inserted_at,
       last_used_at: session.last_used_at
     }
+
     Map.merge(base, extra)
   end
 

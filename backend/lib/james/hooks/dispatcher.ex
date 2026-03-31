@@ -21,17 +21,13 @@ defmodule James.Hooks.Dispatcher do
     else
       hooks
       |> Enum.filter(&matches?(&1, payload))
-      |> Enum.reduce(:ok, fn hook, acc ->
-        result = execute_hook(hook, payload)
-
-        case result do
-          :deny -> :deny
-          {:modify, changes} when acc == :ok -> {:modify, changes}
-          _ -> acc
-        end
-      end)
+      |> Enum.reduce(:ok, fn hook, acc -> merge_hook_result(execute_hook(hook, payload), acc) end)
     end
   end
+
+  defp merge_hook_result(:deny, _acc), do: :deny
+  defp merge_hook_result({:modify, changes}, :ok), do: {:modify, changes}
+  defp merge_hook_result(_result, acc), do: acc
 
   defp matches?(%{matcher: nil}, _payload), do: true
   defp matches?(%{matcher: ""}, _payload), do: true
@@ -44,15 +40,18 @@ defmodule James.Hooks.Dispatcher do
 
   defp execute_hook(%{type: "command"} = hook, _payload) do
     command = get_in(hook.config, ["command"]) || ""
+
     if command != "" do
       Logger.info("Hook #{hook.id}: executing command: #{command}")
       # Command execution would happen here in production
     end
+
     :ok
   end
 
   defp execute_hook(%{type: "http"} = hook, payload) do
     url = get_in(hook.config, ["url"]) || ""
+
     if url != "" do
       Logger.info("Hook #{hook.id}: HTTP POST to #{url}")
       # HTTP call would happen here
@@ -60,6 +59,7 @@ defmodule James.Hooks.Dispatcher do
         Req.post(url, json: payload)
       end)
     end
+
     :ok
   end
 

@@ -57,7 +57,9 @@ export const useSessionStore = defineStore("sessions", () => {
     return session;
   }
 
-  async function createSession(payload: CreateSessionPayload): Promise<Session | null> {
+  async function createSession(
+    payload: CreateSessionPayload,
+  ): Promise<Session | null> {
     creating.value = true;
     try {
       const data = await api.post<{ session: Session }>("/api/sessions", {

@@ -14,14 +14,19 @@ defmodule JamesWeb.ChannelConfigController do
     attrs = Map.put(params, "user_id", user.id)
 
     case Channels.create_channel_config(attrs) do
-      {:ok, config} -> conn |> put_status(:created) |> json(%{channel_config: config_json(config)})
-      {:error, changeset} -> conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
+      {:ok, config} ->
+        conn |> put_status(:created) |> json(%{channel_config: config_json(config)})
+
+      {:error, changeset} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
     end
   end
 
   def delete(conn, %{"id" => id}) do
     case Channels.get_channel_config(id) do
-      nil -> conn |> put_status(:not_found) |> json(%{error: "not found"})
+      nil ->
+        conn |> put_status(:not_found) |> json(%{error: "not found"})
+
       config ->
         {:ok, _} = Channels.delete_channel_config(config)
         json(conn, %{ok: true})

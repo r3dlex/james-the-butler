@@ -61,7 +61,9 @@ class ApiClient {
     if (!res.ok) throw await this.toError(res);
   }
 
-  private async toError(res: Response): Promise<{ error: string; detail?: string }> {
+  private async toError(
+    res: Response,
+  ): Promise<{ error: string; detail?: string }> {
     try {
       return await res.json();
     } catch {

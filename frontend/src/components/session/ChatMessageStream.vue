@@ -19,8 +19,15 @@
       >
         James
       </div>
-      <div v-if="streamingText" class="text-sm leading-relaxed" style="color: var(--color-text)">
-        <div class="prose-invert whitespace-pre-wrap" v-html="renderMarkdown(streamingText)" />
+      <div
+        v-if="streamingText"
+        class="text-sm leading-relaxed"
+        style="color: var(--color-text)"
+      >
+        <div
+          class="prose-invert whitespace-pre-wrap"
+          v-html="renderMarkdown(streamingText)"
+        />
       </div>
       <div v-else class="flex gap-1 py-2">
         <span

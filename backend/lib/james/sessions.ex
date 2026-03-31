@@ -5,7 +5,7 @@ defmodule James.Sessions do
 
   import Ecto.Query
   alias James.Repo
-  alias James.Sessions.{Session, Message, Checkpoint}
+  alias James.Sessions.{Checkpoint, Message, Session}
 
   def list_sessions(user_id, opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)
@@ -87,9 +87,11 @@ defmodule James.Sessions do
 
   def create_implicit_checkpoint(session_id) do
     messages = list_messages(session_id)
-    snapshot = Enum.map(messages, fn m ->
-      %{role: m.role, content: m.content, inserted_at: m.inserted_at}
-    end)
+
+    snapshot =
+      Enum.map(messages, fn m ->
+        %{role: m.role, content: m.content, inserted_at: m.inserted_at}
+      end)
 
     create_checkpoint(%{
       session_id: session_id,
@@ -100,9 +102,11 @@ defmodule James.Sessions do
 
   def create_explicit_checkpoint(session_id, name) do
     messages = list_messages(session_id)
-    snapshot = Enum.map(messages, fn m ->
-      %{role: m.role, content: m.content, inserted_at: m.inserted_at}
-    end)
+
+    snapshot =
+      Enum.map(messages, fn m ->
+        %{role: m.role, content: m.content, inserted_at: m.inserted_at}
+      end)
 
     create_checkpoint(%{
       session_id: session_id,

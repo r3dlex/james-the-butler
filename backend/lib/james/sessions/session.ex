@@ -26,7 +26,17 @@ defmodule James.Sessions.Session do
 
   def changeset(session, attrs) do
     session
-    |> cast(attrs, [:name, :user_id, :host_id, :project_id, :agent_type, :personality_id, :execution_mode, :status, :keep_intermediates])
+    |> cast(attrs, [
+      :name,
+      :user_id,
+      :host_id,
+      :project_id,
+      :agent_type,
+      :personality_id,
+      :execution_mode,
+      :status,
+      :keep_intermediates
+    ])
     |> validate_required([:user_id])
     |> validate_inclusion(:agent_type, ["chat", "code", "research", "desktop", "browser"])
     |> validate_inclusion(:status, ["active", "idle", "archived"])

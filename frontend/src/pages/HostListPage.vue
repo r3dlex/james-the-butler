@@ -1,12 +1,17 @@
 <template>
   <div class="p-6">
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-lg font-medium" style="color: var(--color-text)">Hosts</h1>
+      <h1 class="text-lg font-medium" style="color: var(--color-text)">
+        Hosts
+      </h1>
     </div>
 
     <LoadingSpinner v-if="loading" />
 
-    <EmptyState v-else-if="hosts.length === 0" message="No hosts registered. The primary host will appear here when configured." />
+    <EmptyState
+      v-else-if="hosts.length === 0"
+      message="No hosts registered. The primary host will appear here when configured."
+    />
 
     <div v-else class="space-y-2">
       <router-link
@@ -25,7 +30,12 @@
             <div>
               <p class="text-sm font-medium" style="color: var(--color-text)">
                 {{ host.name }}
-                <span v-if="host.isPrimary" class="ml-1 text-xs" style="color: var(--color-gold)">(primary)</span>
+                <span
+                  v-if="host.isPrimary"
+                  class="ml-1 text-xs"
+                  style="color: var(--color-gold)"
+                  >(primary)</span
+                >
               </p>
               <p class="mt-0.5 text-xs" style="color: var(--color-text-dim)">
                 {{ host.endpoint || "No endpoint" }}
@@ -33,8 +43,16 @@
             </div>
           </div>
           <div class="text-right">
-            <span class="text-xs capitalize" :style="{ color: statusColor(host.status) }">{{ host.status }}</span>
-            <p v-if="host.lastSeenAt" class="mt-0.5 text-[10px]" style="color: var(--color-text-dim)">
+            <span
+              class="text-xs capitalize"
+              :style="{ color: statusColor(host.status) }"
+              >{{ host.status }}</span
+            >
+            <p
+              v-if="host.lastSeenAt"
+              class="mt-0.5 text-[10px]"
+              style="color: var(--color-text-dim)"
+            >
               Last seen {{ formatRelative(host.lastSeenAt) }}
             </p>
           </div>
@@ -64,9 +82,12 @@ const loading = ref(false);
 
 function statusColor(status: string): string {
   switch (status) {
-    case "online": return "var(--color-accent-blue)";
-    case "draining": return "var(--color-gold)";
-    default: return "var(--color-text-dim)";
+    case "online":
+      return "var(--color-accent-blue)";
+    case "draining":
+      return "var(--color-gold)";
+    default:
+      return "var(--color-text-dim)";
   }
 }
 

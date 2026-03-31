@@ -19,9 +19,14 @@ defmodule JamesWeb.HostController do
     case Hosts.get_host(id) do
       nil ->
         conn |> put_status(:not_found) |> json(%{error: "not found"})
+
       _host ->
         sessions = Hosts.list_sessions_for_host(id)
-        conn |> json(%{sessions: Enum.map(sessions, fn s -> %{id: s.id, name: s.name, status: s.status} end)})
+
+        conn
+        |> json(%{
+          sessions: Enum.map(sessions, fn s -> %{id: s.id, name: s.name, status: s.status} end)
+        })
     end
   end
 

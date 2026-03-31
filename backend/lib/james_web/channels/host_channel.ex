@@ -1,4 +1,5 @@
 defmodule JamesWeb.HostChannel do
+  @moduledoc false
   use Phoenix.Channel
 
   @impl true

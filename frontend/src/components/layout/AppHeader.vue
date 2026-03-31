@@ -19,11 +19,23 @@
         style="border-color: var(--color-border); color: var(--color-text-dim)"
         @click="$emit('search')"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="12"
+          height="12"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <circle cx="11" cy="11" r="8" />
+          <line x1="21" y1="21" x2="16.65" y2="16.65" />
         </svg>
         Search
-        <kbd class="ml-1 rounded border px-1 text-[10px]" style="border-color: var(--color-border)">
+        <kbd
+          class="ml-1 rounded border px-1 text-[10px]"
+          style="border-color: var(--color-border)"
+        >
           /
         </kbd>
       </button>

@@ -10,8 +10,8 @@ defmodule James.Agents.CodeAgent do
 
   use GenServer, restart: :temporary
 
-  alias James.{Sessions, Tokens}
   alias James.Providers.Anthropic
+  alias James.{Sessions, Tasks, Tokens}
 
   defstruct [:session_id, :task_id, :messages, :system_prompt, :model, :working_dirs]
 
@@ -55,7 +55,10 @@ defmodule James.Agents.CodeAgent do
         type: "object",
         properties: %{
           command: %{type: "string", description: "Shell command to execute"},
-          working_dir: %{type: "string", description: "Working directory (optional, must be an allowed directory)"}
+          working_dir: %{
+            type: "string",
+            description: "Working directory (optional, must be an allowed directory)"
+          }
         },
         required: ["command"]
       }
@@ -95,7 +98,8 @@ defmodule James.Agents.CodeAgent do
 
     # Working directories that tools are allowed to access.
     # Defaults to the current working directory if not specified.
-    working_dirs = Keyword.get(opts, :working_dirs) || session_working_dirs(session) || [File.cwd!()]
+    working_dirs =
+      Keyword.get(opts, :working_dirs) || session_working_dirs(session) || [File.cwd!()]
 
     state = %__MODULE__{
       session_id: session_id,
@@ -120,7 +124,11 @@ defmodule James.Agents.CodeAgent do
   # --- Agent Loop ---
 
   defp run_agent_loop(state, iteration) when iteration >= @max_iterations do
-    broadcast_chunk(state.session_id, "\n\n[Agent reached maximum iterations (#{@max_iterations})]")
+    broadcast_chunk(
+      state.session_id,
+      "\n\n[Agent reached maximum iterations (#{@max_iterations})]"
+    )
+
     broadcast_task_status(state.session_id, state.task_id, "completed")
   end
 
@@ -135,60 +143,63 @@ defmodule James.Agents.CodeAgent do
 
     case Anthropic.stream_message(state.messages, opts) do
       {:ok, %{content: content, usage: usage, stop_reason: stop_reason}} ->
-        # Save the assistant turn. When the content is a list of blocks,
-        # extract the text portions for storage.
-        stored_content = extract_text_content(content)
-
-        {:ok, message} =
-          Sessions.create_message(%{
-            session_id: state.session_id,
-            role: "assistant",
-            content: stored_content,
-            token_count: Map.get(usage, :output_tokens, 0),
-            model: state.model || "claude-sonnet-4-20250514"
-          })
-
-        Phoenix.PubSub.broadcast(
-          James.PubSub,
-          "session:#{state.session_id}",
-          {:assistant_message, message}
-        )
-
-        record_tokens(state, usage)
-
-        if stop_reason == "tool_use" do
-          # Execute each tool_use block and build tool_result content for the next turn
-          tool_results = execute_tool_calls(content, state)
-
-          # Persist a record of the tool results as a system message for history
-          tool_text =
-            Enum.map_join(tool_results, "\n---\n", fn r ->
-              "[Tool #{r[:tool_use_id]}]\n#{r[:content]}"
-            end)
-
-          Sessions.create_message(%{
-            session_id: state.session_id,
-            role: "system",
-            content: tool_text
-          })
-
-          # Append assistant turn (with the original content blocks) and tool results
-          updated_messages =
-            state.messages ++
-              [
-                %{role: "assistant", content: content},
-                %{role: "user", content: tool_results}
-              ]
-
-          run_agent_loop(%{state | messages: updated_messages}, iteration + 1)
-        else
-          broadcast_task_status(state.session_id, state.task_id, "completed")
-        end
+        handle_agent_response(state, content, usage, stop_reason, iteration)
 
       {:error, reason} ->
         broadcast_chunk(state.session_id, "\n\n[Error: #{inspect(reason)}]")
         broadcast_task_status(state.session_id, state.task_id, "failed")
     end
+  end
+
+  defp handle_agent_response(state, content, usage, stop_reason, iteration) do
+    stored_content = extract_text_content(content)
+
+    {:ok, message} =
+      Sessions.create_message(%{
+        session_id: state.session_id,
+        role: "assistant",
+        content: stored_content,
+        token_count: Map.get(usage, :output_tokens, 0),
+        model: state.model || "claude-sonnet-4-20250514"
+      })
+
+    Phoenix.PubSub.broadcast(
+      James.PubSub,
+      "session:#{state.session_id}",
+      {:assistant_message, message}
+    )
+
+    record_tokens(state, usage)
+
+    if stop_reason == "tool_use" do
+      continue_with_tool_results(state, content, iteration)
+    else
+      broadcast_task_status(state.session_id, state.task_id, "completed")
+    end
+  end
+
+  defp continue_with_tool_results(state, content, iteration) do
+    tool_results = execute_tool_calls(content, state)
+
+    tool_text =
+      Enum.map_join(tool_results, "\n---\n", fn r ->
+        "[Tool #{r[:tool_use_id]}]\n#{r[:content]}"
+      end)
+
+    Sessions.create_message(%{
+      session_id: state.session_id,
+      role: "system",
+      content: tool_text
+    })
+
+    updated_messages =
+      state.messages ++
+        [
+          %{role: "assistant", content: content},
+          %{role: "user", content: tool_results}
+        ]
+
+    run_agent_loop(%{state | messages: updated_messages}, iteration + 1)
   end
 
   # --- Tool Dispatch ---
@@ -244,53 +255,51 @@ defmodule James.Agents.CodeAgent do
   defp execute_tool("execute_command", %{"command" => command} = input, state) do
     dir = Map.get(input, "working_dir") || hd(state.working_dirs)
 
-    with :ok <- validate_path(dir, state.working_dirs) do
-      try do
-        {output, exit_code} =
-          System.cmd("sh", ["-c", command],
-            cd: dir,
-            stderr_to_stdout: true
-          )
-
-        "Exit code: #{exit_code}\n#{output}"
-      rescue
-        e -> "Error executing command: #{Exception.message(e)}"
-      end
-    else
+    case validate_path(dir, state.working_dirs) do
+      :ok -> run_command(command, dir)
       {:error, :path_not_allowed} -> "Error: working directory is outside allowed directories"
     end
+  end
+
+  defp run_command(command, dir) do
+    {output, exit_code} =
+      System.cmd("sh", ["-c", command],
+        cd: dir,
+        stderr_to_stdout: true
+      )
+
+    "Exit code: #{exit_code}\n#{output}"
+  rescue
+    e -> "Error executing command: #{Exception.message(e)}"
   end
 
   defp execute_tool("search_files", %{"pattern" => pattern} = input, state) do
     dir = Map.get(input, "path") || hd(state.working_dirs)
 
-    with :ok <- validate_path(dir, state.working_dirs) do
-      content_search = Map.get(input, "content")
-
-      try do
-        if content_search do
-          {output, _} =
-            System.cmd(
-              "grep",
-              ["-rl", "--include=#{pattern}", content_search, dir],
-              stderr_to_stdout: true
-            )
-
-          if output == "", do: "(no matches)", else: String.trim(output)
-        else
-          {output, _} =
-            System.cmd("find", [dir, "-name", pattern, "-type", "f"],
-              stderr_to_stdout: true
-            )
-
-          if output == "", do: "(no files found)", else: String.trim(output)
-        end
-      rescue
-        e -> "Error searching files: #{Exception.message(e)}"
-      end
-    else
+    case validate_path(dir, state.working_dirs) do
+      :ok -> run_search(pattern, dir, Map.get(input, "content"))
       {:error, :path_not_allowed} -> "Error: path is outside allowed working directories"
     end
+  end
+
+  defp run_search(pattern, dir, content_search) do
+    if content_search do
+      {output, _} =
+        System.cmd(
+          "grep",
+          ["-rl", "--include=#{pattern}", content_search, dir],
+          stderr_to_stdout: true
+        )
+
+      if output == "", do: "(no matches)", else: String.trim(output)
+    else
+      {output, _} =
+        System.cmd("find", [dir, "-name", pattern, "-type", "f"], stderr_to_stdout: true)
+
+      if output == "", do: "(no files found)", else: String.trim(output)
+    end
+  rescue
+    e -> "Error searching files: #{Exception.message(e)}"
   end
 
   defp execute_tool(name, _input, _state) do
@@ -326,12 +335,12 @@ defmodule James.Agents.CodeAgent do
   defp broadcast_task_status(_session_id, nil, _status), do: :ok
 
   defp broadcast_task_status(session_id, task_id, status) do
-    case James.Tasks.get_task(task_id) do
+    case Tasks.get_task(task_id) do
       nil ->
         :ok
 
       task ->
-        {:ok, updated} = James.Tasks.update_task_status(task, status)
+        {:ok, updated} = Tasks.update_task_status(task, status)
 
         Phoenix.PubSub.broadcast(
           James.PubSub,

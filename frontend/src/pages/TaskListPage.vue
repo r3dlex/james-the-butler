@@ -1,7 +1,9 @@
 <template>
   <div class="p-6">
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-lg font-medium" style="color: var(--color-text)">Tasks</h1>
+      <h1 class="text-lg font-medium" style="color: var(--color-text)">
+        Tasks
+      </h1>
 
       <!-- Filters -->
       <div class="flex gap-2">
@@ -32,7 +34,10 @@
 
     <LoadingSpinner v-if="taskStore.loading" />
 
-    <EmptyState v-else-if="filteredTasks.length === 0" message="No tasks match your filters" />
+    <EmptyState
+      v-else-if="filteredTasks.length === 0"
+      message="No tasks match your filters"
+    />
 
     <div v-else class="space-y-2">
       <div
@@ -45,7 +50,9 @@
           <div class="flex items-center gap-2">
             <span
               class="text-sm"
-              :class="{ 'line-through opacity-50': task.status === 'completed' }"
+              :class="{
+                'line-through opacity-50': task.status === 'completed',
+              }"
               style="color: var(--color-text)"
             >
               {{ task.description }}
@@ -67,7 +74,10 @@
         >
           <button
             class="rounded px-2 py-1 text-xs font-medium"
-            style="background: var(--color-risk-green); color: var(--color-navy-deep)"
+            style="
+              background: var(--color-risk-green);
+              color: var(--color-navy-deep);
+            "
             @click="taskStore.approveTask(task.id)"
           >
             Approve

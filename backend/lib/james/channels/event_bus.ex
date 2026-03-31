@@ -14,22 +14,26 @@ defmodule James.Channels.EventBus do
 
       config ->
         if allowed?(config, event) do
-          session_id = config.session_id
-          if session_id do
-            Logger.info("Channel #{config.mcp_server}: routing event to session #{session_id}")
-            message = %{
-              role: "system",
-              content: "[Channel: #{config.mcp_server}] #{event[:content] || inspect(event)}"
-            }
-            MetaPlanner.process_message(session_id, message)
-            {:ok, :routed}
-          else
-            {:error, :no_session}
-          end
+          route_to_session(config, event)
         else
           {:error, :denied_by_rules}
         end
     end
+  end
+
+  defp route_to_session(%{session_id: nil}, _event), do: {:error, :no_session}
+
+  defp route_to_session(config, event) do
+    session_id = config.session_id
+    Logger.info("Channel #{config.mcp_server}: routing event to session #{session_id}")
+
+    message = %{
+      role: "system",
+      content: "[Channel: #{config.mcp_server}] #{event[:content] || inspect(event)}"
+    }
+
+    MetaPlanner.process_message(session_id, message)
+    {:ok, :routed}
   end
 
   defp allowed?(%{sender_rules: rules}, _event) when rules == %{}, do: true

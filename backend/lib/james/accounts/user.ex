@@ -18,6 +18,7 @@ defmodule James.Accounts.User do
     has_many :sessions, James.Sessions.Session
     has_many :projects, James.Projects.Project
     has_many :memories, James.Memories.Memory
+
     belongs_to :personality, James.Accounts.PersonalityProfile,
       foreign_key: :personality_id,
       define_field: false
@@ -27,7 +28,16 @@ defmodule James.Accounts.User do
 
   def changeset(user, attrs) do
     user
-    |> cast(attrs, [:name, :email, :oauth_provider, :oauth_uid, :mfa_secret, :mfa_method, :personality_id, :execution_mode])
+    |> cast(attrs, [
+      :name,
+      :email,
+      :oauth_provider,
+      :oauth_uid,
+      :mfa_secret,
+      :mfa_method,
+      :personality_id,
+      :execution_mode
+    ])
     |> validate_required([:email])
     |> validate_inclusion(:execution_mode, ["direct", "confirmed"])
     |> validate_inclusion(:mfa_method, ["totp", "webauthn", nil])

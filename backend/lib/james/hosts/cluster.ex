@@ -33,26 +33,26 @@ defmodule James.Hosts.Cluster do
 
   def health_check_all do
     now = DateTime.utc_now()
+    Hosts.list_hosts() |> Enum.each(fn host -> check_host_health(host, now) end)
+  end
 
-    Hosts.list_hosts()
-    |> Enum.each(fn host ->
-      if host.last_seen_at do
-        age = DateTime.diff(now, host.last_seen_at, :second)
+  defp check_host_health(%{last_seen_at: nil}, _now), do: :ok
 
-        cond do
-          age > 120 and host.status != "offline" ->
-            Logger.warning("Host #{host.name} offline — last seen #{age}s ago")
-            Hosts.update_host(host, %{status: "offline"})
+  defp check_host_health(host, now) do
+    age = DateTime.diff(now, host.last_seen_at, :second)
 
-          age > 60 and host.status == "online" ->
-            Logger.info("Host #{host.name} draining — last seen #{age}s ago")
-            Hosts.update_host(host, %{status: "draining"})
+    cond do
+      age > 120 and host.status != "offline" ->
+        Logger.warning("Host #{host.name} offline — last seen #{age}s ago")
+        Hosts.update_host(host, %{status: "offline"})
 
-          true ->
-            :ok
-        end
-      end
-    end)
+      age > 60 and host.status == "online" ->
+        Logger.info("Host #{host.name} draining — last seen #{age}s ago")
+        Hosts.update_host(host, %{status: "draining"})
+
+      true ->
+        :ok
+    end
   end
 
   def status do

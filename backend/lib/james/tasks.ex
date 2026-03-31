@@ -45,7 +45,9 @@ defmodule James.Tasks do
 
   def update_task_status(%Task{} = task, status) do
     attrs = %{status: status}
-    attrs = if status == "completed", do: Map.put(attrs, :completed_at, DateTime.utc_now()), else: attrs
+
+    attrs =
+      if status == "completed", do: Map.put(attrs, :completed_at, DateTime.utc_now()), else: attrs
 
     task
     |> Task.changeset(attrs)

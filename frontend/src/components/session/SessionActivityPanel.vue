@@ -71,10 +71,7 @@
           </button>
           <button
             class="rounded px-2 py-1 text-xs font-medium transition-colors"
-            style="
-              background: var(--color-risk-red);
-              color: white;
-            "
+            style="background: var(--color-risk-red); color: white"
             @click="$emit('reject', task.id)"
           >
             Reject
@@ -131,27 +128,32 @@ defineEmits<{
 }>();
 
 const activeTasks = computed(() =>
-  props.tasks.filter(
-    (t) => t.status !== "completed" && t.status !== "failed",
-  ),
+  props.tasks.filter((t) => t.status !== "completed" && t.status !== "failed"),
 );
 
 const completedTasks = computed(() =>
-  props.tasks.filter(
-    (t) => t.status === "completed" || t.status === "failed",
-  ),
+  props.tasks.filter((t) => t.status === "completed" || t.status === "failed"),
 );
 
 const plannerStatusStyle = computed(() => {
   switch (props.plannerStatus) {
     case "decomposing":
-      return { background: "var(--color-gold)", color: "var(--color-navy-deep)" };
+      return {
+        background: "var(--color-gold)",
+        color: "var(--color-navy-deep)",
+      };
     case "dispatching":
       return { background: "var(--color-accent-blue)", color: "white" };
     case "awaiting approval":
-      return { background: "var(--color-risk-orange)", color: "var(--color-navy-deep)" };
+      return {
+        background: "var(--color-risk-orange)",
+        color: "var(--color-navy-deep)",
+      };
     default:
-      return { background: "var(--color-surface)", color: "var(--color-text-dim)" };
+      return {
+        background: "var(--color-surface)",
+        color: "var(--color-text-dim)",
+      };
   }
 });
 

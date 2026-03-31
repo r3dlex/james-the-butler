@@ -5,7 +5,9 @@
     <template v-else-if="project">
       <div class="mb-4 flex items-center justify-between">
         <div>
-          <h1 class="text-lg font-medium" style="color: var(--color-text)">{{ project.name }}</h1>
+          <h1 class="text-lg font-medium" style="color: var(--color-text)">
+            {{ project.name }}
+          </h1>
           <p class="mt-0.5 text-xs" style="color: var(--color-text-dim)">
             {{ project.executionMode || "direct" }} mode
           </p>
@@ -19,9 +21,14 @@
         </router-link>
       </div>
 
-      <h2 class="mb-2 text-sm font-medium" style="color: var(--color-text-dim)">Sessions</h2>
+      <h2 class="mb-2 text-sm font-medium" style="color: var(--color-text-dim)">
+        Sessions
+      </h2>
 
-      <EmptyState v-if="sessions.length === 0" message="No sessions in this project yet." />
+      <EmptyState
+        v-if="sessions.length === 0"
+        message="No sessions in this project yet."
+      />
 
       <div v-else class="space-y-2">
         <router-link
@@ -33,12 +40,16 @@
         >
           <div class="flex items-center justify-between">
             <div>
-              <p class="text-sm font-medium" style="color: var(--color-text)">{{ session.name }}</p>
+              <p class="text-sm font-medium" style="color: var(--color-text)">
+                {{ session.name }}
+              </p>
               <p class="mt-0.5 text-xs" style="color: var(--color-text-dim)">
                 {{ session.agentType }} · {{ session.status }}
               </p>
             </div>
-            <span class="text-xs" style="color: var(--color-text-dim)">{{ formatDate(session.lastUsedAt) }}</span>
+            <span class="text-xs" style="color: var(--color-text-dim)">{{
+              formatDate(session.lastUsedAt)
+            }}</span>
           </div>
         </router-link>
       </div>
@@ -91,7 +102,10 @@ async function fetchProject() {
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "";
-  return new Date(dateStr).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return new Date(dateStr).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 onMounted(fetchProject);

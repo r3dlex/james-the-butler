@@ -22,6 +22,7 @@ defmodule JamesWeb.ProjectController do
     case Projects.create_project(attrs) do
       {:ok, project} ->
         conn |> put_status(:created) |> json(%{project: project_json(project)})
+
       {:error, changeset} ->
         conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
     end
@@ -42,12 +43,21 @@ defmodule JamesWeb.ProjectController do
 
     with project when not is_nil(project) <- Projects.get_project(id),
          true <- project.user_id == user.id,
-         {:ok, updated} <- Projects.update_project(project, Map.take(params, ["name", "personality_id", "execution_mode"])) do
+         {:ok, updated} <-
+           Projects.update_project(
+             project,
+             Map.take(params, ["name", "personality_id", "execution_mode"])
+           ) do
       conn |> json(%{project: project_json(updated)})
     else
-      nil -> conn |> put_status(:not_found) |> json(%{error: "not found"})
-      false -> conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
-      {:error, cs} -> conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(cs)})
+      nil ->
+        conn |> put_status(:not_found) |> json(%{error: "not found"})
+
+      false ->
+        conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
+
+      {:error, cs} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(cs)})
     end
   end
 
@@ -65,7 +75,13 @@ defmodule JamesWeb.ProjectController do
   end
 
   defp project_json(p) do
-    %{id: p.id, name: p.name, execution_mode: p.execution_mode, personality_id: p.personality_id, inserted_at: p.inserted_at}
+    %{
+      id: p.id,
+      name: p.name,
+      execution_mode: p.execution_mode,
+      personality_id: p.personality_id,
+      inserted_at: p.inserted_at
+    }
   end
 
   defp format_errors(changeset) do

@@ -1,4 +1,5 @@
 defmodule JamesWeb.SessionChannel do
+  @moduledoc false
   use Phoenix.Channel
 
   alias James.Sessions
@@ -18,7 +19,9 @@ defmodule JamesWeb.SessionChannel do
       true ->
         messages = Sessions.list_messages(session_id)
         send(self(), :after_join)
-        {:ok, %{messages: Enum.map(messages, &message_payload/1)}, assign(socket, :session_id, session_id)}
+
+        {:ok, %{messages: Enum.map(messages, &message_payload/1)},
+         assign(socket, :session_id, session_id)}
     end
   end
 
@@ -59,6 +62,11 @@ defmodule JamesWeb.SessionChannel do
   end
 
   defp task_payload(task) do
-    %{id: task.id, description: task.description, status: task.status, risk_level: task.risk_level}
+    %{
+      id: task.id,
+      description: task.description,
+      status: task.status,
+      risk_level: task.risk_level
+    }
   end
 end

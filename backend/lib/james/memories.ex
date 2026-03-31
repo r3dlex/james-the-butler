@@ -4,8 +4,8 @@ defmodule James.Memories do
   """
 
   import Ecto.Query
-  alias James.Repo
   alias James.Memories.Memory
+  alias James.Repo
 
   def list_memories(user_id, opts \\ []) do
     limit = Keyword.get(opts, :limit, 50)

@@ -33,13 +33,14 @@ defmodule James.OAuth do
     client_id = client_id!(provider)
     redirect_uri = callback_uri(provider)
 
-    params = URI.encode_query(%{
-      client_id: client_id,
-      redirect_uri: redirect_uri,
-      response_type: "code",
-      scope: config.scopes,
-      state: state
-    })
+    params =
+      URI.encode_query(%{
+        client_id: client_id,
+        redirect_uri: redirect_uri,
+        response_type: "code",
+        scope: config.scopes,
+        state: state
+      })
 
     "#{config.auth_url}?#{params}"
   end
@@ -49,9 +50,8 @@ defmodule James.OAuth do
   Returns `{:ok, %{id, email, name, provider}}` or `{:error, reason}`.
   """
   def exchange_code(provider, code) do
-    with {:ok, access_token} <- fetch_token(provider, code),
-         {:ok, profile} <- fetch_profile(provider, access_token) do
-      {:ok, profile}
+    with {:ok, access_token} <- fetch_token(provider, code) do
+      fetch_profile(provider, access_token)
     end
   end
 
@@ -112,26 +112,29 @@ defmodule James.OAuth do
   defp fetch_profile("github", token) do
     config = @providers["github"]
 
-    with {:ok, %{status: 200, body: user}} <-
-           Req.get(config.userinfo_url,
-             headers: [{"Authorization", "Bearer #{token}"}, {"User-Agent", "james-the-butler"}]
-           ) do
-      email =
-        case user["email"] do
-          nil -> fetch_github_primary_email(token)
-          e -> e
-        end
+    case Req.get(config.userinfo_url,
+           headers: [{"Authorization", "Bearer #{token}"}, {"User-Agent", "james-the-butler"}]
+         ) do
+      {:ok, %{status: 200, body: user}} ->
+        email =
+          case user["email"] do
+            nil -> fetch_github_primary_email(token)
+            e -> e
+          end
 
-      {:ok,
-       %{
-         provider: "github",
-         uid: to_string(user["id"]),
-         email: email,
-         name: user["name"] || user["login"]
-       }}
-    else
-      {:ok, %{body: body}} -> {:error, "GitHub profile error: #{inspect(body)}"}
-      {:error, reason} -> {:error, "GitHub profile request failed: #{inspect(reason)}"}
+        {:ok,
+         %{
+           provider: "github",
+           uid: to_string(user["id"]),
+           email: email,
+           name: user["name"] || user["login"]
+         }}
+
+      {:ok, %{body: body}} ->
+        {:error, "GitHub profile error: #{inspect(body)}"}
+
+      {:error, reason} ->
+        {:error, "GitHub profile request failed: #{inspect(reason)}"}
     end
   end
 

@@ -4,8 +4,8 @@ defmodule James.Hosts do
   """
 
   import Ecto.Query
-  alias James.Repo
   alias James.Hosts.Host
+  alias James.Repo
 
   def list_hosts do
     Repo.all(from h in Host, order_by: [desc: h.is_primary, asc: h.name])

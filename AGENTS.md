@@ -2,6 +2,8 @@
 
 This document provides agents with access to each facility in the project. Read the relevant section before working on a component.
 
+All 7 phases of the platform specification are now implemented.
+
 ## Architecture
 
 Read `spec/README.md` for the high-level architecture and how components interact. Read `spec/architecture.md` for integration details and data flow.
@@ -38,6 +40,7 @@ James should automatically detect when a workspace is a git repository and provi
   - Use contexts for domain boundaries
   - All modules must have `@moduledoc` (enforced by `mix credo --strict`)
   - Write ExUnit tests for all public functions
+  - Use `DataCase` for DB-backed tests and `ConnCase` for HTTP/channel tests (helpers at `test/support/`)
   - Format with `mix format` before committing
 
 ### Frontend (Vue 3)

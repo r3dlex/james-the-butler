@@ -172,63 +172,73 @@ defmodule James.Providers.Anthropic do
   end
 
   defp process_events(events, acc, on_chunk) do
-    Enum.reduce(events, acc, fn event, a ->
-      case event do
-        # Track the start of a new content block
-        %{"type" => "content_block_start", "index" => _idx, "content_block" => block} ->
-          %{a | current_block: block}
-
-        # Text delta — accumulate both in content string and current block
-        %{"type" => "content_block_delta", "delta" => %{"type" => "text_delta", "text" => text}} ->
-          on_chunk.(text)
-          updated_block =
-            case a.current_block do
-              %{"type" => "text"} = b -> Map.update(b, "text", text, &(&1 <> text))
-              other -> other
-            end
-          %{a | content: a.content <> text, current_block: updated_block}
-
-        # Backwards-compat: plain text delta without type field
-        %{"type" => "content_block_delta", "delta" => %{"text" => text}} ->
-          on_chunk.(text)
-          %{a | content: a.content <> text}
-
-        # Tool use input JSON delta — accumulate JSON string into current block
-        %{
-          "type" => "content_block_delta",
-          "delta" => %{"type" => "input_json_delta", "partial_json" => partial}
-        } ->
-          updated_block =
-            case a.current_block do
-              %{"type" => "tool_use"} = b ->
-                Map.update(b, "_input_json", partial, &(&1 <> partial))
-
-              other ->
-                other
-            end
-          %{a | current_block: updated_block}
-
-        # End of a content block — finalize and store it
-        %{"type" => "content_block_stop"} ->
-          finalized_block = finalize_block(a.current_block)
-
-          blocks =
-            if finalized_block, do: a.content_blocks ++ [finalized_block], else: a.content_blocks
-
-          %{a | content_blocks: blocks, current_block: nil}
-
-        %{"type" => "message_delta", "usage" => usage} = evt ->
-          stop = Map.get(evt, "delta") |> then(fn d -> if is_map(d), do: Map.get(d, "stop_reason"), else: nil end)
-          %{a | usage: Map.merge(a.usage, normalize_usage(usage)), stop_reason: stop || a.stop_reason}
-
-        %{"type" => "message_start", "message" => %{"usage" => usage}} ->
-          %{a | usage: Map.merge(a.usage, normalize_usage(usage))}
-
-        _ ->
-          a
-      end
-    end)
+    Enum.reduce(events, acc, fn event, a -> process_event(event, a, on_chunk) end)
   end
+
+  defp process_event(%{"type" => "content_block_start", "content_block" => block}, a, _on_chunk) do
+    %{a | current_block: block}
+  end
+
+  defp process_event(
+         %{"type" => "content_block_delta", "delta" => %{"type" => "text_delta", "text" => text}},
+         a,
+         on_chunk
+       ) do
+    on_chunk.(text)
+    updated_block = accumulate_text_block(a.current_block, text)
+    %{a | content: a.content <> text, current_block: updated_block}
+  end
+
+  defp process_event(
+         %{"type" => "content_block_delta", "delta" => %{"text" => text}},
+         a,
+         on_chunk
+       ) do
+    on_chunk.(text)
+    %{a | content: a.content <> text}
+  end
+
+  defp process_event(
+         %{
+           "type" => "content_block_delta",
+           "delta" => %{"type" => "input_json_delta", "partial_json" => partial}
+         },
+         a,
+         _on_chunk
+       ) do
+    updated_block = accumulate_tool_json_block(a.current_block, partial)
+    %{a | current_block: updated_block}
+  end
+
+  defp process_event(%{"type" => "content_block_stop"}, a, _on_chunk) do
+    finalized_block = finalize_block(a.current_block)
+    blocks = if finalized_block, do: a.content_blocks ++ [finalized_block], else: a.content_blocks
+    %{a | content_blocks: blocks, current_block: nil}
+  end
+
+  defp process_event(%{"type" => "message_delta", "usage" => usage} = evt, a, _on_chunk) do
+    stop =
+      Map.get(evt, "delta")
+      |> then(fn d -> if is_map(d), do: Map.get(d, "stop_reason"), else: nil end)
+
+    %{a | usage: Map.merge(a.usage, normalize_usage(usage)), stop_reason: stop || a.stop_reason}
+  end
+
+  defp process_event(%{"type" => "message_start", "message" => %{"usage" => usage}}, a, _on_chunk) do
+    %{a | usage: Map.merge(a.usage, normalize_usage(usage))}
+  end
+
+  defp process_event(_event, a, _on_chunk), do: a
+
+  defp accumulate_text_block(%{"type" => "text"} = b, text),
+    do: Map.update(b, "text", text, &(&1 <> text))
+
+  defp accumulate_text_block(other, _text), do: other
+
+  defp accumulate_tool_json_block(%{"type" => "tool_use"} = b, partial),
+    do: Map.update(b, "_input_json", partial, &(&1 <> partial))
+
+  defp accumulate_tool_json_block(other, _partial), do: other
 
   # Parse accumulated JSON for tool_use blocks; keep text blocks as-is.
   defp finalize_block(nil), do: nil
@@ -272,24 +282,26 @@ defmodule James.Providers.Anthropic do
   defp parse_sse_event(raw) do
     raw
     |> String.split("\n")
-    |> Enum.reduce(%{}, fn line, acc ->
-      case String.split(line, ": ", parts: 2) do
-        ["data", json_str] ->
-          case Jason.decode(json_str) do
-            {:ok, parsed} -> Map.merge(acc, parsed)
-            _ -> acc
-          end
-
-        ["event", _event_name] ->
-          acc
-
-        _ ->
-          acc
-      end
-    end)
+    |> Enum.reduce(%{}, fn line, acc -> parse_sse_line(line, acc) end)
     |> case do
       empty when map_size(empty) == 0 -> nil
       event -> event
+    end
+  end
+
+  defp parse_sse_line(line, acc) do
+    case String.split(line, ": ", parts: 2) do
+      ["data", json_str] ->
+        case Jason.decode(json_str) do
+          {:ok, parsed} -> Map.merge(acc, parsed)
+          _ -> acc
+        end
+
+      ["event", _event_name] ->
+        acc
+
+      _ ->
+        acc
     end
   end
 
@@ -315,6 +327,8 @@ defmodule James.Providers.Anthropic do
     ]
   end
 
-  defp api_key, do: Application.get_env(:james, :anthropic_api_key) || System.get_env("ANTHROPIC_API_KEY")
+  defp api_key,
+    do: Application.get_env(:james, :anthropic_api_key) || System.get_env("ANTHROPIC_API_KEY")
+
   defp api_url, do: System.get_env("ANTHROPIC_API_URL", @default_url)
 end

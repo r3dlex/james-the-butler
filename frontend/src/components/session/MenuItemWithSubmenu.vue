@@ -47,9 +47,7 @@
           stroke="currentColor"
           stroke-width="2"
         >
-          <path
-            d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"
-          />
+          <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
         </svg>
         {{ label }}
       </span>
@@ -71,10 +69,7 @@
     <div
       v-if="open"
       class="absolute bottom-0 left-full z-50 ml-1 w-52 rounded-xl border py-2 shadow-xl"
-      style="
-        background: var(--color-navy);
-        border-color: var(--color-border);
-      "
+      style="background: var(--color-navy); border-color: var(--color-border)"
     >
       <slot />
     </div>

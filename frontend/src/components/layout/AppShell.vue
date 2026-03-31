@@ -21,7 +21,10 @@ const showSearch = ref(false);
 
 function handleKeydown(e: KeyboardEvent) {
   // Open search with "/" key (unless in an input)
-  if (e.key === "/" && !["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName)) {
+  if (
+    e.key === "/" &&
+    !["INPUT", "TEXTAREA"].includes((e.target as HTMLElement)?.tagName)
+  ) {
     e.preventDefault();
     showSearch.value = true;
   }

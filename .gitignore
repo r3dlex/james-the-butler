@@ -16,3 +16,6 @@ Thumbs.db
 
 # Artifacts (local testing, not committed)
 artifacts/
+
+# Erlang crash dumps
+erl_crash.dump

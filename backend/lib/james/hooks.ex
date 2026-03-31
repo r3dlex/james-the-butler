@@ -4,8 +4,8 @@ defmodule James.Hooks do
   """
 
   import Ecto.Query
-  alias James.Repo
   alias James.Hooks.Hook
+  alias James.Repo
 
   def list_hooks(user_id) do
     from(h in Hook, where: h.user_id == ^user_id, order_by: [asc: h.event])

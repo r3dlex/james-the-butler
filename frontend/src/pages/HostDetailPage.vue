@@ -11,33 +11,86 @@
           />
           <h1 class="text-lg font-medium" style="color: var(--color-text)">
             {{ host.name }}
-            <span v-if="host.isPrimary" class="ml-1 text-xs" style="color: var(--color-gold)">(primary)</span>
+            <span
+              v-if="host.isPrimary"
+              class="ml-1 text-xs"
+              style="color: var(--color-gold)"
+              >(primary)</span
+            >
           </h1>
         </div>
       </div>
 
       <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <div class="rounded-md border p-3" style="border-color: var(--color-border)">
-          <p class="text-[10px] uppercase tracking-wider" style="color: var(--color-text-dim)">Status</p>
-          <p class="mt-1 text-sm font-medium capitalize" :style="{ color: statusColor(host.status) }">{{ host.status }}</p>
+        <div
+          class="rounded-md border p-3"
+          style="border-color: var(--color-border)"
+        >
+          <p
+            class="text-[10px] uppercase tracking-wider"
+            style="color: var(--color-text-dim)"
+          >
+            Status
+          </p>
+          <p
+            class="mt-1 text-sm font-medium capitalize"
+            :style="{ color: statusColor(host.status) }"
+          >
+            {{ host.status }}
+          </p>
         </div>
-        <div class="rounded-md border p-3" style="border-color: var(--color-border)">
-          <p class="text-[10px] uppercase tracking-wider" style="color: var(--color-text-dim)">Endpoint</p>
-          <p class="mt-1 text-sm" style="color: var(--color-text)">{{ host.endpoint || "—" }}</p>
+        <div
+          class="rounded-md border p-3"
+          style="border-color: var(--color-border)"
+        >
+          <p
+            class="text-[10px] uppercase tracking-wider"
+            style="color: var(--color-text-dim)"
+          >
+            Endpoint
+          </p>
+          <p class="mt-1 text-sm" style="color: var(--color-text)">
+            {{ host.endpoint || "—" }}
+          </p>
         </div>
-        <div class="rounded-md border p-3" style="border-color: var(--color-border)">
-          <p class="text-[10px] uppercase tracking-wider" style="color: var(--color-text-dim)">Sessions</p>
-          <p class="mt-1 text-sm font-medium" style="color: var(--color-text)">{{ sessions.length }}</p>
+        <div
+          class="rounded-md border p-3"
+          style="border-color: var(--color-border)"
+        >
+          <p
+            class="text-[10px] uppercase tracking-wider"
+            style="color: var(--color-text-dim)"
+          >
+            Sessions
+          </p>
+          <p class="mt-1 text-sm font-medium" style="color: var(--color-text)">
+            {{ sessions.length }}
+          </p>
         </div>
-        <div class="rounded-md border p-3" style="border-color: var(--color-border)">
-          <p class="text-[10px] uppercase tracking-wider" style="color: var(--color-text-dim)">Last Seen</p>
-          <p class="mt-1 text-sm" style="color: var(--color-text)">{{ host.lastSeenAt ? formatRelative(host.lastSeenAt) : "—" }}</p>
+        <div
+          class="rounded-md border p-3"
+          style="border-color: var(--color-border)"
+        >
+          <p
+            class="text-[10px] uppercase tracking-wider"
+            style="color: var(--color-text-dim)"
+          >
+            Last Seen
+          </p>
+          <p class="mt-1 text-sm" style="color: var(--color-text)">
+            {{ host.lastSeenAt ? formatRelative(host.lastSeenAt) : "—" }}
+          </p>
         </div>
       </div>
 
-      <h2 class="mb-2 text-sm font-medium" style="color: var(--color-text-dim)">Active Sessions</h2>
+      <h2 class="mb-2 text-sm font-medium" style="color: var(--color-text-dim)">
+        Active Sessions
+      </h2>
 
-      <EmptyState v-if="sessions.length === 0" message="No active sessions on this host." />
+      <EmptyState
+        v-if="sessions.length === 0"
+        message="No active sessions on this host."
+      />
 
       <div v-else class="space-y-2">
         <router-link
@@ -47,8 +100,12 @@
           class="block rounded-md border p-3 transition-colors hover:bg-[var(--color-surface)]"
           style="border-color: var(--color-border)"
         >
-          <p class="text-sm" style="color: var(--color-text)">{{ session.name }}</p>
-          <p class="mt-0.5 text-xs" style="color: var(--color-text-dim)">{{ session.agentType }} · {{ session.status }}</p>
+          <p class="text-sm" style="color: var(--color-text)">
+            {{ session.name }}
+          </p>
+          <p class="mt-0.5 text-xs" style="color: var(--color-text-dim)">
+            {{ session.agentType }} · {{ session.status }}
+          </p>
         </router-link>
       </div>
     </template>
@@ -87,9 +144,12 @@ const loading = ref(false);
 
 function statusColor(status: string): string {
   switch (status) {
-    case "online": return "var(--color-accent-blue)";
-    case "draining": return "var(--color-gold)";
-    default: return "var(--color-text-dim)";
+    case "online":
+      return "var(--color-accent-blue)";
+    case "draining":
+      return "var(--color-gold)";
+    default:
+      return "var(--color-text-dim)";
   }
 }
 
@@ -106,7 +166,9 @@ function formatRelative(dateStr: string): string {
 async function fetchHost() {
   loading.value = true;
   try {
-    const data = await api.get<{ host: Host; sessions: Session[] }>(`/api/hosts/${route.params.id}`);
+    const data = await api.get<{ host: Host; sessions: Session[] }>(
+      `/api/hosts/${route.params.id}`,
+    );
     host.value = data.host;
     sessions.value = data.sessions || [];
   } catch {

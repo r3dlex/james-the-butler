@@ -1,8 +1,8 @@
 defmodule JamesWeb.TaskController do
   use Phoenix.Controller, formats: [:json]
 
-  alias James.{Tasks, Sessions}
   alias James.OpenClaw.Orchestrator
+  alias James.{Sessions, Tasks}
 
   def index(conn, params) do
     opts = [
@@ -10,6 +10,7 @@ defmodule JamesWeb.TaskController do
       status: Map.get(params, "status"),
       risk_level: Map.get(params, "risk_level")
     ]
+
     tasks = Tasks.list_tasks(opts)
     conn |> json(%{tasks: Enum.map(tasks, &task_json/1)})
   end
@@ -24,10 +25,15 @@ defmodule JamesWeb.TaskController do
   def approve(conn, %{"id" => id}) do
     with task when not is_nil(task) <- Tasks.get_task(id),
          {:ok, updated} <- Tasks.approve_task(task) do
-      Phoenix.PubSub.broadcast(James.PubSub, "session:#{task.session_id}", {:task_updated, updated})
+      Phoenix.PubSub.broadcast(
+        James.PubSub,
+        "session:#{task.session_id}",
+        {:task_updated, updated}
+      )
 
       # Dispatch approved task to OpenClaw for execution
       session = Sessions.get_session(task.session_id)
+
       if session do
         {:ok, running} = Tasks.update_task_status(updated, "running")
         Orchestrator.dispatch_task(running, session)
@@ -35,19 +41,30 @@ defmodule JamesWeb.TaskController do
 
       conn |> json(%{task: task_json(updated)})
     else
-      nil -> conn |> put_status(:not_found) |> json(%{error: "not found"})
-      {:error, cs} -> conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(cs)})
+      nil ->
+        conn |> put_status(:not_found) |> json(%{error: "not found"})
+
+      {:error, cs} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(cs)})
     end
   end
 
   def reject(conn, %{"id" => id}) do
     with task when not is_nil(task) <- Tasks.get_task(id),
          {:ok, updated} <- Tasks.reject_task(task) do
-      Phoenix.PubSub.broadcast(James.PubSub, "session:#{task.session_id}", {:task_updated, updated})
+      Phoenix.PubSub.broadcast(
+        James.PubSub,
+        "session:#{task.session_id}",
+        {:task_updated, updated}
+      )
+
       conn |> json(%{task: task_json(updated)})
     else
-      nil -> conn |> put_status(:not_found) |> json(%{error: "not found"})
-      {:error, cs} -> conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(cs)})
+      nil ->
+        conn |> put_status(:not_found) |> json(%{error: "not found"})
+
+      {:error, cs} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(cs)})
     end
   end
 

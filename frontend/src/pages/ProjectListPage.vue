@@ -1,7 +1,9 @@
 <template>
   <div class="p-6">
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-lg font-medium" style="color: var(--color-text)">Projects</h1>
+      <h1 class="text-lg font-medium" style="color: var(--color-text)">
+        Projects
+      </h1>
       <div class="flex items-center gap-3">
         <input
           v-model="searchQuery"
@@ -21,10 +23,16 @@
     </div>
 
     <!-- Create project inline form -->
-    <div v-if="showCreate" class="mb-4 rounded-md border p-4" style="border-color: var(--color-border)">
+    <div
+      v-if="showCreate"
+      class="mb-4 rounded-md border p-4"
+      style="border-color: var(--color-border)"
+    >
       <div class="flex items-end gap-3">
         <div class="flex-1">
-          <label class="mb-1 block text-xs" style="color: var(--color-text-dim)">Project name</label>
+          <label class="mb-1 block text-xs" style="color: var(--color-text-dim)"
+            >Project name</label
+          >
           <input
             v-model="newName"
             type="text"
@@ -44,7 +52,10 @@
         <button
           class="text-sm"
           style="color: var(--color-text-dim)"
-          @click="showCreate = false; newName = ''"
+          @click="
+            showCreate = false;
+            newName = '';
+          "
         >
           Cancel
         </button>
@@ -68,10 +79,14 @@
       >
         <div class="flex items-center justify-between">
           <div>
-            <p class="text-sm font-medium" style="color: var(--color-text)">{{ project.name }}</p>
+            <p class="text-sm font-medium" style="color: var(--color-text)">
+              {{ project.name }}
+            </p>
             <p class="mt-0.5 text-xs" style="color: var(--color-text-dim)">
               {{ project.sessionCount ?? 0 }} sessions
-              <span v-if="project.executionMode"> · {{ project.executionMode }} mode</span>
+              <span v-if="project.executionMode">
+                · {{ project.executionMode }} mode</span
+              >
             </p>
           </div>
           <svg
@@ -133,7 +148,9 @@ async function createProject() {
   const name = newName.value.trim();
   if (!name) return;
   try {
-    const data = await api.post<{ project: Project }>("/api/projects", { name });
+    const data = await api.post<{ project: Project }>("/api/projects", {
+      name,
+    });
     projects.value.unshift(data.project);
     newName.value = "";
     showCreate.value = false;

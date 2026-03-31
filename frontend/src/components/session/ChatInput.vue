@@ -27,7 +27,9 @@
       />
 
       <!-- Bottom toolbar row -->
-      <div class="absolute bottom-0 left-0 right-0 flex items-center justify-between px-2 pb-2">
+      <div
+        class="absolute bottom-0 left-0 right-0 flex items-center justify-between px-2 pb-2"
+      >
         <!-- Left: + button -->
         <div class="relative">
           <button
@@ -84,10 +86,7 @@
               Add files or photos
             </button>
 
-            <div
-              class="my-1 h-px"
-              style="background: var(--color-border)"
-            />
+            <div class="my-1 h-px" style="background: var(--color-border)" />
 
             <MenuItemWithSubmenu label="Skills" icon="skills">
               <button
@@ -108,10 +107,7 @@
               </button>
             </MenuItemWithSubmenu>
 
-            <div
-              class="my-1 h-px"
-              style="background: var(--color-border)"
-            />
+            <div class="my-1 h-px" style="background: var(--color-border)" />
 
             <button
               class="flex w-full items-center gap-3 px-4 py-2 text-sm transition-colors hover:bg-[var(--color-surface)]"
@@ -182,10 +178,7 @@
                   <polyline points="20 6 9 17 4 12" />
                 </svg>
               </button>
-              <div
-                class="my-1 h-px"
-                style="background: var(--color-border)"
-              />
+              <div class="my-1 h-px" style="background: var(--color-border)" />
               <button
                 class="flex w-full items-center gap-3 px-4 py-2 text-sm transition-colors hover:bg-[var(--color-surface)]"
                 style="color: var(--color-text-dim)"

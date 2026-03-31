@@ -5,9 +5,9 @@ defmodule James.Search do
   """
 
   import Ecto.Query
-  alias James.Repo
-  alias James.Sessions.{Session, Message}
   alias James.Embeddings
+  alias James.Repo
+  alias James.Sessions.{Message, Session}
 
   @doc """
   Search across all sessions by title and content.
@@ -78,11 +78,17 @@ defmodule James.Search do
             session_name: s.name,
             agent_type: s.agent_type,
             host_id: s.host_id,
-            excerpt: fragment("ts_headline('english', m0.content, to_tsquery('english', ?), 'MaxWords=30,MinWords=15')", ^tsquery),
+            excerpt:
+              fragment(
+                "ts_headline('english', m0.content, to_tsquery('english', ?), 'MaxWords=30,MinWords=15')",
+                ^tsquery
+              ),
             last_used_at: s.last_used_at,
             score: fragment("ts_rank(m0.search_vector, to_tsquery('english', ?))", ^tsquery)
           },
-          order_by: [desc: fragment("ts_rank(m0.search_vector, to_tsquery('english', ?))", ^tsquery)],
+          order_by: [
+            desc: fragment("ts_rank(m0.search_vector, to_tsquery('english', ?))", ^tsquery)
+          ],
           limit: ^limit
         )
         |> Repo.all()

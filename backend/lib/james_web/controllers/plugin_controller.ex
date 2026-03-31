@@ -14,14 +14,19 @@ defmodule JamesWeb.PluginController do
     attrs = Map.put(params, "user_id", user.id)
 
     case Plugins.install_plugin(attrs) do
-      {:ok, plugin} -> conn |> put_status(:created) |> json(%{plugin: plugin_json(plugin)})
-      {:error, changeset} -> conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
+      {:ok, plugin} ->
+        conn |> put_status(:created) |> json(%{plugin: plugin_json(plugin)})
+
+      {:error, changeset} ->
+        conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
     end
   end
 
   def enable(conn, %{"id" => id}) do
     case Plugins.get_plugin(id) do
-      nil -> conn |> put_status(:not_found) |> json(%{error: "not found"})
+      nil ->
+        conn |> put_status(:not_found) |> json(%{error: "not found"})
+
       plugin ->
         {:ok, updated} = Plugins.enable_plugin(plugin)
         json(conn, %{plugin: plugin_json(updated)})
@@ -30,7 +35,9 @@ defmodule JamesWeb.PluginController do
 
   def disable(conn, %{"id" => id}) do
     case Plugins.get_plugin(id) do
-      nil -> conn |> put_status(:not_found) |> json(%{error: "not found"})
+      nil ->
+        conn |> put_status(:not_found) |> json(%{error: "not found"})
+
       plugin ->
         {:ok, updated} = Plugins.disable_plugin(plugin)
         json(conn, %{plugin: plugin_json(updated)})
@@ -39,7 +46,9 @@ defmodule JamesWeb.PluginController do
 
   def delete(conn, %{"id" => id}) do
     case Plugins.get_plugin(id) do
-      nil -> conn |> put_status(:not_found) |> json(%{error: "not found"})
+      nil ->
+        conn |> put_status(:not_found) |> json(%{error: "not found"})
+
       plugin ->
         {:ok, _} = Plugins.uninstall_plugin(plugin)
         json(conn, %{ok: true})

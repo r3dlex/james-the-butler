@@ -1,7 +1,9 @@
 <template>
   <div class="p-6">
     <div class="mb-4 flex items-center justify-between">
-      <h1 class="text-lg font-medium" style="color: var(--color-text)">Memory</h1>
+      <h1 class="text-lg font-medium" style="color: var(--color-text)">
+        Memory
+      </h1>
       <input
         v-model="searchQuery"
         type="text"
@@ -13,7 +15,10 @@
 
     <LoadingSpinner v-if="loading" />
 
-    <EmptyState v-else-if="filteredMemories.length === 0" message="No memories yet. Memories are extracted automatically from conversations." />
+    <EmptyState
+      v-else-if="filteredMemories.length === 0"
+      message="No memories yet. Memories are extracted automatically from conversations."
+    />
 
     <div v-else class="space-y-2">
       <div
@@ -30,7 +35,10 @@
                 ref="editRef"
                 v-model="editContent"
                 class="w-full rounded border bg-transparent px-2 py-1 text-sm outline-none focus:border-[var(--color-gold)]"
-                style="border-color: var(--color-border); color: var(--color-text)"
+                style="
+                  border-color: var(--color-border);
+                  color: var(--color-text);
+                "
                 rows="2"
                 @keydown.enter.meta="saveEdit(memory)"
                 @keydown.escape="cancelEdit"
@@ -38,7 +46,10 @@
               <div class="mt-1 flex gap-2">
                 <button
                   class="rounded px-2 py-0.5 text-xs font-medium"
-                  style="background: var(--color-gold); color: var(--color-navy-deep)"
+                  style="
+                    background: var(--color-gold);
+                    color: var(--color-navy-deep);
+                  "
                   @click="saveEdit(memory)"
                 >
                   Save
@@ -73,13 +84,24 @@
           </div>
 
           <!-- Actions -->
-          <div class="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+          <div
+            class="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100"
+          >
             <button
               class="rounded p-1 transition-colors hover:bg-[var(--color-surface)]"
               title="Edit"
               @click="startEdit(memory)"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--color-text-dim)">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                style="color: var(--color-text-dim)"
+              >
                 <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
               </svg>
             </button>
@@ -88,8 +110,19 @@
               title="Delete"
               @click="deleteMemory(memory)"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color: var(--color-risk-red)">
-                <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                style="color: var(--color-risk-red)"
+              >
+                <path d="M3 6h18" />
+                <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
               </svg>
             </button>
           </div>
@@ -153,9 +186,12 @@ async function saveEdit(memory: Memory) {
     return;
   }
   try {
-    const data = await api.put<{ memory: Memory }>(`/api/memories/${memory.id}`, {
-      content: trimmed,
-    });
+    const data = await api.put<{ memory: Memory }>(
+      `/api/memories/${memory.id}`,
+      {
+        content: trimmed,
+      },
+    );
     const idx = memories.value.findIndex((m) => m.id === memory.id);
     if (idx !== -1) memories.value[idx] = data.memory;
     cancelEdit();

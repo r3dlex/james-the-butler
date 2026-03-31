@@ -7,8 +7,16 @@ defmodule James.OpenClaw.Orchestrator do
 
   use GenServer
 
+  alias James.Agents.{
+    BrowserAgent,
+    ChatAgent,
+    CodeAgent,
+    DesktopAgent,
+    ResearchAgent,
+    SecurityAgent
+  }
+
   alias James.OpenClaw.Supervisor, as: AgentSupervisor
-  alias James.Agents.{ChatAgent, CodeAgent, ResearchAgent, SecurityAgent, DesktopAgent, BrowserAgent}
 
   # --- Client API ---
 
@@ -43,7 +51,10 @@ defmodule James.OpenClaw.Orchestrator do
     case AgentSupervisor.start_agent(agent_module, opts) do
       {:ok, pid} ->
         ref = Process.monitor(pid)
-        active = Map.put(state.active_tasks, ref, %{task_id: task.id, session_id: session.id, pid: pid})
+
+        active =
+          Map.put(state.active_tasks, ref, %{task_id: task.id, session_id: session.id, pid: pid})
+
         {:noreply, %{state | active_tasks: active}}
 
       {:error, reason} ->

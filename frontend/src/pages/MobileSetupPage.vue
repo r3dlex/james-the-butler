@@ -1,15 +1,30 @@
 <template>
   <div class="p-6">
-    <h1 class="mb-4 text-lg font-medium" style="color: var(--color-text)">Mobile Setup</h1>
+    <h1 class="mb-4 text-lg font-medium" style="color: var(--color-text)">
+      Mobile Setup
+    </h1>
 
     <div class="max-w-md space-y-4">
-      <div class="rounded-md border p-6 text-center" style="border-color: var(--color-border)">
+      <div
+        class="rounded-md border p-6 text-center"
+        style="border-color: var(--color-border)"
+      >
         <div
           class="mx-auto mb-4 flex h-48 w-48 items-center justify-center rounded-lg border-2 border-dashed"
           style="border-color: var(--color-border)"
         >
           <div class="text-center">
-            <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="color: var(--color-text-dim)" class="mx-auto">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="48"
+              height="48"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.5"
+              style="color: var(--color-text-dim)"
+              class="mx-auto"
+            >
               <rect width="5" height="5" x="3" y="3" rx="1" />
               <rect width="5" height="5" x="16" y="3" rx="1" />
               <rect width="5" height="5" x="3" y="16" rx="1" />
@@ -23,10 +38,14 @@
               <path d="M21 12v.01" />
               <path d="M12 21v-1" />
             </svg>
-            <p class="mt-2 text-xs" style="color: var(--color-text-dim)">QR Code</p>
+            <p class="mt-2 text-xs" style="color: var(--color-text-dim)">
+              QR Code
+            </p>
           </div>
         </div>
-        <p class="text-sm" style="color: var(--color-text)">Scan with the James mobile app</p>
+        <p class="text-sm" style="color: var(--color-text)">
+          Scan with the James mobile app
+        </p>
         <p class="mt-1 text-xs" style="color: var(--color-text-dim)">
           The QR code contains your host binding token for secure pairing.
         </p>
@@ -39,12 +58,24 @@
         </button>
       </div>
 
-      <div class="rounded-md border p-4" style="border-color: var(--color-border)">
-        <h3 class="text-sm font-medium" style="color: var(--color-text)">Manual Setup</h3>
+      <div
+        class="rounded-md border p-4"
+        style="border-color: var(--color-border)"
+      >
+        <h3 class="text-sm font-medium" style="color: var(--color-text)">
+          Manual Setup
+        </h3>
         <p class="mt-1 text-xs" style="color: var(--color-text-dim)">
-          Enter the host endpoint URL in the mobile app settings instead of scanning.
+          Enter the host endpoint URL in the mobile app settings instead of
+          scanning.
         </p>
-        <div class="mt-2 rounded border px-3 py-1.5 text-xs font-mono" style="border-color: var(--color-border); color: var(--color-text-dim)">
+        <div
+          class="mt-2 rounded border px-3 py-1.5 text-xs font-mono"
+          style="
+            border-color: var(--color-border);
+            color: var(--color-text-dim);
+          "
+        >
           {{ hostEndpoint }}
         </div>
       </div>

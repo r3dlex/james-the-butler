@@ -5,8 +5,8 @@ defmodule James.Channels.Telegram do
   """
 
   import Ecto.Query
-  alias James.{Repo, Sessions, Planner.MetaPlanner}
   alias James.Channels.TelegramThread
+  alias James.{Planner.MetaPlanner, Repo, Sessions}
   require Logger
 
   @confirmed_timeout_seconds 600
@@ -23,21 +23,7 @@ defmodule James.Channels.Telegram do
         {:ok, session_id}
 
       :not_found ->
-        if user_id do
-          case create_session_for_thread(telegram_thread_id, user_id) do
-            {:ok, session} ->
-              {:ok, message} =
-                Sessions.create_message(%{session_id: session.id, role: "user", content: text})
-
-              MetaPlanner.process_message(session.id, message)
-              {:ok, session.id}
-
-            {:error, reason} ->
-              {:error, reason}
-          end
-        else
-          {:error, :no_user}
-        end
+        handle_new_thread(telegram_thread_id, text, user_id)
     end
   end
 
@@ -60,6 +46,22 @@ defmodule James.Channels.Telegram do
   end
 
   def confirmed_timeout, do: @confirmed_timeout_seconds
+
+  defp handle_new_thread(_telegram_thread_id, _text, nil), do: {:error, :no_user}
+
+  defp handle_new_thread(telegram_thread_id, text, user_id) do
+    case create_session_for_thread(telegram_thread_id, user_id) do
+      {:ok, session} ->
+        {:ok, message} =
+          Sessions.create_message(%{session_id: session.id, role: "user", content: text})
+
+        MetaPlanner.process_message(session.id, message)
+        {:ok, session.id}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
 
   defp resolve_session(telegram_thread_id) do
     case Repo.one(from(t in TelegramThread, where: t.telegram_thread_id == ^telegram_thread_id)) do

@@ -27,12 +27,15 @@ defmodule James.Tokens do
   def usage_summary(opts \\ []) do
     session_id = Keyword.get(opts, :session_id)
 
-    base = from t in TokenLedger, select: %{
-      model: t.model,
-      total_input: sum(t.input_tokens),
-      total_output: sum(t.output_tokens),
-      total_cost: sum(t.cost_usd)
-    }, group_by: t.model
+    base =
+      from t in TokenLedger,
+        select: %{
+          model: t.model,
+          total_input: sum(t.input_tokens),
+          total_output: sum(t.output_tokens),
+          total_cost: sum(t.cost_usd)
+        },
+        group_by: t.model
 
     base = if session_id, do: from(t in base, where: t.session_id == ^session_id), else: base
 

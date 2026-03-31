@@ -7,8 +7,9 @@ defmodule James.Agents.ChatAgent do
 
   use GenServer, restart: :temporary
 
-  alias James.{Sessions, Tokens, Memories, Embeddings, Personality}
+  alias James.{Embeddings, Memories, Personality, Sessions, Tasks, Tokens}
   alias James.Providers.Anthropic
+  alias James.Workers.MemoryExtractionWorker
 
   defstruct [:session_id, :task_id, :messages, :system_prompt, :model]
 
@@ -129,10 +130,12 @@ defmodule James.Agents.ChatAgent do
   defp broadcast_task_status(_session_id, nil, _status), do: :ok
 
   defp broadcast_task_status(session_id, task_id, status) do
-    case James.Tasks.get_task(task_id) do
-      nil -> :ok
+    case Tasks.get_task(task_id) do
+      nil ->
+        :ok
+
       task ->
-        {:ok, updated} = James.Tasks.update_task_status(task, status)
+        {:ok, updated} = Tasks.update_task_status(task, status)
 
         Phoenix.PubSub.broadcast(
           James.PubSub,
@@ -174,31 +177,30 @@ defmodule James.Agents.ChatAgent do
     last_user_msg = messages |> Enum.filter(&(&1.role == "user")) |> List.last()
 
     if last_user_msg do
-      case Embeddings.generate(last_user_msg.content) do
-        {:ok, embedding} ->
-          memories = Memories.search_similar(session.user_id, embedding, 5)
-
-          if memories != [] do
-            memories
-            |> Enum.map(& &1.content)
-            |> Enum.map_join("\n", fn c -> "- #{c}" end)
-          else
-            ""
-          end
-
-        {:error, _} ->
-          ""
-      end
+      fetch_memory_context(session.user_id, last_user_msg.content)
     else
       ""
     end
   end
 
+  defp fetch_memory_context(user_id, content) do
+    case Embeddings.generate(content) do
+      {:ok, embedding} -> format_memories(Memories.search_similar(user_id, embedding, 5))
+      {:error, _} -> ""
+    end
+  end
+
+  defp format_memories([]), do: ""
+
+  defp format_memories(memories) do
+    Enum.map_join(memories, "\n", fn m -> "- #{m.content}" end)
+  end
+
   defp enqueue_memory_extraction(session_id) do
-    case James.Sessions.get_session(session_id) do
+    case Sessions.get_session(session_id) do
       %{user_id: user_id} ->
         %{session_id: session_id, user_id: user_id}
-        |> James.Workers.MemoryExtractionWorker.new()
+        |> MemoryExtractionWorker.new()
         |> Oban.insert()
 
       _ ->

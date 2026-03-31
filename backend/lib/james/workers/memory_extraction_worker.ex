@@ -7,7 +7,7 @@ defmodule James.Workers.MemoryExtractionWorker do
 
   use Oban.Worker, queue: :memory, max_attempts: 3
 
-  alias James.{Sessions, Memories, Embeddings}
+  alias James.{Embeddings, Memories, Sessions}
   alias James.Providers.Anthropic
 
   @extraction_prompt """
@@ -41,37 +41,36 @@ defmodule James.Workers.MemoryExtractionWorker do
       recent = Enum.take(messages, -4)
 
       conversation =
-        recent
-        |> Enum.map(fn m -> "#{m.role}: #{m.content}" end)
-        |> Enum.join("\n\n")
+        Enum.map_join(recent, "\n\n", fn m -> "#{m.role}: #{m.content}" end)
 
-      case extract_memories(conversation) do
-        {:ok, extracted} ->
-          Enum.each(extracted, fn text ->
-            case Embeddings.generate(text) do
-              {:ok, embedding} ->
-                Memories.create_memory(%{
-                  user_id: user_id,
-                  content: text,
-                  embedding: embedding,
-                  source_session_id: session_id
-                })
+      extract_and_store(conversation, user_id, session_id)
+    end
+  end
 
-              {:error, _} ->
-                # Store without embedding if embedding fails
-                Memories.create_memory(%{
-                  user_id: user_id,
-                  content: text,
-                  source_session_id: session_id
-                })
-            end
-          end)
+  defp extract_and_store(conversation, user_id, session_id) do
+    case extract_memories(conversation) do
+      {:ok, extracted} -> Enum.each(extracted, &store_memory(&1, user_id, session_id))
+      {:error, _reason} -> :ok
+    end
+  end
 
-          :ok
+  defp store_memory(text, user_id, session_id) do
+    case Embeddings.generate(text) do
+      {:ok, embedding} ->
+        Memories.create_memory(%{
+          user_id: user_id,
+          content: text,
+          embedding: embedding,
+          source_session_id: session_id
+        })
 
-        {:error, _reason} ->
-          :ok
-      end
+      {:error, _} ->
+        # Store without embedding if embedding fails
+        Memories.create_memory(%{
+          user_id: user_id,
+          content: text,
+          source_session_id: session_id
+        })
     end
   end
 
@@ -99,16 +98,21 @@ defmodule James.Workers.MemoryExtractionWorker do
 
       _ ->
         # Try to extract array from surrounding text
-        case Regex.run(~r/\[.*\]/s, text) do
-          [json] ->
-            case Jason.decode(json) do
-              {:ok, list} when is_list(list) -> {:ok, Enum.filter(list, &is_binary/1)}
-              _ -> {:ok, []}
-            end
+        parse_json_array_from_text(text)
+    end
+  end
 
-          nil ->
-            {:ok, []}
-        end
+  defp parse_json_array_from_text(text) do
+    case Regex.run(~r/\[.*\]/s, text) do
+      [json] -> decode_json_list(json)
+      nil -> {:ok, []}
+    end
+  end
+
+  defp decode_json_list(json) do
+    case Jason.decode(json) do
+      {:ok, list} when is_list(list) -> {:ok, Enum.filter(list, &is_binary/1)}
+      _ -> {:ok, []}
     end
   end
 end

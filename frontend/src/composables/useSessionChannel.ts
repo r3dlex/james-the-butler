@@ -24,11 +24,10 @@ export function useSessionChannel(sessionId: () => string | null) {
     const ch = join();
 
     // Load message history from channel join reply
-    ch.join()
-      .receive("ok", (resp: unknown) => {
-        const data = resp as { messages?: Message[] };
-        messageStore.setMessages(id, data.messages ?? []);
-      });
+    ch.join().receive("ok", (resp: unknown) => {
+      const data = resp as { messages?: Message[] };
+      messageStore.setMessages(id, data.messages ?? []);
+    });
 
     // New message pushed from backend (user echo or assistant response)
     on("message:new", (payload: unknown) => {

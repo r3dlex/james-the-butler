@@ -5,7 +5,12 @@
   >
     <!-- Brand header -->
     <div class="flex items-center gap-2.5 px-4 pt-4 pb-3">
-      <img src="/logo-light.svg" alt="James the Butler" width="28" height="28" />
+      <img
+        src="/logo-light.svg"
+        alt="James the Butler"
+        width="28"
+        height="28"
+      />
       <span
         class="text-sm font-semibold tracking-tight"
         style="color: var(--color-gold); font-family: Georgia, serif"

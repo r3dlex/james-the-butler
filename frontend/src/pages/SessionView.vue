@@ -14,10 +14,7 @@
             ref="titleInputRef"
             v-model="titleDraft"
             class="max-w-48 rounded border bg-transparent px-2 py-0.5 text-sm font-medium outline-none focus:border-[var(--color-gold)]"
-            style="
-              border-color: var(--color-border);
-              color: var(--color-text);
-            "
+            style="border-color: var(--color-border); color: var(--color-text)"
             @keydown.enter="saveTitle"
             @keydown.escape="cancelEditTitle"
             @blur="saveTitle"
@@ -75,7 +72,10 @@
               d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
             />
           </svg>
-          <span class="max-w-32 truncate text-xs" style="color: var(--color-text-dim)">
+          <span
+            class="max-w-32 truncate text-xs"
+            style="color: var(--color-text-dim)"
+          >
             {{ session.workingDirectories[0] }}
           </span>
           <span
@@ -94,10 +94,7 @@
         >
           <span
             class="flex h-4 w-4 items-center justify-center rounded-full text-xs font-bold"
-            style="
-              background: var(--color-gold);
-              color: var(--color-navy-deep);
-            "
+            style="background: var(--color-gold); color: var(--color-navy-deep)"
           >
             $
           </span>
@@ -110,7 +107,11 @@
         </div>
       </div>
 
-      <ChatMessageStream :messages="messages" :is-streaming="isStreaming" :streaming-text="streamingText" />
+      <ChatMessageStream
+        :messages="messages"
+        :is-streaming="isStreaming"
+        :streaming-text="streamingText"
+      />
       <ChatInput :disabled="isStreaming" @send="handleSend" />
     </div>
 
@@ -202,7 +203,10 @@ onMounted(() => {
   channel.on("message:new", (payload: unknown) => {
     const msg = payload as Message;
     // When assistant message completes, stop streaming and add the final message
-    if (msg.role === "assistant" && messageStore.streamingSessionId === sessionId.value) {
+    if (
+      msg.role === "assistant" &&
+      messageStore.streamingSessionId === sessionId.value
+    ) {
       messageStore.stopStreaming();
     }
     messageStore.appendMessage(sessionId.value, msg);
@@ -223,10 +227,12 @@ onMounted(() => {
   const plannerChannel = socketStore.joinChannel(`planner:${sessionId.value}`);
   plannerChannel.join();
   plannerChannel.on("planner:step", (payload: unknown) => {
-    const step = (payload as { step: { type: string; description?: string } }).step;
+    const step = (payload as { step: { type: string; description?: string } })
+      .step;
     if (step.type === "decomposing") plannerStatus.value = "decomposing";
     else if (step.type === "dispatched") plannerStatus.value = "";
-    else if (step.type === "awaiting_approval") plannerStatus.value = "awaiting approval";
+    else if (step.type === "awaiting_approval")
+      plannerStatus.value = "awaiting approval";
     else if (step.type === "task_created") plannerStatus.value = "dispatching";
     else if (step.type === "error") plannerStatus.value = "";
   });

@@ -4,8 +4,8 @@ defmodule James.Projects do
   """
 
   import Ecto.Query
-  alias James.Repo
   alias James.Projects.Project
+  alias James.Repo
 
   def list_projects(user_id) do
     Repo.all(from p in Project, where: p.user_id == ^user_id, order_by: [desc: p.inserted_at])

@@ -1,7 +1,7 @@
 defmodule JamesWeb.AuthController do
   use Phoenix.Controller, formats: [:json]
 
-  alias James.{Auth, Accounts, OAuth}
+  alias James.{Accounts, Auth, OAuth}
 
   @frontend_url "http://localhost:4173"
 
@@ -14,7 +14,10 @@ defmodule JamesWeb.AuthController do
       not OAuth.configured?(provider) ->
         conn
         |> put_status(:not_implemented)
-        |> json(%{error: "#{String.capitalize(provider)} OAuth credentials not configured. Set #{String.upcase(provider)}_CLIENT_ID and #{String.upcase(provider)}_CLIENT_SECRET."})
+        |> json(%{
+          error:
+            "#{String.capitalize(provider)} OAuth credentials not configured. Set #{String.upcase(provider)}_CLIENT_ID and #{String.upcase(provider)}_CLIENT_SECRET."
+        })
 
       true ->
         state = :crypto.strong_rand_bytes(16) |> Base.url_encode64(padding: false)
@@ -29,7 +32,9 @@ defmodule JamesWeb.AuthController do
       {:ok, %{provider: prov, uid: uid, email: email, name: name}} ->
         user =
           case Accounts.find_or_create_user_by_oauth(prov, uid, %{email: email, name: name}) do
-            {:ok, u} -> u
+            {:ok, u} ->
+              u
+
             {:error, _} ->
               # Fallback: try by email (provider may have changed uid representation)
               Accounts.get_user_by_email(email)
@@ -133,8 +138,11 @@ defmodule JamesWeb.AuthController do
     user = conn.assigns.current_user
 
     case DeviceCode.verify_code(user_code, user.id) do
-      {:ok, _} -> json(conn, %{ok: true, message: "Device authorized."})
-      {:error, :invalid_or_expired} -> conn |> put_status(:not_found) |> json(%{error: "Invalid or expired code."})
+      {:ok, _} ->
+        json(conn, %{ok: true, message: "Device authorized."})
+
+      {:error, :invalid_or_expired} ->
+        conn |> put_status(:not_found) |> json(%{error: "Invalid or expired code."})
     end
   end
 

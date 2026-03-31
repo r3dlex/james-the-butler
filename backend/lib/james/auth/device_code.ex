@@ -53,12 +53,13 @@ defmodule James.Auth.DeviceCode do
     |> Repo.insert()
     |> case do
       {:ok, code} ->
-        {:ok, %{
-          device_code: code.device_code,
-          user_code: code.user_code,
-          expires_in: @code_ttl_seconds,
-          interval: @poll_interval_seconds
-        }}
+        {:ok,
+         %{
+           device_code: code.device_code,
+           user_code: code.user_code,
+           expires_in: @code_ttl_seconds,
+           interval: @poll_interval_seconds
+         }}
 
       {:error, changeset} ->
         {:error, changeset}
@@ -70,9 +71,11 @@ defmodule James.Auth.DeviceCode do
     import Ecto.Query
 
     case Repo.one(
-      from c in PendingCode,
-      where: c.user_code == ^user_code and c.status == "pending" and c.expires_at > ^DateTime.utc_now()
-    ) do
+           from c in PendingCode,
+             where:
+               c.user_code == ^user_code and c.status == "pending" and
+                 c.expires_at > ^DateTime.utc_now()
+         ) do
       nil ->
         {:error, :invalid_or_expired}
 

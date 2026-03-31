@@ -1,4 +1,5 @@
 defmodule JamesWeb.PlannerChannel do
+  @moduledoc false
   use Phoenix.Channel
 
   alias James.Sessions

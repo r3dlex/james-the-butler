@@ -6,8 +6,9 @@ defmodule James.Agents.BrowserAgent do
 
   use GenServer, restart: :temporary
 
-  alias James.{Sessions, Tokens}
+  alias James.Browser.CdpManager
   alias James.Providers.Anthropic
+  alias James.{Sessions, Tasks, Tokens}
 
   defstruct [:session_id, :task_id, :messages, :system_prompt, :model]
 
@@ -91,7 +92,7 @@ defmodule James.Agents.BrowserAgent do
   def handle_info(:run, state) do
     broadcast_task_status(state.session_id, state.task_id, "running")
 
-    case James.Browser.CdpManager.ensure_chrome() do
+    case CdpManager.ensure_chrome() do
       :ok ->
         run_loop(state, 0)
 
@@ -114,22 +115,31 @@ defmodule James.Agents.BrowserAgent do
       tools: @tools,
       on_chunk: fn text -> broadcast_chunk(state.session_id, text) end
     ]
+
     opts = if state.model, do: Keyword.put(opts, :model, state.model), else: opts
 
     case Anthropic.stream_message(state.messages, opts) do
       {:ok, %{content: content, usage: usage, stop_reason: stop_reason}} ->
-        {:ok, _msg} = Sessions.create_message(%{
-          session_id: state.session_id, role: "assistant", content: content,
-          model: state.model || "claude-sonnet-4-20250514"
-        })
+        {:ok, _msg} =
+          Sessions.create_message(%{
+            session_id: state.session_id,
+            role: "assistant",
+            content: content,
+            model: state.model || "claude-sonnet-4-20250514"
+          })
+
         record_tokens(state, usage)
 
         if stop_reason == "tool_use" do
           tool_results = execute_tool_calls(content)
-          updated = state.messages ++ [
-            %{role: "assistant", content: content},
-            %{role: "user", content: tool_results}
-          ]
+
+          updated =
+            state.messages ++
+              [
+                %{role: "assistant", content: content},
+                %{role: "user", content: tool_results}
+              ]
+
           run_loop(%{state | messages: updated}, iteration + 1)
         else
           broadcast_task_status(state.session_id, state.task_id, "completed")
@@ -142,22 +152,28 @@ defmodule James.Agents.BrowserAgent do
   end
 
   defp execute_tool_calls(content) when is_binary(content), do: []
+
   defp execute_tool_calls(content) when is_list(content) do
     content
     |> Enum.filter(fn b -> is_map(b) and Map.get(b, "type") == "tool_use" end)
     |> Enum.map(fn tc ->
-      result = James.Browser.CdpManager.execute(tc["name"], tc["input"] || %{})
+      result = CdpManager.execute(tc["name"], tc["input"] || %{})
       %{type: "tool_result", tool_use_id: tc["id"], content: result}
     end)
   end
 
-  defp broadcast_chunk(sid, text), do: Phoenix.PubSub.broadcast(James.PubSub, "session:#{sid}", {:assistant_chunk, text})
+  defp broadcast_chunk(sid, text),
+    do: Phoenix.PubSub.broadcast(James.PubSub, "session:#{sid}", {:assistant_chunk, text})
+
   defp broadcast_task_status(_sid, nil, _status), do: :ok
+
   defp broadcast_task_status(sid, tid, status) do
-    case James.Tasks.get_task(tid) do
-      nil -> :ok
+    case Tasks.get_task(tid) do
+      nil ->
+        :ok
+
       task ->
-        {:ok, updated} = James.Tasks.update_task_status(task, status)
+        {:ok, updated} = Tasks.update_task_status(task, status)
         Phoenix.PubSub.broadcast(James.PubSub, "session:#{sid}", {:task_updated, updated})
     end
   end
@@ -165,15 +181,19 @@ defmodule James.Agents.BrowserAgent do
   defp record_tokens(state, usage) do
     input = Map.get(usage, :input_tokens, 0)
     output = Map.get(usage, :output_tokens, 0)
+
     if input > 0 or output > 0 do
       Tokens.record_usage(%{
-        session_id: state.session_id, task_id: state.task_id,
+        session_id: state.session_id,
+        task_id: state.task_id,
         model: state.model || "claude-sonnet-4-20250514",
-        input_tokens: input, output_tokens: output,
-        cost_usd: Decimal.add(
-          Decimal.div(Decimal.new(input * 3), Decimal.new(1_000_000)),
-          Decimal.div(Decimal.new(output * 15), Decimal.new(1_000_000))
-        )
+        input_tokens: input,
+        output_tokens: output,
+        cost_usd:
+          Decimal.add(
+            Decimal.div(Decimal.new(input * 3), Decimal.new(1_000_000)),
+            Decimal.div(Decimal.new(output * 15), Decimal.new(1_000_000))
+          )
       })
     end
   end

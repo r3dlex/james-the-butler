@@ -6,8 +6,8 @@ defmodule James.Agents.ResearchAgent do
 
   use GenServer, restart: :temporary
 
-  alias James.{Sessions, Tokens}
   alias James.Providers.Anthropic
+  alias James.{Sessions, Tokens}
 
   defstruct [:session_id, :task_id, :messages, :system_prompt, :model]
 
@@ -90,27 +90,38 @@ defmodule James.Agents.ResearchAgent do
       tools: @tools,
       on_chunk: fn text -> broadcast_chunk(state.session_id, text) end
     ]
+
     opts = if state.model, do: Keyword.put(opts, :model, state.model), else: opts
 
     case Anthropic.stream_message(state.messages, opts) do
       {:ok, %{content: content, usage: usage, stop_reason: stop_reason}} ->
-        {:ok, message} = Sessions.create_message(%{
-          session_id: state.session_id,
-          role: "assistant",
-          content: content,
-          token_count: Map.get(usage, :output_tokens, 0),
-          model: state.model || "claude-sonnet-4-20250514"
-        })
+        {:ok, message} =
+          Sessions.create_message(%{
+            session_id: state.session_id,
+            role: "assistant",
+            content: content,
+            token_count: Map.get(usage, :output_tokens, 0),
+            model: state.model || "claude-sonnet-4-20250514"
+          })
 
-        Phoenix.PubSub.broadcast(James.PubSub, "session:#{state.session_id}", {:assistant_message, message})
+        Phoenix.PubSub.broadcast(
+          James.PubSub,
+          "session:#{state.session_id}",
+          {:assistant_message, message}
+        )
+
         record_tokens(state, usage)
 
         if stop_reason == "tool_use" do
           tool_results = execute_tool_calls(content, state)
-          updated_messages = state.messages ++ [
-            %{role: "assistant", content: content},
-            %{role: "user", content: tool_results}
-          ]
+
+          updated_messages =
+            state.messages ++
+              [
+                %{role: "assistant", content: content},
+                %{role: "user", content: tool_results}
+              ]
+
           run_loop(%{state | messages: updated_messages}, iteration + 1)
         else
           broadcast_task_status(state.session_id, state.task_id, "completed")
@@ -123,6 +134,7 @@ defmodule James.Agents.ResearchAgent do
   end
 
   defp execute_tool_calls(content, _state) when is_binary(content), do: []
+
   defp execute_tool_calls(content, state) when is_list(content) do
     content
     |> Enum.filter(fn b -> is_map(b) and Map.get(b, "type") == "tool_use" end)
@@ -164,6 +176,7 @@ defmodule James.Agents.ResearchAgent do
       role: "system",
       content: "## #{title}\n\n#{content}"
     })
+
     "Report '#{title}' saved."
   end
 
@@ -174,9 +187,12 @@ defmodule James.Agents.ResearchAgent do
   end
 
   defp broadcast_task_status(_sid, nil, _status), do: :ok
+
   defp broadcast_task_status(sid, task_id, status) do
     case James.Tasks.get_task(task_id) do
-      nil -> :ok
+      nil ->
+        :ok
+
       task ->
         {:ok, updated} = James.Tasks.update_task_status(task, status)
         Phoenix.PubSub.broadcast(James.PubSub, "session:#{sid}", {:task_updated, updated})
@@ -186,6 +202,7 @@ defmodule James.Agents.ResearchAgent do
   defp record_tokens(state, usage) do
     input = Map.get(usage, :input_tokens, 0)
     output = Map.get(usage, :output_tokens, 0)
+
     if input > 0 or output > 0 do
       Tokens.record_usage(%{
         session_id: state.session_id,
@@ -193,10 +210,11 @@ defmodule James.Agents.ResearchAgent do
         model: state.model || "claude-sonnet-4-20250514",
         input_tokens: input,
         output_tokens: output,
-        cost_usd: Decimal.add(
-          Decimal.div(Decimal.new(input * 3), Decimal.new(1_000_000)),
-          Decimal.div(Decimal.new(output * 15), Decimal.new(1_000_000))
-        )
+        cost_usd:
+          Decimal.add(
+            Decimal.div(Decimal.new(input * 3), Decimal.new(1_000_000)),
+            Decimal.div(Decimal.new(output * 15), Decimal.new(1_000_000))
+          )
       })
     end
   end

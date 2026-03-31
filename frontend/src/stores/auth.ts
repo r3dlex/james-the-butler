@@ -14,7 +14,9 @@ export interface User {
 export const useAuthStore = defineStore("auth", () => {
   const user = ref<User | null>(null);
   const token = ref<string | null>(localStorage.getItem("auth_token"));
-  const refreshToken = ref<string | null>(localStorage.getItem("refresh_token"));
+  const refreshToken = ref<string | null>(
+    localStorage.getItem("refresh_token"),
+  );
   const loading = ref(false);
   const error = ref<string | null>(null);
 
@@ -66,10 +68,14 @@ export const useAuthStore = defineStore("auth", () => {
     loading.value = true;
     error.value = null;
     try {
-      const data = await api.post<{ token: string; refreshToken: string; user: User }>(
-        "/api/auth/dev_login",
-        { email: "dev@james.local", name: "Developer" },
-      );
+      const data = await api.post<{
+        token: string;
+        refreshToken: string;
+        user: User;
+      }>("/api/auth/dev_login", {
+        email: "dev@james.local",
+        name: "Developer",
+      });
       setAuth(data.token, data.user, data.refreshToken);
     } catch {
       // API not reachable — fall back to a local dev session so the UI stays usable
@@ -90,9 +96,12 @@ export const useAuthStore = defineStore("auth", () => {
     const rt = refreshToken.value;
     if (!rt) return false;
     try {
-      const data = await api.post<{ token: string; refreshToken: string }>("/api/auth/refresh", {
-        refresh_token: rt,
-      });
+      const data = await api.post<{ token: string; refreshToken: string }>(
+        "/api/auth/refresh",
+        {
+          refresh_token: rt,
+        },
+      );
       token.value = data.token;
       refreshToken.value = data.refreshToken;
       localStorage.setItem("auth_token", data.token);

@@ -6,13 +6,13 @@
   >
     <div
       class="w-full max-w-xl rounded-lg border shadow-2xl"
-      style="
-        background: var(--color-navy);
-        border-color: var(--color-border);
-      "
+      style="background: var(--color-navy); border-color: var(--color-border)"
     >
       <!-- Search input -->
-      <div class="flex items-center gap-2 border-b px-4 py-3" style="border-color: var(--color-border)">
+      <div
+        class="flex items-center gap-2 border-b px-4 py-3"
+        style="border-color: var(--color-border)"
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           width="16"
@@ -37,7 +37,10 @@
         />
         <kbd
           class="rounded border px-1.5 py-0.5 text-[10px]"
-          style="border-color: var(--color-border); color: var(--color-text-dim)"
+          style="
+            border-color: var(--color-border);
+            color: var(--color-text-dim);
+          "
         >
           ESC
         </kbd>
@@ -49,7 +52,11 @@
           <LoadingSpinner />
         </div>
 
-        <div v-else-if="query && results.length === 0" class="px-4 py-6 text-center text-sm" style="color: var(--color-text-dim)">
+        <div
+          v-else-if="query && results.length === 0"
+          class="px-4 py-6 text-center text-sm"
+          style="color: var(--color-text-dim)"
+        >
           No results found
         </div>
 
@@ -62,12 +69,18 @@
             @click="goToSession(result.sessionId)"
           >
             <div class="flex items-center gap-2">
-              <span class="text-sm font-medium" style="color: var(--color-text)">
+              <span
+                class="text-sm font-medium"
+                style="color: var(--color-text)"
+              >
                 {{ result.sessionName }}
               </span>
               <span
                 class="rounded-full px-1.5 py-0.5 text-[10px]"
-                style="background: var(--color-surface); color: var(--color-text-dim)"
+                style="
+                  background: var(--color-surface);
+                  color: var(--color-text-dim);
+                "
               >
                 {{ result.agentType }}
               </span>
@@ -83,7 +96,11 @@
           </button>
         </div>
 
-        <div v-else class="px-4 py-6 text-center text-sm" style="color: var(--color-text-dim)">
+        <div
+          v-else
+          class="px-4 py-6 text-center text-sm"
+          style="color: var(--color-text-dim)"
+        >
           Type to search across all sessions
         </div>
       </div>
@@ -164,6 +181,11 @@ function close() {
 function formatDate(dateStr: string): string {
   if (!dateStr) return "";
   const d = new Date(dateStr);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 </script>

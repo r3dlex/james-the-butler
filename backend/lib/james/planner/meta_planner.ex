@@ -8,7 +8,7 @@ defmodule James.Planner.MetaPlanner do
 
   use GenServer
 
-  alias James.{Tasks, Sessions, ExecutionMode}
+  alias James.{ExecutionMode, Sessions, Tasks}
   alias James.OpenClaw.Orchestrator
 
   # --- Client API ---
@@ -66,26 +66,7 @@ defmodule James.Planner.MetaPlanner do
 
           # Check execution mode — in confirmed mode, destructive tasks need approval
           execution_mode = ExecutionMode.resolve(session)
-
-          if execution_mode == "confirmed" and task.risk_level == "destructive" do
-            {:ok, _} = Tasks.update_task_status(task, "pending")
-
-            broadcast_planner_step(session_id, %{
-              type: "awaiting_approval",
-              task_id: task.id,
-              description: "Destructive task requires approval"
-            })
-          else
-            # Direct mode or non-destructive: dispatch immediately
-            {:ok, updated_task} = Tasks.update_task_status(task, "running")
-            Orchestrator.dispatch_task(updated_task, session)
-
-            broadcast_planner_step(session_id, %{
-              type: "dispatched",
-              task_id: task.id,
-              description: "Task dispatched to agent"
-            })
-          end
+          dispatch_or_gate(session_id, task, session, execution_mode)
 
         {:error, _changeset} ->
           broadcast_planner_step(session_id, %{
@@ -99,6 +80,28 @@ defmodule James.Planner.MetaPlanner do
   end
 
   # --- Private ---
+
+  defp dispatch_or_gate(session_id, task, _session, "confirmed")
+       when task.risk_level == "destructive" do
+    {:ok, _} = Tasks.update_task_status(task, "pending")
+
+    broadcast_planner_step(session_id, %{
+      type: "awaiting_approval",
+      task_id: task.id,
+      description: "Destructive task requires approval"
+    })
+  end
+
+  defp dispatch_or_gate(session_id, task, session, _execution_mode) do
+    {:ok, updated_task} = Tasks.update_task_status(task, "running")
+    Orchestrator.dispatch_task(updated_task, session)
+
+    broadcast_planner_step(session_id, %{
+      type: "dispatched",
+      task_id: task.id,
+      description: "Task dispatched to agent"
+    })
+  end
 
   defp decompose_message(session, _message) do
     # V1: Single-task decomposition for chat sessions

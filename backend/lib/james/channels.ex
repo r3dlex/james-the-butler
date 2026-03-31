@@ -2,8 +2,8 @@ defmodule James.Channels do
   @moduledoc "Manages channel configurations for external event sources."
 
   import Ecto.Query
-  alias James.Repo
   alias James.Channels.ChannelConfig
+  alias James.Repo
 
   def list_channel_configs(user_id) do
     from(c in ChannelConfig, where: c.user_id == ^user_id, order_by: [asc: c.mcp_server])

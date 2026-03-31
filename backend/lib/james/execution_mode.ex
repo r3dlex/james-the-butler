@@ -4,7 +4,7 @@ defmodule James.ExecutionMode do
   inheritance hierarchy: session → project → user (most specific wins).
   """
 
-  alias James.{Projects, Accounts}
+  alias James.{Accounts, Projects}
 
   @doc """
   Returns the effective execution mode for the given session.

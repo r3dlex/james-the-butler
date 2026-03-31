@@ -4,8 +4,8 @@ defmodule James.Accounts do
   """
 
   import Ecto.Query
+  alias James.Accounts.{PersonalityProfile, User}
   alias James.Repo
-  alias James.Accounts.{User, PersonalityProfile}
 
   def get_user(id), do: Repo.get(User, id)
 
@@ -27,6 +27,7 @@ defmodule James.Accounts do
     case get_user_by_oauth(provider, uid) do
       nil ->
         create_user(Map.merge(attrs, %{oauth_provider: provider, oauth_uid: uid}))
+
       user ->
         {:ok, user}
     end

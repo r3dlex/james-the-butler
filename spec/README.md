@@ -6,7 +6,7 @@ This directory contains the system-level specifications for the James the Butler
 
 | File | Description |
 |---|---|
-| [platform.md](platform.md) | **Full platform specification v1.4** — vision, architecture, all subsystems |
+| [platform.md](platform.md) | **Full platform specification v1.5** — vision, architecture, all subsystems (all 7 phases implemented) |
 | [architecture.md](architecture.md) | System architecture, data flow, integration points |
 
 ## Component Specs

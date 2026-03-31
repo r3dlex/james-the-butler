@@ -2,8 +2,8 @@ defmodule James.Plugins do
   @moduledoc "Manages plugin lifecycle: install, enable, disable, uninstall."
 
   import Ecto.Query
-  alias James.Repo
   alias James.Plugins.Plugin
+  alias James.Repo
 
   def list_plugins(user_id) do
     from(p in Plugin, where: p.user_id == ^user_id, order_by: [asc: p.name])

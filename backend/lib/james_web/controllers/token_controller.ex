@@ -9,6 +9,7 @@ defmodule JamesWeb.TokenController do
       model: Map.get(params, "model"),
       limit: String.to_integer(Map.get(params, "limit", "100"))
     ]
+
     entries = Tokens.list_usage(opts)
     conn |> json(%{usage: Enum.map(entries, &entry_json/1)})
   end

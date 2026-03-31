@@ -6,8 +6,8 @@ defmodule JamesWeb.Plugs.Auth do
   import Plug.Conn
   import Phoenix.Controller, only: [json: 2]
 
-  alias James.Auth
   alias James.Accounts
+  alias James.Auth
 
   def init(opts), do: opts
 
