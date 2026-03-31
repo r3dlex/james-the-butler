@@ -4,7 +4,7 @@ config :james, James.Repo,
   username: System.get_env("DB_USERNAME", "postgres"),
   password: System.get_env("DB_PASSWORD", "postgres"),
   hostname: System.get_env("DB_HOSTNAME", "localhost"),
-  port: String.to_integer(System.get_env("DB_PORT", "5432")),
+  port: String.to_integer(System.get_env("DB_PORT", "5433")),
   database: System.get_env("DB_DATABASE", "james_test#{System.get_env("MIX_TEST_PARTITION")}"),
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 10

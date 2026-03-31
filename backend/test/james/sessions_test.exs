@@ -174,7 +174,9 @@ defmodule James.SessionsTest do
     test "returns messages for session in insertion order" do
       user = create_user("list_msg@example.com")
       session = create_session(user)
-      {:ok, _} = Sessions.create_message(%{session_id: session.id, role: "user", content: "First"})
+
+      {:ok, _} =
+        Sessions.create_message(%{session_id: session.id, role: "user", content: "First"})
 
       {:ok, _} =
         Sessions.create_message(%{session_id: session.id, role: "assistant", content: "Second"})
@@ -219,7 +221,10 @@ defmodule James.SessionsTest do
       user = create_user("list_cp@example.com")
       session = create_session(user)
       {:ok, _} = Sessions.create_checkpoint(%{session_id: session.id, type: "implicit"})
-      {:ok, _} = Sessions.create_checkpoint(%{session_id: session.id, type: "explicit", name: "X"})
+
+      {:ok, _} =
+        Sessions.create_checkpoint(%{session_id: session.id, type: "explicit", name: "X"})
+
       cps = Sessions.list_checkpoints(session.id)
       assert length(cps) == 2
     end

@@ -15,7 +15,10 @@ if (typeof window !== "undefined") {
     // @ts-expect-error — intentional global assignment for test environment
     globalThis.localStorage = window.localStorage;
   }
-  if (typeof globalThis.sessionStorage === "undefined" && window.sessionStorage) {
+  if (
+    typeof globalThis.sessionStorage === "undefined" &&
+    window.sessionStorage
+  ) {
     // @ts-expect-error — intentional global assignment for test environment
     globalThis.sessionStorage = window.sessionStorage;
   }

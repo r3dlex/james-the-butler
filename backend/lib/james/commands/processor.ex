@@ -160,8 +160,7 @@ defmodule James.Commands.Processor do
   defp do_rewind(latest) do
     case Sessions.rewind_to_checkpoint(latest.id) do
       {:ok, _} ->
-        {:command,
-         "Rewound to checkpoint#{if latest.name, do: " \"#{latest.name}\"", else: ""}."}
+        {:command, "Rewound to checkpoint#{if latest.name, do: " \"#{latest.name}\"", else: ""}."}
 
       {:error, _} ->
         {:command, "Failed to rewind."}

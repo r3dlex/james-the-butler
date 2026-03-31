@@ -68,6 +68,7 @@ defmodule James.Auth.MFATest do
     test "returns false for a clearly wrong code", %{secret: secret} do
       assert MFA.verify_totp(secret, "000000") == false or
                MFA.verify_totp(secret, "000000") == true
+
       # Use a value that is deterministically wrong at large offset
       time_step = div(System.os_time(:second), 30)
       far_future_code = generate_totp_for_step(secret, time_step + 100)
