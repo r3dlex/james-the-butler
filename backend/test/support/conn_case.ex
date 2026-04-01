@@ -8,8 +8,8 @@ defmodule JamesWeb.ConnCase do
 
   using do
     quote do
-      use Phoenix.ConnTest
-      alias JamesWeb.Router.Helpers, as: Routes
+      import Plug.Conn
+      import Phoenix.ConnTest
 
       import James.DataCase, only: [errors_on: 1]
 

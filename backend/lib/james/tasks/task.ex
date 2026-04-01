@@ -17,7 +17,6 @@ defmodule James.Tasks.Task do
     belongs_to :host, James.Hosts.Host
 
     has_many :sub_tasks, James.Tasks.Task, foreign_key: :parent_task_id
-    has_many :artifacts, James.Artifacts.Artifact
     has_many :token_entries, James.Tokens.TokenLedger
   end
 

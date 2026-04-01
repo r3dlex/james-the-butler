@@ -94,7 +94,7 @@ jobs:
         working-directory: backend
     services:
       postgres:
-        image: postgres:16
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
@@ -111,8 +111,8 @@ jobs:
 
       - uses: erlef/setup-beam@v1
         with:
-          elixir-version: "1.16"
-          otp-version: "26"
+          elixir-version: "1.18"
+          otp-version: "27"
 
       - name: Cache deps
         uses: actions/cache@v4
@@ -139,7 +139,7 @@ jobs:
           DB_PORT: 5432
 
       - name: Run tests
-        run: mix test || (echo "::error::mix test failed — see output above" && exit 1)
+        run: mix test --cover || (echo "::error::mix test --cover failed — see output above" && exit 1)
         env:
           MIX_ENV: test
           DB_PORT: 5432

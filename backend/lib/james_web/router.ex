@@ -27,19 +27,28 @@ defmodule JamesWeb.Router do
     post "/auth/refresh", AuthController, :refresh
     post "/auth/device-code", AuthController, :device_code
     post "/auth/device-code/token", AuthController, :device_code_token
+  end
 
-    # OAuth 2.0 — browser-based redirect flow
+  # These authenticated auth routes must be declared BEFORE the parameterized
+  # OAuth redirect routes so that /auth/me is not caught by /auth/:provider.
+  scope "/api", JamesWeb do
+    pipe_through :authenticated
+
+    post "/auth/logout", AuthController, :logout
+    get "/auth/me", AuthController, :me
+    post "/auth/device-code/verify", AuthController, :device_code_verify
+  end
+
+  scope "/api", JamesWeb do
+    pipe_through :api
+
+    # OAuth 2.0 — browser-based redirect flow (parameterised, must come last)
     get "/auth/:provider", AuthController, :oauth_redirect
     get "/auth/:provider/callback", AuthController, :oauth_callback
   end
 
   scope "/api", JamesWeb do
     pipe_through :authenticated
-
-    # Auth (protected)
-    post "/auth/logout", AuthController, :logout
-    get "/auth/me", AuthController, :me
-    post "/auth/device-code/verify", AuthController, :device_code_verify
 
     # Sessions
     get "/sessions", SessionController, :index
@@ -78,6 +87,9 @@ defmodule JamesWeb.Router do
 
     # Search
     get "/search", SearchController, :index
+
+    # Direct chat proxy (LLM pass-through for frontend)
+    post "/chat", ChatController, :create
 
     # Embeddings
     post "/embeddings", EmbeddingController, :create
