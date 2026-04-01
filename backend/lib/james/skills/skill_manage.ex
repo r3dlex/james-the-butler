@@ -58,7 +58,9 @@ defmodule James.Skills.SkillManage do
         "Skill '#{name}' not found."
 
       skill ->
-        case Skills.update_skill(skill, %{content: content, content_hash: compute_hash(content)}) do
+        attrs = %{content: content, content_hash: compute_hash(content)}
+
+        case Skills.update_skill(skill, attrs) do
           {:ok, updated} -> "Skill '#{updated.name}' updated (hash: #{updated.content_hash})."
           {:error, changeset} -> "Failed to update skill: #{format_errors(changeset)}"
         end
