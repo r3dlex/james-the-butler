@@ -29,34 +29,32 @@ defmodule JamesCli.Repl do
 
   defp loop(session_id, config, format, io) do
     case io.gets(@prompt) do
-      :eof ->
-        :ok
-
-      {:error, _} ->
-        :ok
-
-      input ->
-        trimmed = String.trim(input)
-
-        cond do
-          trimmed in ["quit", "exit", "\\q"] ->
-            io.puts("Goodbye.")
-            :ok
-
-          trimmed == "" ->
-            loop(session_id, config, format, io)
-
-          true ->
-            case Client.chat(config, session_id, trimmed) do
-              {:ok, response} ->
-                io.puts(Formatter.format(response, format))
-
-              {:error, err} ->
-                io.puts("Error: #{inspect(err)}")
-            end
-
-            loop(session_id, config, format, io)
-        end
+      :eof -> :ok
+      {:error, _} -> :ok
+      input -> handle_input(String.trim(input), session_id, config, format, io)
     end
+  end
+
+  defp handle_input(trimmed, session_id, config, format, io) do
+    cond do
+      trimmed in ["quit", "exit", "\\q"] ->
+        io.puts("Goodbye.")
+        :ok
+
+      trimmed == "" ->
+        loop(session_id, config, format, io)
+
+      true ->
+        send_and_continue(trimmed, session_id, config, format, io)
+    end
+  end
+
+  defp send_and_continue(input, session_id, config, format, io) do
+    case Client.chat(config, session_id, input) do
+      {:ok, response} -> io.puts(Formatter.format(response, format))
+      {:error, err} -> io.puts("Error: #{inspect(err)}")
+    end
+
+    loop(session_id, config, format, io)
   end
 end

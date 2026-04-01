@@ -12,9 +12,11 @@ defmodule James.CompactionTest do
     {:ok, session} = Sessions.create_session(%{user_id: user.id, name: "Compact Session"})
 
     Enum.each(1..message_count, fn i ->
+      role = if rem(i, 2) == 0, do: "assistant", else: "user"
+
       Sessions.create_message(%{
         session_id: session.id,
-        role: if(rem(i, 2) == 0, do: "assistant", else: "user"),
+        role: role,
         content: "Message #{i} content",
         token_count: token_per_msg
       })
