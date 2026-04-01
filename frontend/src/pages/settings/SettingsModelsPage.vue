@@ -16,7 +16,7 @@
           v-for="provider in providerStore.providers"
           :key="provider.id"
           :provider="provider"
-          @configure="openConfigureForm(provider)"
+          @remove="submitRemove"
         />
       </div>
 
@@ -176,65 +176,6 @@
           >
         </div>
       </div>
-
-      <!-- Configure modal (inline form) -->
-      <div
-        v-if="configuringProvider"
-        class="rounded border p-4"
-        style="border-color: var(--color-gold)"
-      >
-        <h2 class="mb-3 text-sm font-medium" style="color: var(--color-text)">
-          Configure: {{ configuringProvider.displayName }}
-        </h2>
-        <div class="space-y-3">
-          <div>
-            <label
-              class="mb-1 block text-xs font-medium"
-              style="color: var(--color-text-dim)"
-              >Display Name</label
-            >
-            <input
-              v-model="editName"
-              type="text"
-              class="w-full rounded border bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]"
-              style="
-                border-color: var(--color-border);
-                color: var(--color-text);
-                background: var(--color-navy-deep);
-              "
-            />
-          </div>
-          <div class="flex gap-2">
-            <button
-              class="rounded px-3 py-1.5 text-sm font-medium"
-              style="
-                background: var(--color-gold);
-                color: var(--color-navy-deep);
-              "
-              @click="submitUpdate"
-            >
-              Save
-            </button>
-            <button
-              class="rounded px-3 py-1.5 text-sm font-medium"
-              style="
-                border: 1px solid var(--color-border);
-                color: var(--color-text-dim);
-              "
-              @click="configuringProvider = null"
-            >
-              Cancel
-            </button>
-            <button
-              class="ml-auto rounded px-3 py-1.5 text-sm font-medium"
-              style="color: var(--color-risk-red)"
-              @click="submitRemove(configuringProvider!.id)"
-            >
-              Remove
-            </button>
-          </div>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -251,9 +192,6 @@ import type {
 } from "@/types/provider";
 
 const providerStore = useProviderStore();
-
-const configuringProvider = ref<ProviderConfig | null>(null);
-const editName = ref("");
 
 const newProvider = ref<{
   providerType: ProviderType;
@@ -289,11 +227,6 @@ watch(
   },
 );
 
-function openConfigureForm(provider: ProviderConfig) {
-  configuringProvider.value = provider;
-  editName.value = provider.displayName;
-}
-
 async function submitAddProvider() {
   if (!newProvider.value.displayName) return;
 
@@ -316,21 +249,8 @@ async function submitAddProvider() {
   }
 }
 
-async function submitUpdate() {
-  if (!configuringProvider.value) return;
-  await providerStore.updateProvider(configuringProvider.value.id, {
-    displayName: editName.value,
-  });
-  if (!providerStore.error) {
-    configuringProvider.value = null;
-  }
-}
-
 async function submitRemove(id: string) {
   await providerStore.removeProvider(id);
-  if (!providerStore.error) {
-    configuringProvider.value = null;
-  }
 }
 
 onMounted(() => {

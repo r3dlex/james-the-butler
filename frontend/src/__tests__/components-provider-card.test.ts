@@ -124,7 +124,7 @@ describe("ProviderCard", () => {
     expect(api.post).toHaveBeenCalledWith("/api/providers/p1/test");
   });
 
-  it("Configure button emits configure event", async () => {
+  it("Configure button toggles inline editing (no event emitted)", async () => {
     const { default: ProviderCard } =
       await import("../components/settings/ProviderCard.vue");
     const provider = makeProvider();
@@ -133,13 +133,15 @@ describe("ProviderCard", () => {
       props: { provider },
     });
 
-    const buttons = wrapper.findAll("button");
-    const configureBtn = buttons.find((b) => b.text() === "Configure");
+    const configureBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Configure");
     expect(configureBtn).toBeTruthy();
     await configureBtn!.trigger("click");
 
-    expect(wrapper.emitted("configure")).toBeTruthy();
-    expect(wrapper.emitted("configure")![0]).toEqual([provider]);
+    // Should expand inline form, not emit event
+    expect(wrapper.emitted("configure")).toBeFalsy();
+    expect(wrapper.text()).toContain("Save");
   });
 
   it("models list renders when models are loaded", async () => {
@@ -167,6 +169,99 @@ describe("ProviderCard", () => {
     });
 
     expect(wrapper.text()).toContain("No models");
+  });
+
+  it("Configure button expands inline edit form with all fields", async () => {
+    const { default: ProviderCard } =
+      await import("../components/settings/ProviderCard.vue");
+    const provider = makeProvider({
+      providerType: "minimax",
+      displayName: "MiniMax",
+      authMethod: "api_key",
+      baseUrl: "https://api.minimax.io/anthropic",
+      apiKeyMasked: "sk-...1234",
+    });
+
+    const wrapper = mount(ProviderCard, {
+      props: { provider },
+    });
+
+    // Click Configure
+    const buttons = wrapper.findAll("button");
+    const configureBtn = buttons.find((b) => b.text() === "Configure");
+    expect(configureBtn).toBeTruthy();
+    await configureBtn!.trigger("click");
+
+    // Should show inline edit form with display name, API key, and base URL fields
+    const inputs = wrapper.findAll("input");
+    expect(inputs.length).toBeGreaterThanOrEqual(2); // at least name + api key
+    expect(wrapper.text()).toContain("Display Name");
+    expect(wrapper.text()).toContain("API Key");
+  });
+
+  it("Configure form shows base URL field for providers that need it", async () => {
+    const { default: ProviderCard } =
+      await import("../components/settings/ProviderCard.vue");
+    const provider = makeProvider({
+      providerType: "minimax",
+      displayName: "MiniMax",
+      baseUrl: "https://api.minimax.io/anthropic",
+    });
+
+    const wrapper = mount(ProviderCard, {
+      props: { provider },
+    });
+
+    const configureBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Configure");
+    await configureBtn!.trigger("click");
+
+    expect(wrapper.text()).toContain("Base URL");
+  });
+
+  it("Configure form shows Save, Cancel, and Remove buttons", async () => {
+    const { default: ProviderCard } =
+      await import("../components/settings/ProviderCard.vue");
+    const provider = makeProvider();
+
+    const wrapper = mount(ProviderCard, {
+      props: { provider },
+    });
+
+    const configureBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Configure");
+    await configureBtn!.trigger("click");
+
+    const text = wrapper.text();
+    expect(text).toContain("Save");
+    expect(text).toContain("Cancel");
+    expect(text).toContain("Remove");
+  });
+
+  it("Cancel collapses the configure form", async () => {
+    const { default: ProviderCard } =
+      await import("../components/settings/ProviderCard.vue");
+    const provider = makeProvider();
+
+    const wrapper = mount(ProviderCard, {
+      props: { provider },
+    });
+
+    // Open
+    const configureBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Configure");
+    await configureBtn!.trigger("click");
+    expect(wrapper.text()).toContain("Save");
+
+    // Cancel
+    const cancelBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Cancel");
+    await cancelBtn!.trigger("click");
+    expect(wrapper.text()).not.toContain("Save");
   });
 
   it("renders without crashing when models is undefined (API response without models field)", async () => {

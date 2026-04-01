@@ -263,6 +263,38 @@ describe("useProviderStore", () => {
     expect(store.providers[0].displayName).toBe("MiniMax");
   });
 
+  it("addProvider() auto-fetches models after successful creation", async () => {
+    const { api } = await import("../services/api");
+    const { useProviderStore } = await import("../stores/providers");
+
+    const newProvider = {
+      id: "p1",
+      providerType: "minimax",
+      displayName: "MiniMax",
+      authMethod: "api_key",
+      status: "untested",
+      baseUrl: "https://api.minimax.io/anthropic",
+      apiKey: "sk-...1234",
+      lastTestedAt: null,
+    };
+    vi.mocked(api.post).mockResolvedValueOnce({ provider: newProvider });
+    vi.mocked(api.get).mockResolvedValueOnce({
+      models: ["MiniMax-M2.7", "MiniMax-M2.5"],
+    });
+
+    const store = useProviderStore();
+    await store.addProvider({
+      providerType: "minimax",
+      displayName: "MiniMax",
+      authMethod: "api_key",
+      baseUrl: "https://api.minimax.io/anthropic",
+    });
+
+    // Should have auto-fetched models
+    expect(api.get).toHaveBeenCalledWith("/api/providers/p1/models");
+    expect(store.providers[0].models).toEqual(["MiniMax-M2.7", "MiniMax-M2.5"]);
+  });
+
   it("error handling sets error ref", async () => {
     const { api } = await import("../services/api");
     const { useProviderStore } = await import("../stores/providers");

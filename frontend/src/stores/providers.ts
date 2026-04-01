@@ -46,10 +46,13 @@ export const useProviderStore = defineStore("providers", () => {
         "/api/providers",
         data,
       );
-      providers.value.push({
+      const added = {
         ...result.provider,
         models: result.provider.models || [],
-      });
+      };
+      providers.value.push(added);
+      // Auto-fetch available models for the new provider
+      fetchModels(added.id).catch(() => {});
     } catch (e: unknown) {
       error.value =
         e && typeof e === "object" && "error" in e
