@@ -155,6 +155,11 @@ defmodule James.Channels.TelegramVoiceTest do
       assert {:error, _reason} = TelegramVoice.transcribe(<<>>, openai_base_url: base)
     end
 
+    test "returns {:error, reason} when Whisper API is unreachable" do
+      assert {:error, _reason} =
+               TelegramVoice.transcribe(<<1, 2, 3>>, openai_base_url: "http://localhost:19997")
+    end
+
     test "sends multipart request with audio file to Whisper", %{bypass: bypass, base: base} do
       audio_data = <<79, 103, 103, 83, 1, 2, 3>>
 
@@ -230,6 +235,15 @@ defmodule James.Channels.TelegramVoiceTest do
                  token: @token,
                  base_url: base,
                  openai_base_url: base
+               )
+    end
+
+    test "returns {:error, reason} when download errors at network level" do
+      # Use an unreachable port to trigger a Req connection error
+      assert {:error, _reason} =
+               TelegramVoice.download_voice("any_file_id",
+                 token: @token,
+                 base_url: "http://localhost:19998"
                )
     end
 

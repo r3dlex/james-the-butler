@@ -159,4 +159,60 @@ defmodule James.Browser.CdpClientTest do
       assert {:ok, _decoded} = Base.decode64(data)
     end
   end
+
+  describe "handle_info — cdp_frame events" do
+    test "ignores CDP event frames (no id field) without crashing" do
+      pid = start_connected()
+      # Send an event frame (no "id" key) — should be silently dropped
+      event = Jason.encode!(%{"method" => "Page.loadEventFired", "params" => %{}})
+      send(pid, {:cdp_frame, event})
+      # Give the GenServer time to process
+      Process.sleep(20)
+      # Process must still be alive
+      assert Process.alive?(pid)
+    end
+
+    test "ignores unknown messages without crashing" do
+      pid = start_connected()
+      send(pid, {:unknown_message, "some data"})
+      Process.sleep(20)
+      assert Process.alive?(pid)
+    end
+
+    test "handles malformed JSON frame gracefully" do
+      pid = start_connected()
+      send(pid, {:cdp_frame, "not valid json {"})
+      Process.sleep(20)
+      assert Process.alive?(pid)
+    end
+
+    test "handles response with no result or error key (unknown_response)" do
+      defmodule UnknownResponseTransport do
+        @moduledoc false
+        def connect(_url, owner), do: {:ok, %{owner: owner}}
+
+        def send_frame(%{owner: owner}, frame) do
+          {:ok, %{"id" => id}} = Jason.decode(frame)
+          # Respond with no "result" or "error" key — triggers :unknown_response
+          response = Jason.encode!(%{"id" => id, "status" => "ok"})
+          send(owner, {:cdp_frame, response})
+          :ok
+        end
+      end
+
+      {:ok, pid} = CdpClient.start_link(transport: UnknownResponseTransport)
+      :ok = CdpClient.connect(pid, "ws://localhost:9222/devtools/page/unknown")
+
+      assert {:error, :unknown_response} = CdpClient.send_command(pid, "Page.navigate", %{})
+    end
+
+    test "ignores response for unknown id" do
+      pid = start_connected()
+      # Send a response with an id that has no pending caller
+      orphan = Jason.encode!(%{"id" => 9999, "result" => %{"ok" => true}})
+      send(pid, {:cdp_frame, orphan})
+      Process.sleep(20)
+      assert Process.alive?(pid)
+    end
+  end
 end

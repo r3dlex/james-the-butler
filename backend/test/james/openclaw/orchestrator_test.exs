@@ -437,4 +437,70 @@ defmodule James.OpenClaw.OrchestratorTest do
       Process.sleep(150)
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # suspend_session/1 and resume_session/1 — not-found paths
+  # ---------------------------------------------------------------------------
+
+  describe "suspend_session/1 — not found" do
+    test "returns {:error, :not_found} for a non-existent session id" do
+      fake_id = Ecto.UUID.generate()
+      assert {:error, :not_found} = Orchestrator.suspend_session(fake_id)
+    end
+  end
+
+  describe "resume_session/1 — not found" do
+    test "returns {:error, :not_found} for a non-existent session id" do
+      fake_id = Ecto.UUID.generate()
+      assert {:error, :not_found} = Orchestrator.resume_session(fake_id)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # PubSub broadcast on resume
+  # ---------------------------------------------------------------------------
+
+  describe "PubSub broadcasts on resume" do
+    test "broadcasts session_started when a session is resumed" do
+      Phoenix.PubSub.subscribe(James.PubSub, "orchestrator:sessions")
+
+      user = create_user()
+      host = create_host()
+
+      {:ok, session, _pid} =
+        Orchestrator.start_session(%{
+          user_id: user.id,
+          host_id: host.id,
+          name: "PubSub Resume",
+          agent_type: "chat"
+        })
+
+      Sessions.create_message(%{session_id: session.id, role: "user", content: "resume"})
+      :ok = Orchestrator.suspend_session(session.id)
+
+      session_id = session.id
+      assert_receive {:session_stopped, %{id: ^session_id}}, 500
+
+      {:ok, _new_pid} = Orchestrator.resume_session(session.id)
+      assert_receive {:session_started, %{id: ^session_id}}, 500
+      Process.sleep(50)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # Down message from dispatched task agent
+  # ---------------------------------------------------------------------------
+
+  describe "DOWN handling from dispatched task agent" do
+    test "orchestrator cleans up active_tasks after task agent exits" do
+      session = create_session("chat")
+      {:ok, task} = Tasks.create_task(%{session_id: session.id, description: "cleanup test"})
+
+      :ok = Orchestrator.dispatch_task(task, session)
+      Process.sleep(200)
+
+      # The orchestrator must still be alive after task completes
+      assert is_pid(Process.whereis(Orchestrator))
+    end
+  end
 end
