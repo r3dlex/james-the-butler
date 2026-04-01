@@ -4,8 +4,11 @@ defmodule James.OpenClaw.OrchestratorTest do
   alias James.{Accounts, Hosts, Sessions, Tasks}
   alias James.OpenClaw.Orchestrator
   alias James.OpenClaw.Supervisor, as: AgentSupervisor
+  alias James.Test.MockLLMProvider
 
   setup do
+    MockLLMProvider.flush()
+
     if is_nil(Process.whereis(AgentSupervisor)) do
       {:ok, _} = AgentSupervisor.start_link([])
     end
@@ -90,6 +93,14 @@ defmodule James.OpenClaw.OrchestratorTest do
       Orchestrator.dispatch_task(task, session)
       Process.sleep(150)
       assert is_pid(Process.whereis(Orchestrator))
+    end
+
+    test "dispatches security task (agent_for_type fallback using fake session)" do
+      session = create_session("code")
+      {:ok, task} = Tasks.create_task(%{session_id: session.id, description: "security scan"})
+      fake_session = %{session | agent_type: "security"}
+      assert :ok == Orchestrator.dispatch_task(task, fake_session)
+      Process.sleep(150)
     end
   end
 end

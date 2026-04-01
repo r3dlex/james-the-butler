@@ -43,6 +43,26 @@ defmodule James.SkillsTest do
     end
   end
 
+  describe "get_skill/1" do
+    test "returns skill by id" do
+      {:ok, skill} = Skills.sync_skill("get-skill-test", "content")
+      found = Skills.get_skill(skill.id)
+      assert found.id == skill.id
+    end
+
+    test "returns nil for unknown id" do
+      assert Skills.get_skill(Ecto.UUID.generate()) == nil
+    end
+  end
+
+  describe "delete_skill/1" do
+    test "removes the skill" do
+      {:ok, skill} = Skills.sync_skill("delete-skill-test", "bye")
+      assert {:ok, _} = Skills.delete_skill(skill)
+      assert Skills.get_skill(skill.id) == nil
+    end
+  end
+
   describe "list_skills/0" do
     test "returns all skills" do
       {:ok, _} = Skills.sync_skill("list-skill-1", "content 1")

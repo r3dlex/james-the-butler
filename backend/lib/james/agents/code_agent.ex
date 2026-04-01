@@ -10,8 +10,7 @@ defmodule James.Agents.CodeAgent do
 
   use GenServer, restart: :temporary
 
-  alias James.Providers.Anthropic
-  alias James.{Sessions, Tasks, Tokens}
+  alias James.{LLMProvider, Sessions, Tasks, Tokens}
 
   defstruct [:session_id, :task_id, :messages, :system_prompt, :model, :working_dirs]
 
@@ -141,7 +140,7 @@ defmodule James.Agents.CodeAgent do
 
     opts = if state.model, do: Keyword.put(opts, :model, state.model), else: opts
 
-    case Anthropic.stream_message(state.messages, opts) do
+    case LLMProvider.configured().stream_message(state.messages, opts) do
       {:ok, %{content: content, usage: usage, stop_reason: stop_reason}} ->
         handle_agent_response(state, content, usage, stop_reason, iteration)
 

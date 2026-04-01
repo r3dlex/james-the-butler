@@ -67,6 +67,15 @@ defmodule JamesWeb.ChannelConfigControllerTest do
     end
   end
 
+  describe "POST /api/channel-configs (create) — invalid" do
+    test "returns 422 when mcp_server is missing", %{conn: conn} do
+      user = create_user("chan_invalid@example.com")
+      conn = authed_conn(conn, user)
+      conn = post(conn, "/api/channel-configs", %{config: %{}})
+      assert json_response(conn, 422)["errors"]["mcp_server"] != nil
+    end
+  end
+
   describe "DELETE /api/channel-configs/:id (delete)" do
     test "deletes a channel config", %{conn: conn} do
       user = create_user("chan_delete@example.com")

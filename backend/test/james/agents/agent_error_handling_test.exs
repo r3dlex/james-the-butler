@@ -7,6 +7,7 @@ defmodule James.Agents.AgentErrorHandlingTest do
   use James.DataCase
 
   alias James.{Accounts, Hosts, Sessions, Tasks}
+  alias James.Test.MockLLMProvider
 
   alias James.Agents.{
     BrowserAgent,
@@ -16,6 +17,12 @@ defmodule James.Agents.AgentErrorHandlingTest do
     ResearchAgent,
     SecurityAgent
   }
+
+  setup do
+    MockLLMProvider.flush()
+    MockLLMProvider.push_response({:error, "ANTHROPIC_API_KEY not configured"})
+    :ok
+  end
 
   # Map logical agent types to valid session agent_type values
   @session_agent_type %{

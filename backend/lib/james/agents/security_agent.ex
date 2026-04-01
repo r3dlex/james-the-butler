@@ -6,8 +6,7 @@ defmodule James.Agents.SecurityAgent do
 
   use GenServer, restart: :temporary
 
-  alias James.Providers.Anthropic
-  alias James.{Sessions, Tokens}
+  alias James.{LLMProvider, Sessions, Tokens}
 
   defstruct [:session_id, :task_id, :messages, :system_prompt, :model, :working_dirs]
 
@@ -103,13 +102,13 @@ defmodule James.Agents.SecurityAgent do
 
     opts = if state.model, do: Keyword.put(opts, :model, state.model), else: opts
 
-    case Anthropic.stream_message(state.messages, opts) do
+    case LLMProvider.configured().stream_message(state.messages, opts) do
       {:ok, %{content: content, usage: usage, stop_reason: stop_reason}} ->
         {:ok, message} =
           Sessions.create_message(%{
             session_id: state.session_id,
             role: "assistant",
-            content: content,
+            content: extract_text_content(content),
             token_count: Map.get(usage, :output_tokens, 0),
             model: state.model || "claude-sonnet-4-20250514"
           })
@@ -172,7 +171,7 @@ defmodule James.Agents.SecurityAgent do
       file_pattern = Map.get(input, "file_pattern", "*")
       args = ["-rn", pattern, dir, "--include=#{file_pattern}"]
 
-      case System.cmd("grep", args, stderr_to_stdout: true, timeout: 15_000) do
+      case System.cmd("grep", args, stderr_to_stdout: true) do
         {output, 0} -> String.slice(output, 0, 10_000)
         {_output, 1} -> "No matches found."
         {output, _} -> "Error: #{output}"
@@ -207,6 +206,14 @@ defmodule James.Agents.SecurityAgent do
   end
 
   defp execute_tool(name, _input, _state), do: "Unknown tool: #{name}"
+
+  defp extract_text_content(content) when is_binary(content), do: content
+
+  defp extract_text_content(content) when is_list(content) do
+    content
+    |> Enum.filter(fn b -> is_map(b) and Map.get(b, "type") == "text" end)
+    |> Enum.map_join("\n", fn b -> Map.get(b, "text", "") end)
+  end
 
   defp path_allowed?(path, working_dirs) do
     expanded = Path.expand(path)

@@ -7,6 +7,8 @@ defmodule James.Providers.OpenAI do
   `James.Providers.Anthropic` for easy provider swapping.
   """
 
+  @behaviour James.LLMProvider
+
   @default_model "gpt-4o"
   @default_url "https://api.openai.com"
 

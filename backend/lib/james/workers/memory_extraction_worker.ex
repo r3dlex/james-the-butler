@@ -7,8 +7,7 @@ defmodule James.Workers.MemoryExtractionWorker do
 
   use Oban.Worker, queue: :memory, max_attempts: 3
 
-  alias James.{Embeddings, Memories, Sessions}
-  alias James.Providers.Anthropic
+  alias James.{Embeddings, LLMProvider, Memories, Sessions}
 
   @extraction_prompt """
   You are a memory extraction system. Analyze the conversation and extract
@@ -77,7 +76,7 @@ defmodule James.Workers.MemoryExtractionWorker do
   defp extract_memories(conversation) do
     messages = [%{role: "user", content: conversation}]
 
-    case Anthropic.send_message(messages,
+    case LLMProvider.configured().send_message(messages,
            system: @extraction_prompt,
            model: "claude-haiku-3-20240307",
            max_tokens: 1024

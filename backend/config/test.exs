@@ -17,3 +17,6 @@ config :james, Oban, testing: :inline
 
 # Print only warnings and errors during test
 config :logger, level: :warning
+
+# Use mock LLM provider in tests to avoid real API calls
+config :james, :llm_provider, James.Test.MockLLMProvider

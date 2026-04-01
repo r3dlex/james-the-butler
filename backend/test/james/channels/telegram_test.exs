@@ -14,6 +14,19 @@ defmodule James.Channels.TelegramTest do
     session
   end
 
+  describe "confirmed_timeout/0" do
+    test "returns the configured timeout in seconds" do
+      assert is_integer(Telegram.confirmed_timeout())
+      assert Telegram.confirmed_timeout() > 0
+    end
+  end
+
+  describe "handle_message/2 (default opts)" do
+    test "returns {:error, :no_user} when called with 2 args and no existing thread" do
+      assert {:error, :no_user} = Telegram.handle_message(99_900_001, "hi")
+    end
+  end
+
   describe "handle_voice/3" do
     test "delegates to handle_message and returns {:error, :no_user} when no user_id and no thread" do
       # Voice with no existing thread and no user_id falls through to handle_new_thread -> no_user

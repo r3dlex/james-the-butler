@@ -4,6 +4,8 @@ defmodule James.Providers.Anthropic do
   Parses SSE events and calls a callback for each content delta.
   """
 
+  @behaviour James.LLMProvider
+
   @default_model "claude-sonnet-4-20250514"
   @default_url "https://api.anthropic.com"
 

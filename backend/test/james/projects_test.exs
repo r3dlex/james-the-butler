@@ -70,6 +70,15 @@ defmodule James.ProjectsTest do
     end
   end
 
+  describe "get_project!/1" do
+    test "returns project by id" do
+      user = create_user("get_bang_proj@example.com")
+      project = create_project(user)
+      found = Projects.get_project!(project.id)
+      assert found.id == project.id
+    end
+  end
+
   describe "get_project/1" do
     test "returns project by id" do
       user = create_user("get_proj@example.com")

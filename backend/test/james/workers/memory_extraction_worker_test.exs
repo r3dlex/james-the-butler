@@ -1,8 +1,14 @@
 defmodule James.Workers.MemoryExtractionWorkerTest do
   use James.DataCase
 
-  alias James.{Accounts, Hosts, Sessions}
+  alias James.{Accounts, Hosts, Memories, Sessions}
+  alias James.Test.MockLLMProvider
   alias James.Workers.MemoryExtractionWorker
+
+  setup do
+    MockLLMProvider.flush()
+    :ok
+  end
 
   defp create_user do
     {:ok, user} =
@@ -86,6 +92,97 @@ defmodule James.Workers.MemoryExtractionWorkerTest do
           model: "claude-sonnet-4-20250514"
         })
       end)
+
+      job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
+      assert :ok = MemoryExtractionWorker.perform(job)
+    end
+  end
+
+  describe "perform/1 — with mock LLM provider" do
+    test "extracts and stores memories from valid JSON array response" do
+      user = create_user()
+      session = create_session(user)
+
+      Sessions.create_message(%{session_id: session.id, role: "user", content: "I use Elixir."})
+
+      Sessions.create_message(%{
+        session_id: session.id,
+        role: "assistant",
+        content: "Great choice!"
+      })
+
+      MockLLMProvider.push_response({:ok, %{
+        content: ~s(["User prefers Elixir programming language"]),
+        usage: %{input_tokens: 30, output_tokens: 10}
+      }})
+
+      job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
+      assert :ok = MemoryExtractionWorker.perform(job)
+
+      memories = Memories.list_memories(user.id)
+      assert Enum.any?(memories, fn m -> m.content =~ "Elixir" end)
+    end
+
+    test "handles empty JSON array — stores no memories" do
+      user = create_user()
+      session = create_session(user)
+
+      Sessions.create_message(%{session_id: session.id, role: "user", content: "Hi"})
+      Sessions.create_message(%{session_id: session.id, role: "assistant", content: "Hello!"})
+
+      MockLLMProvider.push_response({:ok, %{content: "[]", usage: %{input_tokens: 10, output_tokens: 2}}})
+
+      job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
+      assert :ok = MemoryExtractionWorker.perform(job)
+
+      assert Memories.list_memories(user.id) == []
+    end
+
+    test "handles JSON array embedded in text" do
+      user = create_user()
+      session = create_session(user)
+
+      Sessions.create_message(%{session_id: session.id, role: "user", content: "I love Erlang."})
+      Sessions.create_message(%{session_id: session.id, role: "assistant", content: "Nice!"})
+
+      MockLLMProvider.push_response({:ok, %{
+        content: ~s(Here are the memories: ["User loves Erlang"]\n),
+        usage: %{input_tokens: 20, output_tokens: 8}
+      }})
+
+      job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
+      assert :ok = MemoryExtractionWorker.perform(job)
+
+      memories = Memories.list_memories(user.id)
+      assert Enum.any?(memories, fn m -> m.content =~ "Erlang" end)
+    end
+
+    test "handles non-parseable text gracefully (no crash, no memories)" do
+      user = create_user()
+      session = create_session(user)
+
+      Sessions.create_message(%{session_id: session.id, role: "user", content: "Hello"})
+      Sessions.create_message(%{session_id: session.id, role: "assistant", content: "Hi!"})
+
+      MockLLMProvider.push_response({:ok, %{
+        content: "Nothing worth remembering here.",
+        usage: %{input_tokens: 10, output_tokens: 5}
+      }})
+
+      job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
+      assert :ok = MemoryExtractionWorker.perform(job)
+
+      assert Memories.list_memories(user.id) == []
+    end
+
+    test "handles LLM provider error gracefully" do
+      user = create_user()
+      session = create_session(user)
+
+      Sessions.create_message(%{session_id: session.id, role: "user", content: "test"})
+      Sessions.create_message(%{session_id: session.id, role: "assistant", content: "ok"})
+
+      MockLLMProvider.push_response({:error, "provider error"})
 
       job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
       assert :ok = MemoryExtractionWorker.perform(job)

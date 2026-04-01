@@ -205,4 +205,377 @@ defmodule James.OAuthTest do
       end
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # exchange_code/2 — error paths
+  # The OAuth module's provider URLs are hardcoded compile-time constants.
+  # In test env the HTTP requests fail immediately (connection refused/DNS),
+  # which exercises the {:error, reason} code paths.
+  # ---------------------------------------------------------------------------
+
+  describe "exchange_code/2 — raises when credentials missing" do
+    test "raises RuntimeError for google when client_id is not set" do
+      assert_raise RuntimeError, ~r/GOOGLE_CLIENT_ID not set/, fn ->
+        OAuth.exchange_code("google", "some-code")
+      end
+    end
+
+    test "raises RuntimeError for google when client_secret is not set" do
+      System.put_env(@google_id_key, "test-id")
+
+      assert_raise RuntimeError, ~r/GOOGLE_CLIENT_SECRET not set/, fn ->
+        OAuth.exchange_code("google", "some-code")
+      end
+    end
+
+    test "raises RuntimeError for github when client_id is not set" do
+      assert_raise RuntimeError, ~r/GITHUB_CLIENT_ID not set/, fn ->
+        OAuth.exchange_code("github", "some-code")
+      end
+    end
+
+    test "raises RuntimeError for github when client_secret is not set" do
+      System.put_env(@github_id_key, "test-id")
+
+      assert_raise RuntimeError, ~r/GITHUB_CLIENT_SECRET not set/, fn ->
+        OAuth.exchange_code("github", "some-code")
+      end
+    end
+
+    test "raises RuntimeError for microsoft when client_id is not set" do
+      assert_raise RuntimeError, ~r/MICROSOFT_CLIENT_ID not set/, fn ->
+        OAuth.exchange_code("microsoft", "some-code")
+      end
+    end
+
+    test "raises RuntimeError for microsoft when client_secret is not set" do
+      System.put_env(@microsoft_id_key, "test-id")
+
+      assert_raise RuntimeError, ~r/MICROSOFT_CLIENT_SECRET not set/, fn ->
+        OAuth.exchange_code("microsoft", "some-code")
+      end
+    end
+  end
+
+  describe "exchange_code/2 — network failure returns error" do
+    # With credentials set, the requests go out to real provider URLs.
+    # In the test environment (no internet/provider), the HTTP call fails
+    # immediately with a connection error, exercising the {:error, _} clause.
+
+    test "returns {:error, _} for google when HTTP call fails" do
+      System.put_env(@google_id_key, "test-id")
+      System.put_env(@google_secret_key, "test-secret")
+
+      assert {:error, reason} = OAuth.exchange_code("google", "bad-code")
+      assert is_binary(reason)
+    end
+
+    test "returns {:error, _} for github when HTTP call fails" do
+      System.put_env(@github_id_key, "test-id")
+      System.put_env(@github_secret_key, "test-secret")
+
+      assert {:error, reason} = OAuth.exchange_code("github", "bad-code")
+      assert is_binary(reason)
+    end
+
+    test "returns {:error, _} for microsoft when HTTP call fails" do
+      System.put_env(@microsoft_id_key, "test-id")
+      System.put_env(@microsoft_secret_key, "test-secret")
+
+      assert {:error, reason} = OAuth.exchange_code("microsoft", "bad-code")
+      assert is_binary(reason)
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # exchange_code/2 — with Bypass (token + profile flows)
+  # ---------------------------------------------------------------------------
+
+  describe "exchange_code/2 — with Bypass (google)" do
+    setup do
+      bypass = Bypass.open()
+      base = "http://localhost:#{bypass.port}"
+      System.put_env(@google_id_key, "test-google-id")
+      System.put_env(@google_secret_key, "test-google-secret")
+      System.put_env("OAUTH_GOOGLE_TOKEN_URL", "#{base}/google/token")
+      System.put_env("OAUTH_GOOGLE_USERINFO_URL", "#{base}/google/userinfo")
+
+      on_exit(fn ->
+        System.delete_env("OAUTH_GOOGLE_TOKEN_URL")
+        System.delete_env("OAUTH_GOOGLE_USERINFO_URL")
+      end)
+
+      {:ok, bypass: bypass}
+    end
+
+    test "returns user profile on successful exchange", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "POST", "/google/token", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(200, Jason.encode!(%{"access_token" => "tok-123"}))
+      end)
+
+      Bypass.expect_once(bypass, "GET", "/google/userinfo", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{"sub" => "g-uid-1", "email" => "g@example.com", "name" => "G User"})
+        )
+      end)
+
+      assert {:ok, profile} = OAuth.exchange_code("google", "auth-code")
+      assert profile.provider == "google"
+      assert profile.email == "g@example.com"
+      assert profile.uid == "g-uid-1"
+    end
+
+    test "returns error when token request returns no access_token", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "POST", "/google/token", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(200, Jason.encode!(%{"error" => "invalid_grant"}))
+      end)
+
+      assert {:error, reason} = OAuth.exchange_code("google", "bad-code")
+      assert reason =~ "token error"
+    end
+
+    test "returns error when userinfo request fails", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "POST", "/google/token", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(200, Jason.encode!(%{"access_token" => "tok-abc"}))
+      end)
+
+      Bypass.expect_once(bypass, "GET", "/google/userinfo", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(401, Jason.encode!(%{"error" => "unauthorized"}))
+      end)
+
+      assert {:error, reason} = OAuth.exchange_code("google", "auth-code")
+      assert reason =~ "profile error"
+    end
+  end
+
+  describe "exchange_code/2 — with Bypass (github)" do
+    setup do
+      bypass = Bypass.open()
+      base = "http://localhost:#{bypass.port}"
+      System.put_env(@github_id_key, "test-github-id")
+      System.put_env(@github_secret_key, "test-github-secret")
+      System.put_env("OAUTH_GITHUB_TOKEN_URL", "#{base}/github/token")
+      System.put_env("OAUTH_GITHUB_USERINFO_URL", "#{base}/github/user")
+      System.put_env("OAUTH_GITHUB_EMAILS_URL", "#{base}/github/emails")
+
+      on_exit(fn ->
+        System.delete_env("OAUTH_GITHUB_TOKEN_URL")
+        System.delete_env("OAUTH_GITHUB_USERINFO_URL")
+        System.delete_env("OAUTH_GITHUB_EMAILS_URL")
+      end)
+
+      {:ok, bypass: bypass}
+    end
+
+    test "returns profile with email in user response", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "POST", "/github/token", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(200, Jason.encode!(%{"access_token" => "gh-tok-1"}))
+      end)
+
+      Bypass.expect_once(bypass, "GET", "/github/user", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "id" => 42,
+            "login" => "ghuser",
+            "name" => "GitHub User",
+            "email" => "gh@example.com"
+          })
+        )
+      end)
+
+      assert {:ok, profile} = OAuth.exchange_code("github", "gh-code")
+      assert profile.provider == "github"
+      assert profile.email == "gh@example.com"
+    end
+
+    test "fetches primary email when user email is null", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "POST", "/github/token", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(200, Jason.encode!(%{"access_token" => "gh-tok-2"}))
+      end)
+
+      Bypass.expect_once(bypass, "GET", "/github/user", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{"id" => 99, "login" => "noemail", "name" => "No Email", "email" => nil})
+        )
+      end)
+
+      Bypass.expect_once(bypass, "GET", "/github/emails", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!([
+            %{"email" => "secondary@example.com", "primary" => false},
+            %{"email" => "primary@example.com", "primary" => true}
+          ])
+        )
+      end)
+
+      assert {:ok, profile} = OAuth.exchange_code("github", "gh-code")
+      assert profile.email == "primary@example.com"
+    end
+
+    test "returns nil email when emails endpoint fails", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "POST", "/github/token", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(200, Jason.encode!(%{"access_token" => "gh-tok-3"}))
+      end)
+
+      Bypass.expect_once(bypass, "GET", "/github/user", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{"id" => 77, "login" => "failmail", "name" => "Fail Mail", "email" => nil})
+        )
+      end)
+
+      # Use stub (0+ calls allowed) and 404 (not retried by Req)
+      Bypass.stub(bypass, "GET", "/github/emails", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(404, Jason.encode!(%{"error" => "not found"}))
+      end)
+
+      assert {:ok, profile} = OAuth.exchange_code("github", "gh-code")
+      assert is_nil(profile.email)
+    end
+
+    test "returns error when github token response has no access_token", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "POST", "/github/token", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(200, Jason.encode!(%{"error" => "bad_verification_code"}))
+      end)
+
+      assert {:error, reason} = OAuth.exchange_code("github", "bad")
+      assert reason =~ "GitHub token error"
+    end
+
+    test "returns error when github profile request fails", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "POST", "/github/token", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(200, Jason.encode!(%{"access_token" => "gh-tok-4"}))
+      end)
+
+      Bypass.expect_once(bypass, "GET", "/github/user", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(403, Jason.encode!(%{"message" => "Forbidden"}))
+      end)
+
+      assert {:error, reason} = OAuth.exchange_code("github", "gh-code")
+      assert reason =~ "GitHub profile error"
+    end
+  end
+
+  describe "exchange_code/2 — with Bypass (microsoft)" do
+    setup do
+      bypass = Bypass.open()
+      base = "http://localhost:#{bypass.port}"
+      System.put_env(@microsoft_id_key, "test-ms-id")
+      System.put_env(@microsoft_secret_key, "test-ms-secret")
+      System.put_env("OAUTH_MICROSOFT_TOKEN_URL", "#{base}/ms/token")
+      System.put_env("OAUTH_MICROSOFT_USERINFO_URL", "#{base}/ms/me")
+
+      on_exit(fn ->
+        System.delete_env("OAUTH_MICROSOFT_TOKEN_URL")
+        System.delete_env("OAUTH_MICROSOFT_USERINFO_URL")
+      end)
+
+      {:ok, bypass: bypass}
+    end
+
+    test "returns profile with displayName and mail", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "POST", "/ms/token", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(200, Jason.encode!(%{"access_token" => "ms-tok-1"}))
+      end)
+
+      Bypass.expect_once(bypass, "GET", "/ms/me", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "id" => "ms-uid-1",
+            "displayName" => "MS User",
+            "mail" => "ms@example.com",
+            "userPrincipalName" => "ms@tenant.onmicrosoft.com"
+          })
+        )
+      end)
+
+      assert {:ok, profile} = OAuth.exchange_code("microsoft", "ms-code")
+      assert profile.provider == "microsoft"
+      assert profile.email == "ms@example.com"
+      assert profile.uid == "ms-uid-1"
+    end
+
+    test "falls back to userPrincipalName when mail is nil", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "POST", "/ms/token", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(200, Jason.encode!(%{"access_token" => "ms-tok-2"}))
+      end)
+
+      Bypass.expect_once(bypass, "GET", "/ms/me", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "id" => "ms-uid-2",
+            "displayName" => "MS User 2",
+            "mail" => nil,
+            "userPrincipalName" => "ms2@tenant.onmicrosoft.com"
+          })
+        )
+      end)
+
+      assert {:ok, profile} = OAuth.exchange_code("microsoft", "ms-code")
+      assert profile.email == "ms2@tenant.onmicrosoft.com"
+    end
+
+    test "returns error when microsoft profile request fails", %{bypass: bypass} do
+      Bypass.expect_once(bypass, "POST", "/ms/token", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(200, Jason.encode!(%{"access_token" => "ms-tok-3"}))
+      end)
+
+      Bypass.expect_once(bypass, "GET", "/ms/me", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(401, Jason.encode!(%{"error" => "InvalidAuthenticationToken"}))
+      end)
+
+      assert {:error, reason} = OAuth.exchange_code("microsoft", "ms-code")
+      assert reason =~ "Microsoft profile error"
+    end
+  end
 end

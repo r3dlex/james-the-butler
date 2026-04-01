@@ -7,8 +7,7 @@ defmodule James.Workers.NarrativeSummaryWorker do
 
   use Oban.Worker, queue: :memory, max_attempts: 3
 
-  alias James.{ExecutionHistory, Sessions}
-  alias James.Providers.Anthropic
+  alias James.{ExecutionHistory, LLMProvider, Sessions}
 
   @summary_prompt """
   You are a summarization assistant. Given the conversation below, write a concise
@@ -34,7 +33,7 @@ defmodule James.Workers.NarrativeSummaryWorker do
   end
 
   defp generate_and_store(session_id, conversation) do
-    case Anthropic.send_message(
+    case LLMProvider.configured().send_message(
            [%{role: "user", content: conversation}],
            system: @summary_prompt,
            model: "claude-haiku-3-20240307",
