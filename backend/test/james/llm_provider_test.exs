@@ -12,11 +12,13 @@ defmodule James.LLMProviderTest do
 
     test "configured module implements stream_message/2" do
       provider = LLMProvider.configured()
+      Code.ensure_loaded!(provider)
       assert function_exported?(provider, :stream_message, 2)
     end
 
     test "configured module implements send_message/2" do
       provider = LLMProvider.configured()
+      Code.ensure_loaded!(provider)
       assert function_exported?(provider, :send_message, 2)
     end
   end

@@ -332,9 +332,14 @@ defmodule James.OpenClaw.Orchestrator do
   defp stop_agent_if_alive(nil), do: :ok
 
   defp stop_agent_if_alive(%{pid: pid, ref: ref}) do
+    Process.demonitor(ref, [:flush])
+
     if Process.alive?(pid) do
-      Process.demonitor(ref, [:flush])
-      GenServer.stop(pid, :normal)
+      try do
+        GenServer.stop(pid, :normal, 5_000)
+      catch
+        :exit, _ -> :ok
+      end
     end
   end
 
