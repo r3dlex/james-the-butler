@@ -16,6 +16,9 @@ defmodule James.MixProject do
           # Streaming providers: consume_stream uses wrong Req 0.5 message format
           James.Providers.Anthropic,
           James.Providers.OpenAI,
+          James.Providers.Gemini,
+          # Delegates to OpenAI; streaming coverage blocked by same Req limitation
+          James.Providers.OpenAICompatible,
           # DesktopAgent run_loop requires a live daemon TCP connection
           James.Agents.DesktopAgent,
           # Auto-generated Ecto type handler for pgvector

@@ -29,27 +29,24 @@ defmodule JamesWeb.AuthController do
   # GET /api/auth/:provider/callback — handle provider redirect back
   def oauth_callback(conn, %{"provider" => provider, "code" => code}) do
     case OAuth.exchange_code(provider, code) do
+      {:ok, %{provider: _prov, uid: _uid, email: nil}} ->
+        # Provider did not return an email — cannot create or link account
+        error_url = "#{frontend_url()}/login?error=missing_email"
+        redirect(conn, external: error_url)
+
       {:ok, %{provider: prov, uid: uid, email: email, name: name}} ->
-        user =
-          case Accounts.find_or_create_user_by_oauth(prov, uid, %{email: email, name: name}) do
-            {:ok, u} ->
-              u
+        case Accounts.find_or_create_user_by_oauth(prov, uid, %{email: email, name: name}) do
+          {:ok, user} ->
+            {:ok, token} = Auth.generate_token(user)
+            {:ok, refresh} = Auth.generate_refresh_token(user)
 
-            {:error, _} ->
-              # Fallback: try by email (provider may have changed uid representation)
-              Accounts.get_user_by_email(email)
-          end
+            # Redirect to frontend callback page with token in query params
+            redirect_url = "#{frontend_url()}/auth/callback?token=#{token}&refresh=#{refresh}"
+            redirect(conn, external: redirect_url)
 
-        if user do
-          {:ok, token} = Auth.generate_token(user)
-          {:ok, refresh} = Auth.generate_refresh_token(user)
-
-          # Redirect to frontend callback page with token in query params
-          redirect_url = "#{frontend_url()}/auth/callback?token=#{token}&refresh=#{refresh}"
-          redirect(conn, external: redirect_url)
-        else
-          error_url = "#{frontend_url()}/login?error=account_error"
-          redirect(conn, external: error_url)
+          {:error, reason} ->
+            error_url = "#{frontend_url()}/login?error=#{URI.encode(inspect(reason))}"
+            redirect(conn, external: error_url)
         end
 
       {:error, reason} ->

@@ -57,6 +57,12 @@ defmodule James.Personality do
   end
 
   @doc """
+  Returns all built-in presets as a list of maps with :id, :name, :prompt.
+  Alias for `list_presets/0`.
+  """
+  def presets, do: list_presets()
+
+  @doc """
   Resolves the effective system prompt for a session.
   Checks session personality → project personality → user personality → default.
   """

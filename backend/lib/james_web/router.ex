@@ -57,6 +57,9 @@ defmodule JamesWeb.Router do
     put "/sessions/:id", SessionController, :update
     delete "/sessions/:id", SessionController, :delete
     post "/sessions/:id/messages", SessionController, :send_message
+    post "/sessions/:id/suspend", SessionController, :suspend
+    post "/sessions/:id/resume", SessionController, :resume
+    post "/sessions/:id/terminate", SessionController, :terminate
 
     # Projects
     get "/projects", ProjectController, :index
@@ -104,5 +107,9 @@ defmodule JamesWeb.Router do
 
     # Channel configs
     resources "/channel-configs", ChannelConfigController, only: [:index, :create, :delete]
+
+    # Personality presets and custom profiles
+    get "/personality/presets", PersonalityController, :presets
+    resources "/personality/profiles", PersonalityController, except: [:new, :edit, :show]
   end
 end

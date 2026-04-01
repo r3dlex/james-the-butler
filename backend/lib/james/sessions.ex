@@ -4,6 +4,7 @@ defmodule James.Sessions do
   """
 
   import Ecto.Query
+  alias Ecto.Multi
   alias James.Repo
   alias James.Sessions.{Checkpoint, Message, Session}
 
@@ -46,6 +47,46 @@ defmodule James.Sessions do
 
   def archive_session(%Session{} = session) do
     update_session(session, %{status: "archived"})
+  end
+
+  def suspend_session(%Session{status: "active"} = session) do
+    messages = list_messages(session.id)
+
+    snapshot =
+      Enum.map(messages, fn m ->
+        %{role: m.role, content: m.content, inserted_at: m.inserted_at}
+      end)
+
+    checkpoint_attrs = %{
+      session_id: session.id,
+      type: "implicit",
+      conversation_snapshot: %{messages: snapshot}
+    }
+
+    result =
+      Multi.new()
+      |> Multi.insert(:checkpoint, Checkpoint.changeset(%Checkpoint{}, checkpoint_attrs))
+      |> Multi.update(:session, Session.changeset(session, %{status: "suspended"}))
+      |> Repo.transaction()
+
+    case result do
+      {:ok, %{session: updated}} -> {:ok, updated}
+      {:error, _op, changeset, _changes} -> {:error, changeset}
+    end
+  end
+
+  def suspend_session(%Session{}), do: {:error, :invalid_transition}
+
+  def resume_session(%Session{status: "suspended"} = session) do
+    update_session(session, %{status: "active"})
+  end
+
+  def resume_session(%Session{}), do: {:error, :invalid_transition}
+
+  def terminate_session(%Session{status: "terminated"}), do: {:error, :invalid_transition}
+
+  def terminate_session(%Session{} = session) do
+    update_session(session, %{status: "terminated"})
   end
 
   def touch_session(%Session{} = session) do

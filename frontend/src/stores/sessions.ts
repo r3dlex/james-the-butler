@@ -123,6 +123,27 @@ export const useSessionStore = defineStore("sessions", () => {
     if (idx !== -1) sessions.value[idx] = updated;
   }
 
+  async function suspendSession(id: string) {
+    const data = await api.post<{ session: Session }>(
+      `/api/sessions/${id}/suspend`,
+    );
+    updateSession(data.session);
+  }
+
+  async function resumeSession(id: string) {
+    const data = await api.post<{ session: Session }>(
+      `/api/sessions/${id}/resume`,
+    );
+    updateSession(data.session);
+  }
+
+  async function terminateSession(id: string) {
+    const data = await api.post<{ session: Session }>(
+      `/api/sessions/${id}/terminate`,
+    );
+    updateSession(data.session);
+  }
+
   return {
     sessions,
     activeSessionId,
@@ -138,5 +159,8 @@ export const useSessionStore = defineStore("sessions", () => {
     updateSession,
     autoNameSession,
     renameSession,
+    suspendSession,
+    resumeSession,
+    terminateSession,
   };
 });

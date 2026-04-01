@@ -98,6 +98,66 @@ defmodule JamesWeb.SessionController do
     end
   end
 
+  # POST /api/sessions/:id/suspend
+  def suspend(conn, %{"id" => id}) do
+    case Sessions.get_session(id) do
+      nil ->
+        conn |> put_status(:not_found) |> json(%{error: "not found"})
+
+      session ->
+        case Sessions.suspend_session(session) do
+          {:ok, updated} ->
+            conn |> json(%{session: session_json(updated)})
+
+          {:error, :invalid_transition} ->
+            conn |> put_status(:unprocessable_entity) |> json(%{error: "invalid transition"})
+
+          {:error, changeset} ->
+            conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
+        end
+    end
+  end
+
+  # POST /api/sessions/:id/resume
+  def resume(conn, %{"id" => id}) do
+    case Sessions.get_session(id) do
+      nil ->
+        conn |> put_status(:not_found) |> json(%{error: "not found"})
+
+      session ->
+        case Sessions.resume_session(session) do
+          {:ok, updated} ->
+            conn |> json(%{session: session_json(updated)})
+
+          {:error, :invalid_transition} ->
+            conn |> put_status(:unprocessable_entity) |> json(%{error: "invalid transition"})
+
+          {:error, changeset} ->
+            conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
+        end
+    end
+  end
+
+  # POST /api/sessions/:id/terminate
+  def terminate(conn, %{"id" => id}) do
+    case Sessions.get_session(id) do
+      nil ->
+        conn |> put_status(:not_found) |> json(%{error: "not found"})
+
+      session ->
+        case Sessions.terminate_session(session) do
+          {:ok, updated} ->
+            conn |> json(%{session: session_json(updated)})
+
+          {:error, :invalid_transition} ->
+            conn |> put_status(:unprocessable_entity) |> json(%{error: "invalid transition"})
+
+          {:error, changeset} ->
+            conn |> put_status(:unprocessable_entity) |> json(%{errors: format_errors(changeset)})
+        end
+    end
+  end
+
   # POST /api/sessions/:id/messages
   def send_message(conn, %{"id" => id} = params) do
     user = conn.assigns.current_user
