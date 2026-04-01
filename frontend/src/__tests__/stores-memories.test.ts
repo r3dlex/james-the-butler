@@ -194,7 +194,9 @@ describe("useMemoryStore", () => {
     const updated = { ...memory, content: "New content" };
     vi.mocked(api.put).mockResolvedValueOnce({ memory: updated });
 
-    const result = await store.updateMemory("upd-1", { content: "New content" });
+    const result = await store.updateMemory("upd-1", {
+      content: "New content",
+    });
 
     expect(api.put).toHaveBeenCalledWith("/api/memories/upd-1", {
       content: "New content",

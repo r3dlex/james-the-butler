@@ -123,7 +123,20 @@ defmodule James.OpenClaw.Orchestrator do
   def handle_call({:start_session, attrs}, _from, state) do
     case Sessions.create_session(attrs) do
       {:ok, session} ->
-        handle_start_session_ok(session, state)
+        case start_agent_for_session(session) do
+          {:ok, pid} ->
+            ref = Process.monitor(pid)
+
+            active =
+              Map.put(state.active_sessions, session.id, %{pid: pid, ref: ref})
+
+            broadcast_session_event(:session_started, session)
+
+            {:reply, {:ok, session, pid}, %{state | active_sessions: active}}
+
+          {:error, reason} ->
+            {:reply, {:error, reason}, state}
+        end
 
       {:error, changeset} ->
         {:reply, {:error, changeset}, state}
@@ -199,9 +212,11 @@ defmodule James.OpenClaw.Orchestrator do
   # ---- DOWN messages ----
 
   @impl true
-  def handle_info({:DOWN, ref, :process, _pid, _reason}, state) do
-    active_tasks = Map.delete(state.active_tasks, ref)
+  def handle_info({:DOWN, ref, :process, pid, _reason}, state) do
+    # Could be from a dispatched task agent or a session agent
+    {active_tasks, _} = Map.pop(state.active_tasks, ref)
 
+    # Check active_sessions for a matching ref
     {session_id, _entry} =
       Enum.find(state.active_sessions, {nil, nil}, fn {_id, entry} -> entry.ref == ref end)
 
@@ -212,7 +227,9 @@ defmodule James.OpenClaw.Orchestrator do
         state.active_sessions
       end
 
-    {:noreply, %{state | active_tasks: active_tasks, active_sessions: active_sessions}}
+    _ = pid
+
+    {:noreply, %{state | active_tasks: active_tasks || %{}, active_sessions: active_sessions}}
   end
 
   def handle_info(:heartbeat, state) do
@@ -225,17 +242,55 @@ defmodule James.OpenClaw.Orchestrator do
   # Private
   # ---------------------------------------------------------------------------
 
-  defp handle_start_session_ok(session, state) do
-    case start_agent_for_session(session) do
-      {:ok, pid} ->
-        ref = Process.monitor(pid)
-        active = Map.put(state.active_sessions, session.id, %{pid: pid, ref: ref})
-        broadcast_session_event(:session_started, session)
-        {:reply, {:ok, session, pid}, %{state | active_sessions: active}}
+  defp local_hostname do
+    :net_adm.localhost() |> to_string()
+  end
 
-      {:error, reason} ->
-        {:reply, {:error, reason}, state}
+  defp upsert_host(hostname) do
+    now = DateTime.utc_now()
+
+    case Hosts.list_hosts() |> Enum.find(&(&1.name == hostname)) do
+      nil ->
+        Hosts.create_host(%{name: hostname, last_seen_at: now, status: "online"})
+
+      existing ->
+        Hosts.update_host(existing, %{last_seen_at: now, status: "online"})
     end
+  end
+
+  defp do_heartbeat(host) do
+    case Hosts.heartbeat(host) do
+      {:ok, updated} -> updated
+      {:error, _} -> host
+    end
+  end
+
+  defp schedule_heartbeat do
+    Process.send_after(self(), :heartbeat, @heartbeat_interval)
+  end
+
+  defp start_agent_for_session(session) do
+    agent_module = agent_for_type(session.agent_type)
+
+    opts = [
+      session_id: session.id,
+      model: nil
+    ]
+
+    AgentSupervisor.start_agent(agent_module, opts)
+  end
+
+  defp pop_active_session(active_sessions, session_id) do
+    {entry, remaining} = Map.pop(active_sessions, session_id)
+    {remaining, entry}
+  end
+
+  defp broadcast_session_event(event, session) do
+    Phoenix.PubSub.broadcast(
+      James.PubSub,
+      "orchestrator:sessions",
+      {event, session}
+    )
   end
 
   defp do_suspend_session(session, session_id, state) do
@@ -281,52 +336,6 @@ defmodule James.OpenClaw.Orchestrator do
       Process.demonitor(ref, [:flush])
       GenServer.stop(pid, :normal)
     end
-  end
-
-  defp local_hostname do
-    :net_adm.localhost() |> to_string()
-  end
-
-  defp upsert_host(hostname) do
-    now = DateTime.utc_now()
-
-    case Hosts.list_hosts() |> Enum.find(&(&1.name == hostname)) do
-      nil ->
-        Hosts.create_host(%{name: hostname, last_seen_at: now, status: "online"})
-
-      existing ->
-        Hosts.update_host(existing, %{last_seen_at: now, status: "online"})
-    end
-  end
-
-  defp do_heartbeat(host) do
-    case Hosts.heartbeat(host) do
-      {:ok, updated} -> updated
-      {:error, _} -> host
-    end
-  end
-
-  defp schedule_heartbeat do
-    Process.send_after(self(), :heartbeat, @heartbeat_interval)
-  end
-
-  defp start_agent_for_session(session) do
-    agent_module = agent_for_type(session.agent_type)
-    opts = [session_id: session.id, model: nil]
-    AgentSupervisor.start_agent(agent_module, opts)
-  end
-
-  defp pop_active_session(active_sessions, session_id) do
-    {entry, remaining} = Map.pop(active_sessions, session_id)
-    {remaining, entry}
-  end
-
-  defp broadcast_session_event(event, session) do
-    Phoenix.PubSub.broadcast(
-      James.PubSub,
-      "orchestrator:sessions",
-      {event, session}
-    )
   end
 
   defp agent_for_type("chat"), do: ChatAgent

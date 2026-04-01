@@ -334,7 +334,7 @@ defmodule James.Workers.MemoryExtractionWorkerTest do
           content: "First reply"
         })
 
-      # First extraction with no anchor
+      # First extraction
       MockLLMProvider.push_response(
         {:ok,
          %{
@@ -353,7 +353,7 @@ defmodule James.Workers.MemoryExtractionWorkerTest do
 
       assert :ok = MemoryExtractionWorker.perform(job1)
       memories_after_first = Memories.list_memories(user.id)
-      assert memories_after_first != []
+      assert length(memories_after_first) >= 1
 
       # Add new messages after first extraction
       Sessions.create_message(%{
@@ -368,7 +368,7 @@ defmodule James.Workers.MemoryExtractionWorkerTest do
         content: "Second reply"
       })
 
-      # Second extraction anchored at msg1
+      # Second extraction with last_extracted_message_id set to msg1.id
       MockLLMProvider.push_response(
         {:ok,
          %{

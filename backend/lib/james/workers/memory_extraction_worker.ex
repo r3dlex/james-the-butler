@@ -3,6 +3,12 @@ defmodule James.Workers.MemoryExtractionWorker do
   Oban worker that extracts memories from a session turn.
   Runs after each assistant response to extract decisions, preferences,
   entities, and open questions into the memory store.
+
+  Supports delta extraction via `last_extracted_message_id` argument:
+  when provided, only messages after that ID are processed.
+
+  Duplicate detection is performed before inserting: if a memory with
+  the exact same content already exists for the user, it is skipped.
   """
 
   use Oban.Worker, queue: :memory, max_attempts: 3
@@ -39,8 +45,11 @@ defmodule James.Workers.MemoryExtractionWorker do
 
     messages =
       case last_extracted_message_id do
-        nil -> Sessions.list_messages(session_id)
-        msg_id -> Sessions.list_messages_after(session_id, msg_id)
+        nil ->
+          Sessions.list_messages(session_id)
+
+        msg_id ->
+          Sessions.list_messages_after(session_id, msg_id)
       end
 
     if length(messages) < 2 do
@@ -57,15 +66,16 @@ defmodule James.Workers.MemoryExtractionWorker do
 
   defp extract_and_store(conversation, user_id, session_id) do
     case extract_memories(conversation) do
-      {:ok, extracted} -> store_new_memories(extracted, user_id, session_id)
-      {:error, _reason} -> :ok
-    end
-  end
+      {:ok, extracted} ->
+        Enum.each(extracted, fn text ->
+          unless duplicate?(text, user_id) do
+            store_memory(text, user_id, session_id)
+          end
+        end)
 
-  defp store_new_memories(extracted, user_id, session_id) do
-    extracted
-    |> Enum.reject(&duplicate?(&1, user_id))
-    |> Enum.each(&store_memory(&1, user_id, session_id))
+      {:error, _reason} ->
+        :ok
+    end
   end
 
   defp duplicate?(text, user_id) do

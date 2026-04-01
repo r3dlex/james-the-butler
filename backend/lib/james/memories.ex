@@ -29,7 +29,8 @@ defmodule James.Memories do
   end
 
   @doc """
-  Returns all memories for a user without a default limit cap.
+  Returns all memories for a user without a limit cap.
+  Equivalent to `list_memories/2` with a very large limit.
   """
   def list_memories_for_user(user_id) do
     Repo.all(
@@ -58,9 +59,9 @@ defmodule James.Memories do
   end
 
   @doc """
-  Searches memories using vector cosine distance.
-  Accepts optional `project_id:` keyword to scope results to sessions
-  belonging to a specific project.
+  Searches memories using vector cosine distance when embeddings exist.
+  Accepts optional `project_id:` keyword argument to scope results to
+  sessions belonging to a specific project.
   """
   def search_similar(user_id, embedding, limit \\ 10, opts \\ []) do
     project_id = Keyword.get(opts, :project_id)
@@ -85,7 +86,8 @@ defmodule James.Memories do
   end
 
   @doc """
-  Full-text ILIKE search over memory content.
+  Full-text search over memory content using ILIKE.
+  Falls back for contexts where no embedding vector is available.
   Returns memories whose content contains the query string (case-insensitive).
   """
   def search_text(user_id, query_string) when is_binary(query_string) do

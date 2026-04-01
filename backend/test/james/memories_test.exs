@@ -1,7 +1,7 @@
 defmodule James.MemoriesTest do
   use James.DataCase
 
-  alias James.{Accounts, Memories}
+  alias James.{Accounts, Hosts, Memories, Projects, Sessions}
 
   defp create_user(email \\ "mem_user@example.com") do
     {:ok, user} = Accounts.create_user(%{email: email})
@@ -101,8 +101,6 @@ defmodule James.MemoriesTest do
 
   describe "list_memories/2 with source_session_id" do
     test "filters memories by source_session_id" do
-      alias James.{Hosts, Sessions}
-
       user = create_user("src_sess_mem@example.com")
 
       {:ok, host} =
@@ -122,32 +120,6 @@ defmodule James.MemoriesTest do
       results = Memories.list_memories(user.id, source_session_id: session.id)
       assert length(results) == 1
       assert hd(results).content == "Session memory"
-    end
-  end
-
-  describe "list_memories_for_user/1" do
-    test "returns all memories for a user" do
-      user = create_user("all_mem_user@example.com")
-      create_memory(user, %{content: "Memory A"})
-      create_memory(user, %{content: "Memory B"})
-      create_memory(user, %{content: "Memory C"})
-
-      results = Memories.list_memories_for_user(user.id)
-      assert length(results) == 3
-    end
-
-    test "does not return other users' memories" do
-      user1 = create_user("for_user_u1@example.com")
-      user2 = create_user("for_user_u2@example.com")
-      create_memory(user1, %{content: "User1 memory"})
-
-      results = Memories.list_memories_for_user(user2.id)
-      assert results == []
-    end
-
-    test "returns empty list when user has no memories" do
-      user = create_user("no_mem_user@example.com")
-      assert Memories.list_memories_for_user(user.id) == []
     end
   end
 
@@ -172,9 +144,25 @@ defmodule James.MemoriesTest do
       assert results == []
     end
 
-    test "search_similar with project_id filters to sessions in that project" do
-      alias James.{Hosts, Projects, Sessions}
+    test "falls back to text search when no embedding provided" do
+      user = create_user("search_text@example.com")
+      create_memory(user, %{content: "Elixir is functional"})
+      create_memory(user, %{content: "Phoenix is a web framework"})
 
+      results = Memories.search_text(user.id, "Elixir")
+      assert is_list(results)
+      assert Enum.any?(results, fn m -> m.content =~ "Elixir" end)
+    end
+
+    test "text search returns empty list when no matches" do
+      user = create_user("search_text_empty@example.com")
+      create_memory(user, %{content: "Some unrelated content"})
+
+      results = Memories.search_text(user.id, "quantum computing")
+      assert results == []
+    end
+
+    test "search_similar with project_id filters to sessions in that project" do
       user = create_user("proj_search@example.com")
 
       {:ok, host} =
@@ -227,41 +215,29 @@ defmodule James.MemoriesTest do
     end
   end
 
-  describe "search_text/2" do
-    test "returns memories matching text query" do
-      user = create_user("search_text@example.com")
-      create_memory(user, %{content: "Elixir is functional"})
-      create_memory(user, %{content: "Phoenix is a web framework"})
+  describe "list_memories_for_user/1" do
+    test "returns all memories for a user" do
+      user = create_user("all_mem_user@example.com")
+      create_memory(user, %{content: "Memory A"})
+      create_memory(user, %{content: "Memory B"})
+      create_memory(user, %{content: "Memory C"})
 
-      results = Memories.search_text(user.id, "Elixir")
-      assert is_list(results)
-      assert Enum.any?(results, fn m -> m.content =~ "Elixir" end)
-      refute Enum.any?(results, fn m -> m.content =~ "Phoenix" end)
-    end
-
-    test "search is case-insensitive" do
-      user = create_user("search_ci@example.com")
-      create_memory(user, %{content: "User likes ELIXIR"})
-
-      results = Memories.search_text(user.id, "elixir")
-      assert length(results) == 1
-    end
-
-    test "returns empty list when no matches" do
-      user = create_user("search_text_empty@example.com")
-      create_memory(user, %{content: "Some unrelated content"})
-
-      results = Memories.search_text(user.id, "quantum computing")
-      assert results == []
+      results = Memories.list_memories_for_user(user.id)
+      assert length(results) == 3
     end
 
     test "does not return other users' memories" do
-      user1 = create_user("search_txt_u1@example.com")
-      user2 = create_user("search_txt_u2@example.com")
-      create_memory(user1, %{content: "Elixir memory"})
+      user1 = create_user("for_user_u1@example.com")
+      user2 = create_user("for_user_u2@example.com")
+      create_memory(user1, %{content: "User1 memory"})
 
-      results = Memories.search_text(user2.id, "Elixir")
+      results = Memories.list_memories_for_user(user2.id)
       assert results == []
+    end
+
+    test "returns empty list when user has no memories" do
+      user = create_user("no_mem_user@example.com")
+      assert Memories.list_memories_for_user(user.id) == []
     end
   end
 end

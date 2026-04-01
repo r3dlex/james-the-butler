@@ -16,6 +16,7 @@ defmodule James.OpenClaw.OrchestratorTest do
     # Stop any existing orchestrator so each test gets a fresh one.
     if pid = Process.whereis(Orchestrator) do
       GenServer.stop(pid, :normal)
+      # Wait for it to deregister
       Process.sleep(20)
     end
 
@@ -76,6 +77,7 @@ defmodule James.OpenClaw.OrchestratorTest do
       hostname = "existing-host-#{System.unique_integer()}"
       {:ok, _} = Orchestrator.register_host(hostname)
       {:ok, host2} = Orchestrator.register_host(hostname)
+      # Only one record should exist for that name
       all = Hosts.list_hosts()
       assert Enum.count(all, &(&1.name == hostname)) == 1
       assert host2.name == hostname
@@ -90,6 +92,8 @@ defmodule James.OpenClaw.OrchestratorTest do
 
   describe "init/1 — automatic local host registration" do
     test "orchestrator registers the local host on startup" do
+      # The orchestrator was started in setup; verify a host record exists for
+      # the system hostname.
       hostname = :net_adm.localhost() |> to_string()
       hosts = Hosts.list_hosts()
       assert Enum.any?(hosts, &(&1.name == hostname))
@@ -100,16 +104,20 @@ defmodule James.OpenClaw.OrchestratorTest do
     test "sending :heartbeat message updates last_seen_at" do
       hostname = :net_adm.localhost() |> to_string()
 
+      # Grab the current last_seen_at
       host_before = Enum.find(Hosts.list_hosts(), &(&1.name == hostname))
       assert host_before != nil
 
+      # Allow a tiny gap so DateTime comparison is meaningful
       Process.sleep(10)
 
+      # Trigger heartbeat
       pid = Process.whereis(Orchestrator)
       send(pid, :heartbeat)
       Process.sleep(50)
 
       host_after = Hosts.get_host(host_before.id)
+      # last_seen_at must have been refreshed (≥ before)
       assert DateTime.compare(host_after.last_seen_at, host_before.last_seen_at) in [:gt, :eq]
     end
   end
@@ -168,6 +176,7 @@ defmodule James.OpenClaw.OrchestratorTest do
 
       refreshed = Sessions.get_session(session.id)
       assert refreshed.status == "suspended"
+      # Process should no longer be alive after graceful termination
       refute Process.alive?(pid)
     end
 
@@ -243,9 +252,11 @@ defmodule James.OpenClaw.OrchestratorTest do
           agent_type: "chat"
         })
 
+      # Kill the agent process
       Process.exit(pid, :kill)
       Process.sleep(100)
 
+      # Session should no longer appear in active_sessions
       active = Orchestrator.active_sessions()
       refute session.id in active
     end
@@ -361,13 +372,14 @@ defmodule James.OpenClaw.OrchestratorTest do
   end
 
   # ---------------------------------------------------------------------------
-  # Pre-existing: dispatch_task/2 tests
+  # Task 2 — dispatch_task/2 (pre-existing tests, preserved)
   # ---------------------------------------------------------------------------
 
   describe "dispatch_task/2" do
     test "dispatches chat task without crashing" do
       session = create_session("chat")
       {:ok, task} = Tasks.create_task(%{session_id: session.id, description: "test"})
+      # Should not raise
       assert :ok == Orchestrator.dispatch_task(task, session)
       Process.sleep(100)
     end
@@ -402,6 +414,7 @@ defmodule James.OpenClaw.OrchestratorTest do
 
     test "dispatches unknown agent_type (falls back to chat) without crashing" do
       session = create_session("chat")
+      # Use a task but pretend session has an unknown type by using a bare map
       {:ok, task} = Tasks.create_task(%{session_id: session.id, description: "unknown"})
       fake_session = %{session | agent_type: "unknown_type"}
       assert :ok == Orchestrator.dispatch_task(task, fake_session)
