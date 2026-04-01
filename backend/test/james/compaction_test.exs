@@ -2,6 +2,12 @@ defmodule James.CompactionTest do
   use James.DataCase
 
   alias James.{Accounts, Compaction, Sessions}
+  alias James.Test.MockLLMProvider
+
+  setup do
+    MockLLMProvider.flush()
+    :ok
+  end
 
   defp create_user(email \\ "compact_user@example.com") do
     {:ok, user} = Accounts.create_user(%{email: email})
@@ -133,6 +139,19 @@ defmodule James.CompactionTest do
       messages = [%{role: "user", content: "Hello"}]
       result = Compaction.summarize_messages(messages, mode: :mock)
       assert result =~ "[mock summary:"
+    end
+
+    test "llm mode delegates to the configured provider" do
+      messages = [%{role: "user", content: "Summarize this conversation."}]
+      result = Compaction.summarize_messages(messages)
+      assert is_binary(result)
+    end
+
+    test "llm mode returns unavailable string on provider error" do
+      MockLLMProvider.push_response({:error, "timeout"})
+      messages = [%{role: "user", content: "Summarize this."}]
+      result = Compaction.summarize_messages(messages)
+      assert result == "[summary unavailable]"
     end
   end
 

@@ -2,6 +2,12 @@ defmodule James.Workers.SkillEvolutionWorkerTest do
   use James.DataCase
 
   alias James.{Skills, Workers.SkillEvolutionWorker}
+  alias James.Test.MockLLMProvider
+
+  setup do
+    MockLLMProvider.flush()
+    :ok
+  end
 
   defp build_job(args), do: %Oban.Job{args: args}
 
@@ -20,6 +26,23 @@ defmodule James.Workers.SkillEvolutionWorkerTest do
           "reason" => "tool_calls",
           "mode" => "mock"
         })
+
+      assert :ok = SkillEvolutionWorker.perform(job)
+    end
+
+    test "returns :ok via llm mode using mock provider" do
+      {:ok, _skill} = Skills.sync_skill("llm-evolve-skill", "# Original")
+
+      job = build_job(%{"skill_name" => "llm-evolve-skill", "reason" => "retries"})
+
+      assert :ok = SkillEvolutionWorker.perform(job)
+    end
+
+    test "returns :ok when llm provider returns error" do
+      MockLLMProvider.push_response({:error, "LLM unavailable"})
+      {:ok, _skill} = Skills.sync_skill("llm-error-skill", "# Original")
+
+      job = build_job(%{"skill_name" => "llm-error-skill", "reason" => "failure"})
 
       assert :ok = SkillEvolutionWorker.perform(job)
     end
