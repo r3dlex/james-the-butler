@@ -44,11 +44,9 @@ defmodule James.Skills.SkillManage do
   end
 
   def handle("create", %{"name" => name, "content" => content}) do
-    case Skills.create_skill(%{
-           name: name,
-           content: content,
-           content_hash: compute_hash(content)
-         }) do
+    attrs = %{name: name, content: content, content_hash: compute_hash(content)}
+
+    case Skills.create_skill(attrs) do
       {:ok, skill} -> "Skill '#{skill.name}' created (hash: #{skill.content_hash})."
       {:error, changeset} -> "Failed to create skill: #{format_errors(changeset)}"
     end

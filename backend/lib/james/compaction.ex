@@ -33,7 +33,7 @@ defmodule James.Compaction do
       Repo.one(
         from m in Message,
           where: m.session_id == ^session_id,
-          select: coalesce(sum(m.token_count), 0)
+          select: sum(m.token_count)
       ) || 0
 
     if total == 0 do
@@ -61,7 +61,7 @@ defmodule James.Compaction do
   Returns `{:ok, checkpoint}` or `{:error, changeset}`.
   """
   @spec compact!(binary(), String.t(), keyword()) ::
-          {:ok, Checkpoint.t()} | {:error, Ecto.Changeset.t()}
+          {:ok, Checkpoint.t()} | {:error, term()}
   def compact!(session_id, summary, opts \\ []) do
     keep_last = Keyword.get(opts, :keep_last, @default_keep_last)
 
@@ -81,38 +81,26 @@ defmodule James.Compaction do
         %{"role" => m.role, "content" => m.content, "token_count" => m.token_count}
       end)
 
-    result =
-      Repo.transaction(fn ->
-        # Delete compacted messages
-        if to_compact != [] do
-          ids = Enum.map(to_compact, & &1.id)
+    Repo.transaction(fn ->
+      if to_compact != [] do
+        ids = Enum.map(to_compact, & &1.id)
+        Repo.delete_all(from m in Message, where: m.id in ^ids)
+      end
 
-          Repo.delete_all(
-            from m in Message,
-              where: m.id in ^ids
-          )
-        end
-
-        # Create checkpoint
-        %Checkpoint{}
-        |> Checkpoint.changeset(%{
-          session_id: session_id,
-          type: "implicit",
-          name: "compaction:#{DateTime.utc_now() |> DateTime.to_iso8601()}",
-          conversation_snapshot: %{"messages" => snapshot_messages},
-          metadata: %{
-            "summary" => summary,
-            "message_count" => compacted_count,
-            "compaction" => true
-          }
-        })
-        |> Repo.insert!()
-      end)
-
-    case result do
-      {:ok, checkpoint} -> {:ok, checkpoint}
-      {:error, reason} -> {:error, reason}
-    end
+      %Checkpoint{}
+      |> Checkpoint.changeset(%{
+        session_id: session_id,
+        type: "implicit",
+        name: "compaction:#{DateTime.utc_now() |> DateTime.to_iso8601()}",
+        conversation_snapshot: %{"messages" => snapshot_messages},
+        metadata: %{
+          "summary" => summary,
+          "message_count" => compacted_count,
+          "compaction" => true
+        }
+      })
+      |> Repo.insert!()
+    end)
   end
 
   @doc """
@@ -149,7 +137,6 @@ defmodule James.Compaction do
   def fork_session(session_id, checkpoint_id) do
     with %Sessions.Session{} = original <- Sessions.get_session(session_id),
          %Checkpoint{} = checkpoint <- Repo.get(Checkpoint, checkpoint_id),
-         summary <- checkpoint.metadata["summary"] || "",
          {:ok, forked} <-
            Sessions.create_session(%{
              user_id: original.user_id,
@@ -159,7 +146,8 @@ defmodule James.Compaction do
              execution_mode: original.execution_mode,
              name: "fork:#{session_id}"
            }) do
-      # Inject summary as a system message
+      summary = checkpoint.metadata["summary"] || ""
+
       Sessions.create_message(%{
         session_id: forked.id,
         role: "system",

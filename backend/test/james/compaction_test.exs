@@ -155,9 +155,8 @@ defmodule James.CompactionTest do
       {:ok, forked} = Compaction.fork_session(session.id, checkpoint.id)
 
       messages = Sessions.list_messages(forked.id)
-      assert Enum.any?(messages, fn m ->
-               m.role == "system" and String.contains?(m.content, summary)
-             end)
+      system_messages = Enum.filter(messages, &(&1.role == "system"))
+      assert Enum.any?(system_messages, fn m -> String.contains?(m.content, summary) end)
     end
 
     test "forked session name references the original session" do
@@ -167,8 +166,10 @@ defmodule James.CompactionTest do
 
       {:ok, forked} = Compaction.fork_session(session.id, checkpoint.id)
 
-      assert String.contains?(forked.name || "", "fork") or
-               String.contains?(forked.name || "", session.id)
+      forked_name = forked.name || ""
+
+      assert String.contains?(forked_name, "fork") or
+               String.contains?(forked_name, session.id)
     end
   end
 end

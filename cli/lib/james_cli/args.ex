@@ -71,10 +71,15 @@ defmodule JamesCli.Args do
     extract_flags(rest, Map.put(flags, "help", true), positional)
   end
 
-  defp extract_flags(["--" <> key, value | rest], flags, positional)
-       when not String.starts_with?(value, "--") do
+  defp extract_flags(["--" <> key, value | rest], flags, positional) do
     norm_key = String.replace(key, "-", "_")
-    extract_flags(rest, Map.put(flags, norm_key, value), positional)
+
+    if String.starts_with?(value, "--") do
+      # `value` is actually the next flag, not a value — treat key as boolean
+      extract_flags([value | rest], Map.put(flags, norm_key, true), positional)
+    else
+      extract_flags(rest, Map.put(flags, norm_key, value), positional)
+    end
   end
 
   defp extract_flags(["--" <> key | rest], flags, positional) do
