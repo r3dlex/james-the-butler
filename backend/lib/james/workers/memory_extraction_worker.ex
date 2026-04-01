@@ -7,7 +7,10 @@ defmodule James.Workers.MemoryExtractionWorker do
 
   use Oban.Worker, queue: :memory, max_attempts: 3
 
-  alias James.{Embeddings, LLMProvider, Memories, Sessions}
+  import Ecto.Query
+
+  alias James.{Embeddings, LLMProvider, Memories, Repo, Sessions}
+  alias James.Memories.Memory
 
   @extraction_prompt """
   You are a memory extraction system. Analyze the conversation and extract
@@ -29,14 +32,20 @@ defmodule James.Workers.MemoryExtractionWorker do
   """
 
   @impl Oban.Worker
-  def perform(%Oban.Job{args: %{"session_id" => session_id, "user_id" => user_id}}) do
-    # Get recent messages (last turn)
-    messages = Sessions.list_messages(session_id)
+  def perform(%Oban.Job{
+        args: %{"session_id" => session_id, "user_id" => user_id} = args
+      }) do
+    last_extracted_message_id = Map.get(args, "last_extracted_message_id")
+
+    messages =
+      case last_extracted_message_id do
+        nil -> Sessions.list_messages(session_id)
+        msg_id -> Sessions.list_messages_after(session_id, msg_id)
+      end
 
     if length(messages) < 2 do
       :ok
     else
-      # Take the last few messages for extraction
       recent = Enum.take(messages, -4)
 
       conversation =
@@ -48,9 +57,22 @@ defmodule James.Workers.MemoryExtractionWorker do
 
   defp extract_and_store(conversation, user_id, session_id) do
     case extract_memories(conversation) do
-      {:ok, extracted} -> Enum.each(extracted, &store_memory(&1, user_id, session_id))
+      {:ok, extracted} -> store_new_memories(extracted, user_id, session_id)
       {:error, _reason} -> :ok
     end
+  end
+
+  defp store_new_memories(extracted, user_id, session_id) do
+    extracted
+    |> Enum.reject(&duplicate?(&1, user_id))
+    |> Enum.each(&store_memory(&1, user_id, session_id))
+  end
+
+  defp duplicate?(text, user_id) do
+    Repo.exists?(
+      from m in Memory,
+        where: m.user_id == ^user_id and m.content == ^text
+    )
   end
 
   defp store_memory(text, user_id, session_id) do

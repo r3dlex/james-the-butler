@@ -6,12 +6,20 @@ defmodule JamesWeb.MemoryController do
   def index(conn, params) do
     user = conn.assigns.current_user
 
-    opts = [
-      limit: String.to_integer(Map.get(params, "limit", "50")),
-      source_session_id: Map.get(params, "source_session_id")
-    ]
+    memories =
+      case Map.get(params, "q") do
+        nil ->
+          opts = [
+            limit: String.to_integer(Map.get(params, "limit", "50")),
+            source_session_id: Map.get(params, "source_session_id")
+          ]
 
-    memories = Memories.list_memories(user.id, opts)
+          Memories.list_memories(user.id, opts)
+
+        query_string ->
+          Memories.search_text(user.id, query_string)
+      end
+
     conn |> json(%{memories: Enum.map(memories, &memory_json/1)})
   end
 

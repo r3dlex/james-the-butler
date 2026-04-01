@@ -57,6 +57,42 @@ defmodule JamesWeb.MemoryControllerTest do
     end
   end
 
+  describe "GET /api/memories?q=search+term (search)" do
+    test "returns filtered memories matching query", %{conn: conn} do
+      user = create_user("mem_search@example.com")
+      create_memory(user, %{content: "User prefers Elixir programming"})
+      create_memory(user, %{content: "User works on Phoenix projects"})
+      create_memory(user, %{content: "Completely unrelated note"})
+      conn = authed_conn(conn, user)
+      conn = get(conn, "/api/memories?q=Elixir")
+      memories = json_response(conn, 200)["memories"]
+      assert length(memories) == 1
+      assert hd(memories)["content"] =~ "Elixir"
+    end
+
+    test "returns empty list when no memories match query", %{conn: conn} do
+      user = create_user("mem_search_empty@example.com")
+      create_memory(user, %{content: "Some memory about Elixir"})
+      conn = authed_conn(conn, user)
+      conn = get(conn, "/api/memories?q=Ruby")
+      assert json_response(conn, 200)["memories"] == []
+    end
+
+    test "search is case-insensitive", %{conn: conn} do
+      user = create_user("mem_search_case@example.com")
+      create_memory(user, %{content: "User likes ELIXIR"})
+      conn = authed_conn(conn, user)
+      conn = get(conn, "/api/memories?q=elixir")
+      memories = json_response(conn, 200)["memories"]
+      assert length(memories) == 1
+    end
+
+    test "requires authentication for search", %{conn: conn} do
+      conn = get(conn, "/api/memories?q=anything")
+      assert conn.status == 401
+    end
+  end
+
   describe "PUT /api/memories/:id (update)" do
     test "updates memory content", %{conn: conn} do
       user = create_user("mem_update@example.com")

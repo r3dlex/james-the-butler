@@ -101,6 +101,26 @@ defmodule James.Sessions do
     )
   end
 
+  @doc """
+  Returns messages in `session_id` that were inserted after the message
+  with `after_message_id`. Used by the memory extraction worker for delta
+  tracking. Falls back to all messages if the anchor message is not found.
+
+  The implementation loads all session messages and returns those that
+  appear after the anchor in insertion order. This correctly handles
+  messages with the same `inserted_at` timestamp (common in tests).
+  """
+  def list_messages_after(session_id, after_message_id) do
+    all_messages = list_messages(session_id)
+    anchor_index = Enum.find_index(all_messages, fn m -> m.id == after_message_id end)
+
+    if is_nil(anchor_index) do
+      all_messages
+    else
+      Enum.drop(all_messages, anchor_index + 1)
+    end
+  end
+
   def create_message(attrs) do
     %Message{}
     |> Message.changeset(attrs)
