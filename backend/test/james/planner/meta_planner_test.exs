@@ -2,6 +2,8 @@ defmodule James.Planner.MetaPlannerTest do
   use James.DataCase
 
   alias James.{Accounts, Hosts, Sessions, Tasks}
+  alias James.OpenClaw.Orchestrator
+  alias James.OpenClaw.Supervisor, as: AgentSupervisor
   alias James.Planner.MetaPlanner
 
   defp create_host do
@@ -28,15 +30,18 @@ defmodule James.Planner.MetaPlannerTest do
     user
   end
 
-  # Ensure MetaPlanner GenServer is running — it is started by the Application,
-  # but in test we want to be sure.
+  # Start the full OpenClaw stack so dispatch_task casts don't raise.
   setup do
-    case Process.whereis(MetaPlanner) do
-      nil ->
-        {:ok, _} = MetaPlanner.start_link([])
+    if is_nil(Process.whereis(AgentSupervisor)) do
+      {:ok, _} = AgentSupervisor.start_link([])
+    end
 
-      _pid ->
-        :ok
+    if is_nil(Process.whereis(Orchestrator)) do
+      {:ok, _} = Orchestrator.start_link([])
+    end
+
+    if is_nil(Process.whereis(MetaPlanner)) do
+      {:ok, _} = MetaPlanner.start_link([])
     end
 
     :ok
@@ -49,7 +54,6 @@ defmodule James.Planner.MetaPlannerTest do
       session = create_session(user, host, %{agent_type: "chat"})
 
       MetaPlanner.process_message(session.id, "hello")
-      # Give the GenServer time to process the cast
       Process.sleep(100)
 
       tasks = Tasks.list_tasks(session_id: session.id)
@@ -120,7 +124,7 @@ defmodule James.Planner.MetaPlannerTest do
       MetaPlanner.process_message(Ecto.UUID.generate(), "hello")
       Process.sleep(50)
       # just ensure it doesn't crash
-      assert Process.alive?(Process.whereis(MetaPlanner))
+      assert is_pid(Process.whereis(MetaPlanner))
     end
 
     test "destructive task in confirmed mode stays pending" do
