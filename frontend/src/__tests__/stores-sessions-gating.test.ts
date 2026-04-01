@@ -60,34 +60,34 @@ describe("useSessionStore — provider gating", () => {
     localStorageMock.clear();
   });
 
-  it("canCreateSession returns false when hasVerifiedProvider is false", async () => {
+  it("canCreateSession returns false when no providers configured", async () => {
     const { useProviderStore } = await import("../stores/providers");
     const { useSessionStore } = await import("../stores/sessions");
 
     const providerStore = useProviderStore();
-    providerStore.providers.push(makeProvider("p1", { status: "untested" }));
+    providerStore.providers.splice(0); // empty
 
     const store = useSessionStore();
     expect(store.canCreateSession).toBe(false);
   });
 
-  it("canCreateSession returns true when hasVerifiedProvider is true", async () => {
-    const { useProviderStore } = await import("../stores/providers");
-    const { useSessionStore } = await import("../stores/sessions");
-
-    const providerStore = useProviderStore();
-    providerStore.providers.push(makeProvider("p1", { status: "connected" }));
-
-    const store = useSessionStore();
-    expect(store.canCreateSession).toBe(true);
-  });
-
-  it("createSession() returns null and sets error when no verified provider", async () => {
+  it("canCreateSession returns true when at least one provider is configured (even untested)", async () => {
     const { useProviderStore } = await import("../stores/providers");
     const { useSessionStore } = await import("../stores/sessions");
 
     const providerStore = useProviderStore();
     providerStore.providers.push(makeProvider("p1", { status: "untested" }));
+
+    const store = useSessionStore();
+    expect(store.canCreateSession).toBe(true);
+  });
+
+  it("createSession() returns null and sets error when no providers configured at all", async () => {
+    const { useProviderStore } = await import("../stores/providers");
+    const { useSessionStore } = await import("../stores/sessions");
+
+    const providerStore = useProviderStore();
+    providerStore.providers.splice(0);
 
     const store = useSessionStore();
     const result = await store.createSession({
