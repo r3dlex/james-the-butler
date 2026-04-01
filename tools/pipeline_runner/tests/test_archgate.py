@@ -104,6 +104,7 @@ def test_check_coverage_config_missing(tmp_path: object) -> None:
         "backend": tmp_path / "backend",
         "frontend": tmp_path / "frontend",
         "pipeline_runner": tmp_path / "pipeline_runner",
+        "cli": tmp_path / "cli",
     }
     for p in components.values():
         p.mkdir(parents=True)
@@ -111,6 +112,7 @@ def test_check_coverage_config_missing(tmp_path: object) -> None:
     (components["backend"] / "mix.exs").write_text("defmodule Mix do end\n")
     (components["frontend"] / "vite.config.ts").write_text("export default {}\n")
     (components["pipeline_runner"] / "pyproject.toml").write_text("[tool]\n")
+    (components["cli"] / "mix.exs").write_text("defmodule Mix do end\n")
     with patch("pipeline_runner.stages.archgate.COMPONENTS", components):
         result = check_coverage_config()
         assert not result.passed

@@ -1,0 +1,7 @@
+/_build/
+/cover/
+/deps/
+/.fetch
+erl_crash.dump
+*.ez
+james

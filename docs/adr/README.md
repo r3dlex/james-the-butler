@@ -15,6 +15,9 @@ We use [ADRs](https://adr.github.io/) to document significant architectural deci
 | [007](007-test-coverage-targets.md) | Test coverage targets | Accepted |
 | [008](008-archgate-enforcement.md) | Architecture gate enforcement | Accepted |
 | [009](009-git-identity-and-repo-awareness.md) | Git identity and repository awareness | Accepted |
+| [010](010-session-compaction.md) | Session compaction for context window management | Accepted |
+| [011](011-gepa-skill-evolution.md) | GEPA-style skill evolution | Accepted |
+| [012](012-cli-escript.md) | CLI as Elixir escript | Accepted |
 
 ## Template
 

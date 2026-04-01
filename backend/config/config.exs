@@ -26,7 +26,7 @@ config :james, Oban,
        {"* * * * *", James.Workers.HostHealthWorker}
      ]}
   ],
-  queues: [default: 10, memory: 5, summaries: 3]
+  queues: [default: 10, memory: 5, summaries: 3, skills: 2]
 
 # Configures the Phoenix JSON library
 config :phoenix, :json_library, Jason

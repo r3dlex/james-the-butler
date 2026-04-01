@@ -17,6 +17,7 @@ COMPONENTS = {
     "frontend": PROJECT_ROOT / "frontend",
     "mobile": PROJECT_ROOT / "mobile",
     "pipeline_runner": PROJECT_ROOT / "tools" / "pipeline_runner",
+    "cli": PROJECT_ROOT / "cli",
 }
 
 LOCK_FILES = {
@@ -24,6 +25,7 @@ LOCK_FILES = {
     "frontend": "package-lock.json",
     "mobile": "pubspec.lock",
     "pipeline_runner": "poetry.lock",
+    "cli": "mix.lock",
 }
 
 
@@ -175,6 +177,13 @@ def check_coverage_config() -> RuleResult:
         content = pyproject.read_text()
         if "fail_under" not in content:
             issues.append("pipeline_runner/pyproject.toml missing coverage fail_under")
+
+    # CLI: check mix.exs for test_coverage
+    cli_mix_exs = COMPONENTS["cli"] / "mix.exs"
+    if cli_mix_exs.exists():
+        content = cli_mix_exs.read_text()
+        if "test_coverage" not in content:
+            issues.append("cli/mix.exs missing test_coverage config")
 
     if issues:
         return RuleResult(
