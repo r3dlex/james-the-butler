@@ -89,6 +89,16 @@ Search across all your sessions with a single query. James combines **PostgreSQL
 
 ---
 
+## Documentation
+
+The full platform specification, architecture docs, component guides, and ADRs are available as a browsable Vitepress site:
+
+```bash
+make docs-setup   # Install docs dependencies (first time only)
+make docs-dev     # Start local docs server at http://localhost:5173
+make docs-build   # Build static site to docs/.vitepress/dist/
+```
+
 ## Quick Start
 
 ```bash

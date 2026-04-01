@@ -1,5 +1,7 @@
 # James the Butler — Specification
 
+> These specifications are also published as a Vitepress documentation site. Run `make docs-dev` to browse them locally.
+
 This directory contains the system-level specifications for the James the Butler platform.
 
 ## Start Here

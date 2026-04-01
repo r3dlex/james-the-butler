@@ -4,6 +4,9 @@ import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [vue(), tailwindcss()],
+  server: {
+    port: 4173,
+  },
   resolve: {
     alias: {
       "@": new URL("./src", import.meta.url).pathname,

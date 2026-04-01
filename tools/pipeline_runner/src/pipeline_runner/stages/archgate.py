@@ -195,12 +195,27 @@ def check_coverage_config() -> RuleResult:
     return RuleResult(rule="coverage-config", passed=True, message="Coverage configured")
 
 
+def check_docs_config() -> RuleResult:
+    """Verify the VitePress docs site configuration exists."""
+    docs_package = PROJECT_ROOT / "docs" / "package.json"
+
+    if not docs_package.exists():
+        return RuleResult(
+            rule="docs-config",
+            passed=False,
+            message="docs/package.json not found — VitePress site not configured",
+        )
+
+    return RuleResult(rule="docs-config", passed=True, message="docs/package.json present")
+
+
 RULES = [
     check_adr_index,
     check_component_specs,
     check_no_cross_imports,
     check_lock_files,
     check_coverage_config,
+    check_docs_config,
 ]
 
 

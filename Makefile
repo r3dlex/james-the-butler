@@ -3,6 +3,7 @@
        frontend-setup frontend-dev frontend-test frontend-test-coverage frontend-lint \
        mobile-setup mobile-dev mobile-test mobile-test-coverage mobile-lint \
        pipeline-setup pipeline-test pipeline-test-coverage pipeline-lint \
+       docs-setup docs-dev docs-build docs \
        up down logs build
 
 # ── Docker targets ──────────────────────────────────────────────────
@@ -115,3 +116,16 @@ pipeline-test-coverage:
 
 pipeline-lint:
 	cd tools/pipeline_runner && poetry run ruff check . && poetry run ruff format --check .
+
+# ── Docs (VitePress) ────────────────────────────────────────────────
+
+docs-setup:
+	cd docs && npm ci
+
+docs-dev:
+	cd docs && npm run dev
+
+docs-build:
+	cd docs && npm run build
+
+docs: docs-build
