@@ -141,5 +141,44 @@ defmodule James.PersonalityResolveTest do
       prompt = Personality.resolve_system_prompt(session)
       assert prompt == "You are a custom butler bot."
     end
+
+    test "profile with a preset that maps to nil falls back to default prompt" do
+      user = create_user()
+      host = create_host()
+
+      # Create a profile whose preset id does not match any built-in preset.
+      # Personality.get_preset/1 will return nil → prompt_from_preset(nil)
+      {:ok, profile} =
+        Accounts.create_personality_profile(%{
+          user_id: user.id,
+          name: "unknown-preset-profile",
+          preset: "nonexistent_preset_xyz"
+        })
+
+      session = create_session(user, host, %{personality_id: profile.id})
+      prompt = Personality.resolve_system_prompt(session)
+      # Falls back to butler default
+      assert is_binary(prompt) and String.length(prompt) > 0
+    end
+
+    test "project with no personality_id passes through to user personality" do
+      user = create_user()
+      host = create_host()
+      user_profile = create_profile(user, %{preset: "editor"})
+      {:ok, user} = Accounts.update_user(user, %{personality_id: user_profile.id})
+
+      {:ok, project} =
+        Projects.create_project(%{
+          user_id: user.id,
+          name: "No Pers Project #{System.unique_integer()}"
+          # no personality_id
+        })
+
+      session = create_session(user, host, %{project_id: project.id})
+      prompt = Personality.resolve_system_prompt(session)
+      assert is_binary(prompt) and String.length(prompt) > 0
+      # Editor preset should come through
+      assert String.downcase(prompt) =~ "editor" or String.downcase(prompt) =~ "document"
+    end
   end
 end

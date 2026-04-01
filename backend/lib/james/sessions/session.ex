@@ -39,7 +39,7 @@ defmodule James.Sessions.Session do
     ])
     |> validate_required([:user_id])
     |> validate_inclusion(:agent_type, ["chat", "code", "research", "desktop", "browser"])
-    |> validate_inclusion(:status, ["active", "idle", "archived"])
+    |> validate_inclusion(:status, ["active", "idle", "archived", "suspended", "terminated"])
     |> validate_inclusion(:execution_mode, ["direct", "confirmed", nil])
   end
 end

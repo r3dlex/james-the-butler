@@ -139,4 +139,26 @@ defmodule James.PersonalityTest do
       end)
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # presets/0 — alias for list_presets/0
+  # ---------------------------------------------------------------------------
+
+  describe "presets/0" do
+    test "returns the same result as list_presets/0" do
+      assert Personality.presets() == Personality.list_presets()
+    end
+
+    test "returns a list of 6 entries" do
+      assert length(Personality.presets()) == 6
+    end
+
+    test "each entry has :id, :name, and :prompt" do
+      Enum.each(Personality.presets(), fn preset ->
+        assert Map.has_key?(preset, :id)
+        assert Map.has_key?(preset, :name)
+        assert Map.has_key?(preset, :prompt)
+      end)
+    end
+  end
 end

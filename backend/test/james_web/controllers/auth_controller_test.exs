@@ -233,4 +233,270 @@ defmodule JamesWeb.AuthControllerTest do
       System.delete_env("GOOGLE_CLIENT_SECRET")
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # OAuth callback — robust error handling and user linking (Task 8.2)
+  # ---------------------------------------------------------------------------
+
+  describe "GET /api/auth/:provider/callback — OAuth error parameter" do
+    test "redirects to login with error when error=access_denied", %{conn: conn} do
+      conn = get(conn, "/api/auth/google/callback?error=access_denied")
+      assert conn.status == 302
+      location = get_resp_header(conn, "location") |> hd()
+      assert location =~ "error"
+    end
+
+    test "redirects to login when error=server_error is returned", %{conn: conn} do
+      conn = get(conn, "/api/auth/github/callback?error=server_error")
+      assert conn.status == 302
+      location = get_resp_header(conn, "location") |> hd()
+      assert location =~ "error"
+    end
+  end
+
+  describe "GET /api/auth/:provider/callback — Bypass-backed OAuth flows" do
+    setup do
+      bypass = Bypass.open()
+      base = "http://localhost:#{bypass.port}"
+
+      System.put_env("GOOGLE_CLIENT_ID", "test-google-id")
+      System.put_env("GOOGLE_CLIENT_SECRET", "test-google-secret")
+      System.put_env("OAUTH_GOOGLE_TOKEN_URL", "#{base}/token")
+      System.put_env("OAUTH_GOOGLE_USERINFO_URL", "#{base}/userinfo")
+
+      on_exit(fn ->
+        System.delete_env("GOOGLE_CLIENT_ID")
+        System.delete_env("GOOGLE_CLIENT_SECRET")
+        System.delete_env("OAUTH_GOOGLE_TOKEN_URL")
+        System.delete_env("OAUTH_GOOGLE_USERINFO_URL")
+      end)
+
+      {:ok, bypass: bypass}
+    end
+
+    test "successful callback creates new user and redirects with token", %{
+      conn: conn,
+      bypass: bypass
+    } do
+      Bypass.expect_once(bypass, "POST", "/token", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(200, Jason.encode!(%{access_token: "gtoken123"}))
+      end)
+
+      Bypass.expect_once(bypass, "GET", "/userinfo", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            sub: "google-uid-new-001",
+            email: "newuser@example.com",
+            name: "New OAuth User"
+          })
+        )
+      end)
+
+      conn = get(conn, "/api/auth/google/callback?code=valid-code")
+      assert conn.status == 302
+      location = get_resp_header(conn, "location") |> hd()
+      assert location =~ "token="
+      assert location =~ "refresh="
+
+      user = James.Accounts.get_user_by_email("newuser@example.com")
+      assert user != nil
+      assert user.name == "New OAuth User"
+      assert user.oauth_provider == "google"
+      assert user.oauth_uid == "google-uid-new-001"
+    end
+
+    test "successful callback with existing email links provider and redirects with token",
+         %{conn: conn, bypass: bypass} do
+      {:ok, existing_user} =
+        James.Accounts.create_user(%{email: "existing@example.com", name: "Existing User"})
+
+      Bypass.expect_once(bypass, "POST", "/token", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(200, Jason.encode!(%{access_token: "gtoken456"}))
+      end)
+
+      Bypass.expect_once(bypass, "GET", "/userinfo", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            sub: "google-uid-existing-002",
+            email: "existing@example.com",
+            name: "Existing User"
+          })
+        )
+      end)
+
+      conn = get(conn, "/api/auth/google/callback?code=valid-code-2")
+      assert conn.status == 302
+      location = get_resp_header(conn, "location") |> hd()
+      assert location =~ "token="
+
+      updated_user = James.Accounts.get_user(existing_user.id)
+      assert updated_user.oauth_provider == "google"
+      assert updated_user.oauth_uid == "google-uid-existing-002"
+    end
+
+    test "callback with invalid/expired code redirects to error page", %{
+      conn: conn,
+      bypass: bypass
+    } do
+      Bypass.expect_once(bypass, "POST", "/token", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(
+          400,
+          Jason.encode!(%{
+            error: "invalid_grant",
+            error_description: "Code has expired or already been used."
+          })
+        )
+      end)
+
+      conn = get(conn, "/api/auth/google/callback?code=expired-code")
+      assert conn.status == 302
+      location = get_resp_header(conn, "location") |> hd()
+      assert location =~ "error" or location =~ "login"
+    end
+
+    test "duplicate provider linking succeeds without duplicate user", %{
+      conn: conn,
+      bypass: bypass
+    } do
+      {:ok, _user} =
+        James.Accounts.create_user(%{
+          email: "linked@example.com",
+          name: "Linked User",
+          oauth_provider: "google",
+          oauth_uid: "google-uid-original-003"
+        })
+
+      Bypass.expect_once(bypass, "POST", "/token", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(200, Jason.encode!(%{access_token: "gtoken789"}))
+      end)
+
+      Bypass.expect_once(bypass, "GET", "/userinfo", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            sub: "google-uid-original-003",
+            email: "linked@example.com",
+            name: "Linked User"
+          })
+        )
+      end)
+
+      conn = get(conn, "/api/auth/google/callback?code=valid-code-3")
+      assert conn.status == 302
+      location = get_resp_header(conn, "location") |> hd()
+      assert location =~ "token="
+
+      # Only one user with this email should exist — no duplicate created
+      assert James.Accounts.get_user_by_email("linked@example.com") != nil
+      assert James.Accounts.get_user_by_oauth("google", "google-uid-original-003") != nil
+    end
+  end
+
+  describe "Accounts.find_or_create_user_by_oauth/3 — unit tests" do
+    test "creates new user when no provider match and no email match" do
+      result =
+        James.Accounts.find_or_create_user_by_oauth("google", "uid-brand-new", %{
+          email: "brand_new@example.com",
+          name: "Brand New"
+        })
+
+      assert {:ok, user} = result
+      assert user.email == "brand_new@example.com"
+      assert user.oauth_provider == "google"
+      assert user.oauth_uid == "uid-brand-new"
+    end
+
+    test "returns existing user when provider+uid match" do
+      {:ok, existing} =
+        James.Accounts.create_user(%{
+          email: "provideruser@example.com",
+          name: "Provider User",
+          oauth_provider: "google",
+          oauth_uid: "uid-existing-provider"
+        })
+
+      {:ok, found} =
+        James.Accounts.find_or_create_user_by_oauth("google", "uid-existing-provider", %{
+          email: "provideruser@example.com",
+          name: "Provider User"
+        })
+
+      assert found.id == existing.id
+    end
+
+    test "links provider to existing user matched by email" do
+      {:ok, existing} =
+        James.Accounts.create_user(%{
+          email: "emailmatch@example.com",
+          name: "Email Match User"
+        })
+
+      {:ok, linked} =
+        James.Accounts.find_or_create_user_by_oauth("google", "uid-email-match", %{
+          email: "emailmatch@example.com",
+          name: "Email Match User"
+        })
+
+      assert linked.id == existing.id
+      assert linked.oauth_provider == "google"
+      assert linked.oauth_uid == "uid-email-match"
+    end
+
+    test "updates oauth_uid when same user re-authenticates with same provider" do
+      {:ok, existing} =
+        James.Accounts.create_user(%{
+          email: "reauth@example.com",
+          name: "Re-Auth User",
+          oauth_provider: "google",
+          oauth_uid: "old-uid"
+        })
+
+      {:ok, updated} =
+        James.Accounts.find_or_create_user_by_oauth("google", "old-uid", %{
+          email: "reauth@example.com",
+          name: "Re-Auth User"
+        })
+
+      assert updated.id == existing.id
+    end
+  end
+
+  describe "Accounts.link_oauth_provider/3" do
+    test "sets oauth_provider and oauth_uid on user" do
+      {:ok, user} = James.Accounts.create_user(%{email: "linker@example.com", name: "Linker"})
+
+      {:ok, updated} = James.Accounts.link_oauth_provider(user, "google", "uid-linker-001")
+      assert updated.oauth_provider == "google"
+      assert updated.oauth_uid == "uid-linker-001"
+    end
+
+    test "updates existing oauth link for same provider is idempotent" do
+      {:ok, user} =
+        James.Accounts.create_user(%{
+          email: "updater@example.com",
+          name: "Updater",
+          oauth_provider: "google",
+          oauth_uid: "old-uid-999"
+        })
+
+      {:ok, updated} = James.Accounts.link_oauth_provider(user, "google", "old-uid-999")
+      assert updated.oauth_uid == "old-uid-999"
+    end
+  end
 end

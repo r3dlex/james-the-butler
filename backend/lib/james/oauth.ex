@@ -25,24 +25,65 @@ defmodule James.OAuth do
     }
   }
 
+  # Providers that support PKCE (GitHub does not)
+  @pkce_providers ["google", "microsoft"]
+
+  # State token max age in seconds (10 minutes)
+  @state_max_age 10 * 60
+
+  @doc """
+  Generates a PKCE code verifier and challenge pair.
+
+  Returns `{code_verifier, code_challenge}` where the challenge is the
+  base64url-encoded SHA-256 hash of the verifier (S256 method).
+  """
+  def generate_pkce do
+    verifier = :crypto.strong_rand_bytes(32) |> Base.url_encode64(padding: false)
+    challenge = :crypto.hash(:sha256, verifier) |> Base.url_encode64(padding: false)
+    {verifier, challenge}
+  end
+
+  @doc """
+  Generates a signed state token containing a timestamp for CSRF protection.
+  """
+  def generate_state, do: build_state(System.system_time(:second))
+
+  @doc """
+  Generates a signed state token with a specific timestamp (for testing expiry).
+  """
+  def generate_state_at(timestamp), do: build_state(timestamp)
+
+  @doc """
+  Verifies a state token signature and checks it has not expired (10-minute window).
+
+  Returns `:ok`, `{:error, :state_expired}`, or `{:error, :invalid_state}`.
+  """
+  def verify_state(state) do
+    with {:ok, ts} <- decode_state(state) do
+      check_state_expiry(ts)
+    end
+  end
+
   @doc """
   Builds the provider authorization URL to redirect the browser to.
+  Includes PKCE parameters for Google and Microsoft; GitHub is excluded.
   """
   def authorization_url(provider, state) do
     config = Map.fetch!(@providers, provider)
     client_id = client_id!(provider)
     redirect_uri = callback_uri(provider)
 
-    params =
-      URI.encode_query(%{
-        client_id: client_id,
-        redirect_uri: redirect_uri,
-        response_type: "code",
-        scope: config.scopes,
-        state: state
-      })
+    base_params = %{
+      client_id: client_id,
+      redirect_uri: redirect_uri,
+      response_type: "code",
+      scope: config.scopes,
+      state: state
+    }
 
-    "#{config.auth_url}?#{params}"
+    params = maybe_add_pkce(base_params, provider)
+
+    "#{config.auth_url}?#{URI.encode_query(params)}"
   end
 
   @doc """
@@ -221,5 +262,77 @@ defmodule James.OAuth do
 
   defp client_secret!(provider) do
     client_secret(provider) || raise "#{String.upcase(provider)}_CLIENT_SECRET not set"
+  end
+
+  # --- PKCE helpers ---
+
+  defp maybe_add_pkce(params, provider) when provider in @pkce_providers do
+    {_verifier, challenge} = generate_pkce()
+    Map.merge(params, %{code_challenge: challenge, code_challenge_method: "S256"})
+  end
+
+  defp maybe_add_pkce(params, _provider), do: params
+
+  # --- State token helpers ---
+
+  defp state_secret do
+    Application.get_env(:james, :jwt_secret, "dev-jwt-secret-change-in-prod-min-32-chars")
+  end
+
+  defp build_state(timestamp) do
+    payload = Integer.to_string(timestamp)
+    nonce = :crypto.strong_rand_bytes(8) |> Base.url_encode64(padding: false)
+    data = "#{payload}.#{nonce}"
+    sig = sign_state(data)
+    Base.url_encode64("#{data}.#{sig}", padding: false)
+  end
+
+  defp decode_state(token) do
+    with {:ok, decoded} <- safe_decode(token),
+         [payload, nonce, sig] <- split_state(decoded),
+         data = "#{payload}.#{nonce}",
+         true <- valid_signature?(data, sig) do
+      parse_timestamp(payload)
+    else
+      _ -> {:error, :invalid_state}
+    end
+  end
+
+  defp safe_decode(token) do
+    case Base.url_decode64(token, padding: false) do
+      {:ok, _} = ok -> ok
+      :error -> {:error, :invalid_state}
+    end
+  end
+
+  defp split_state(decoded) do
+    case String.split(decoded, ".", parts: 3) do
+      [_payload, _nonce, _sig] = parts -> parts
+      _ -> nil
+    end
+  end
+
+  defp sign_state(data) do
+    :crypto.mac(:hmac, :sha256, state_secret(), data)
+    |> Base.url_encode64(padding: false)
+  end
+
+  defp valid_signature?(data, sig), do: sign_state(data) == sig
+
+  defp parse_timestamp(payload) do
+    case Integer.parse(payload) do
+      {ts, ""} -> {:ok, ts}
+      _ -> {:error, :invalid_state}
+    end
+  end
+
+  defp check_state_expiry(ts) do
+    age = System.system_time(:second) - ts
+
+    if age > @state_max_age do
+      {:error, :state_expired}
+    else
+      :ok
+    end
   end
 end

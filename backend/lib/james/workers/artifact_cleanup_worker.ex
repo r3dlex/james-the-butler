@@ -6,11 +6,21 @@ defmodule James.Workers.ArtifactCleanupWorker do
 
   use Oban.Worker, queue: :cleanup, max_attempts: 3
 
-  alias James.Artifacts
+  alias James.{Artifacts, Sessions}
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"task_id" => task_id}}) do
     {:ok, _count} = Artifacts.clean_task_artifacts(task_id)
+    :ok
+  end
+
+  def perform(%Oban.Job{args: %{"session_id" => session_id}}) do
+    session = Sessions.get_session(session_id)
+
+    if session && !session.keep_intermediates do
+      {:ok, _count} = Artifacts.clean_session_working_files(session_id)
+    end
+
     :ok
   end
 end

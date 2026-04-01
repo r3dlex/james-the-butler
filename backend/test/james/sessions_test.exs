@@ -261,4 +261,71 @@ defmodule James.SessionsTest do
       assert {:error, :not_found} = Sessions.rewind_to_checkpoint(Ecto.UUID.generate())
     end
   end
+
+  describe "suspend_session/1" do
+    test "changes active session to suspended" do
+      user = create_user("suspend_active@example.com")
+      session = create_session(user, %{status: "active"})
+      assert {:ok, updated} = Sessions.suspend_session(session)
+      assert updated.status == "suspended"
+    end
+
+    test "creates an implicit checkpoint on suspend" do
+      user = create_user("suspend_checkpoint@example.com")
+      session = create_session(user, %{status: "active"})
+      assert {:ok, _updated} = Sessions.suspend_session(session)
+      checkpoints = Sessions.list_checkpoints(session.id)
+      assert length(checkpoints) == 1
+      assert hd(checkpoints).type == "implicit"
+    end
+
+    test "returns error for terminated session" do
+      user = create_user("suspend_terminated@example.com")
+      session = create_session(user, %{status: "terminated"})
+      assert {:error, :invalid_transition} = Sessions.suspend_session(session)
+    end
+
+    test "returns error for already suspended session" do
+      user = create_user("suspend_suspended@example.com")
+      session = create_session(user, %{status: "suspended"})
+      assert {:error, :invalid_transition} = Sessions.suspend_session(session)
+    end
+  end
+
+  describe "resume_session/1" do
+    test "changes suspended session to active" do
+      user = create_user("resume_suspended@example.com")
+      session = create_session(user, %{status: "suspended"})
+      assert {:ok, updated} = Sessions.resume_session(session)
+      assert updated.status == "active"
+    end
+
+    test "returns error for active session" do
+      user = create_user("resume_active@example.com")
+      session = create_session(user, %{status: "active"})
+      assert {:error, :invalid_transition} = Sessions.resume_session(session)
+    end
+  end
+
+  describe "terminate_session/1" do
+    test "changes active session to terminated" do
+      user = create_user("terminate_active@example.com")
+      session = create_session(user, %{status: "active"})
+      assert {:ok, updated} = Sessions.terminate_session(session)
+      assert updated.status == "terminated"
+    end
+
+    test "changes suspended session to terminated" do
+      user = create_user("terminate_suspended@example.com")
+      session = create_session(user, %{status: "suspended"})
+      assert {:ok, updated} = Sessions.terminate_session(session)
+      assert updated.status == "terminated"
+    end
+
+    test "returns error for already terminated session" do
+      user = create_user("terminate_terminated@example.com")
+      session = create_session(user, %{status: "terminated"})
+      assert {:error, :invalid_transition} = Sessions.terminate_session(session)
+    end
+  end
 end

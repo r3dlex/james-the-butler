@@ -20,6 +20,13 @@ defmodule James.Artifacts.Artifact do
     artifact
     |> cast(attrs, [:session_id, :task_id, :type, :path, :is_deliverable, :cleaned_at])
     |> validate_required([:session_id, :type])
-    |> validate_inclusion(:type, ["file", "image", "code", "document"])
+    |> validate_inclusion(:type, [
+      "file",
+      "image",
+      "code",
+      "document",
+      "working_file",
+      "deliverable"
+    ])
   end
 end

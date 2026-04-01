@@ -7,7 +7,7 @@ defmodule James.Workers.NarrativeSummaryWorker do
 
   use Oban.Worker, queue: :memory, max_attempts: 3
 
-  alias James.{ExecutionHistory, LLMProvider, Sessions}
+  alias James.{ExecutionHistory, LLMProvider}
 
   @summary_prompt """
   You are a summarization assistant. Given the conversation below, write a concise
@@ -18,18 +18,20 @@ defmodule James.Workers.NarrativeSummaryWorker do
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"session_id" => session_id}}) do
-    messages = Sessions.list_messages(session_id)
+    entries = ExecutionHistory.list_entries(session_id: session_id)
 
-    if length(messages) < 2 do
+    if entries == [] do
       :ok
     else
-      conversation =
-        messages
-        |> Enum.take(-20)
-        |> Enum.map_join("\n\n", fn m -> "#{m.role}: #{m.content}" end)
-
+      conversation = entries |> Enum.take(-20) |> Enum.map_join("\n\n", &format_entry/1)
       generate_and_store(session_id, conversation)
     end
+  end
+
+  defp format_entry(e) do
+    action = e.action_type || "action"
+    payload = if e.payload, do: inspect(e.payload), else: ""
+    "#{action}: #{payload}"
   end
 
   defp generate_and_store(session_id, conversation) do

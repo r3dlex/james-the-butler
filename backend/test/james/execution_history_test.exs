@@ -105,4 +105,96 @@ defmodule James.ExecutionHistoryTest do
       assert updated.narrative_summary == "Summary text here."
     end
   end
+
+  describe "log_action/3" do
+    test "creates an entry with session_id, action_type, and payload" do
+      session = create_session()
+
+      {:ok, entry} =
+        ExecutionHistory.log_action(session.id, "tool_call", %{"tool" => "bash", "exit" => 0})
+
+      assert entry.session_id == session.id
+      assert entry.action_type == "tool_call"
+      assert entry.payload == %{"tool" => "bash", "exit" => 0}
+    end
+
+    test "stores recognised action types: file_read and decision" do
+      session = create_session()
+
+      {:ok, e1} = ExecutionHistory.log_action(session.id, "file_read", %{"path" => "/tmp/a.txt"})
+      {:ok, e2} = ExecutionHistory.log_action(session.id, "decision", %{"choice" => "proceed"})
+
+      assert e1.action_type == "file_read"
+      assert e2.action_type == "decision"
+    end
+
+    test "entry includes a timestamp" do
+      session = create_session()
+      {:ok, entry} = ExecutionHistory.log_action(session.id, "tool_call", %{})
+      reloaded = ExecutionHistory.get_entry(entry.id)
+      assert %DateTime{} = reloaded.inserted_at
+    end
+
+    test "defaults payload to empty map when omitted" do
+      session = create_session()
+      {:ok, entry} = ExecutionHistory.log_action(session.id, "decision")
+      assert entry.payload == nil || is_map(entry.payload)
+    end
+  end
+
+  describe "list_entries/1 ordering and action_type" do
+    test "returns entries for a session in chronological order" do
+      session = create_session()
+
+      {:ok, _} = ExecutionHistory.log_action(session.id, "tool_call", %{"seq" => 1})
+      {:ok, _} = ExecutionHistory.log_action(session.id, "file_read", %{"seq" => 2})
+      {:ok, _} = ExecutionHistory.log_action(session.id, "decision", %{"seq" => 3})
+
+      entries = ExecutionHistory.list_entries(session_id: session.id)
+      assert length(entries) == 3
+      types = Enum.map(entries, & &1.action_type)
+      assert types == ["tool_call", "file_read", "decision"]
+    end
+
+    test "multiple entries for same session are returned in inserted_at order" do
+      session = create_session()
+
+      for i <- 1..5 do
+        ExecutionHistory.log_action(session.id, "tool_call", %{"i" => i})
+      end
+
+      entries = ExecutionHistory.list_entries(session_id: session.id)
+      assert length(entries) == 5
+
+      payloads = Enum.map(entries, fn e -> e.payload["i"] end)
+      assert payloads == Enum.sort(payloads)
+    end
+  end
+
+  describe "entry_count/1" do
+    test "returns 0 for a session with no entries" do
+      session = create_session()
+      assert ExecutionHistory.entry_count(session.id) == 0
+    end
+
+    test "returns correct count after logging actions" do
+      session = create_session()
+
+      ExecutionHistory.log_action(session.id, "tool_call", %{})
+      ExecutionHistory.log_action(session.id, "file_read", %{})
+      ExecutionHistory.log_action(session.id, "decision", %{})
+
+      assert ExecutionHistory.entry_count(session.id) == 3
+    end
+
+    test "does not count entries from other sessions" do
+      s1 = create_session()
+      s2 = create_session()
+
+      ExecutionHistory.log_action(s1.id, "tool_call", %{})
+      ExecutionHistory.log_action(s1.id, "tool_call", %{})
+
+      assert ExecutionHistory.entry_count(s2.id) == 0
+    end
+  end
 end

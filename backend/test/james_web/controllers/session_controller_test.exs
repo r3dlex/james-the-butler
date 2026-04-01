@@ -190,6 +190,78 @@ defmodule JamesWeb.SessionControllerTest do
     end
   end
 
+  describe "POST /api/sessions/:id/suspend" do
+    test "active session → 200 with suspended status", %{conn: conn} do
+      user = create_user("suspend_ok@example.com")
+      host = create_host()
+      session = create_session(user, host, %{status: "active"})
+      conn = authed_conn(conn, user)
+      conn = post(conn, "/api/sessions/#{session.id}/suspend")
+      assert json_response(conn, 200)["session"]["status"] == "suspended"
+    end
+
+    test "terminated session → 422", %{conn: conn} do
+      user = create_user("suspend_terminated@example.com")
+      host = create_host()
+      session = create_session(user, host, %{status: "terminated"})
+      conn = authed_conn(conn, user)
+      conn = post(conn, "/api/sessions/#{session.id}/suspend")
+      assert conn.status == 422
+    end
+
+    test "non-existent session → 404", %{conn: conn} do
+      user = create_user("suspend_notfound@example.com")
+      conn = authed_conn(conn, user)
+      conn = post(conn, "/api/sessions/#{Ecto.UUID.generate()}/suspend")
+      assert json_response(conn, 404)["error"] == "not found"
+    end
+  end
+
+  describe "POST /api/sessions/:id/resume" do
+    test "suspended session → 200 with active status", %{conn: conn} do
+      user = create_user("resume_ok@example.com")
+      host = create_host()
+      session = create_session(user, host, %{status: "suspended"})
+      conn = authed_conn(conn, user)
+      conn = post(conn, "/api/sessions/#{session.id}/resume")
+      assert json_response(conn, 200)["session"]["status"] == "active"
+    end
+
+    test "active session → 422", %{conn: conn} do
+      user = create_user("resume_active@example.com")
+      host = create_host()
+      session = create_session(user, host, %{status: "active"})
+      conn = authed_conn(conn, user)
+      conn = post(conn, "/api/sessions/#{session.id}/resume")
+      assert conn.status == 422
+    end
+
+    test "non-existent session → 404", %{conn: conn} do
+      user = create_user("resume_notfound@example.com")
+      conn = authed_conn(conn, user)
+      conn = post(conn, "/api/sessions/#{Ecto.UUID.generate()}/resume")
+      assert json_response(conn, 404)["error"] == "not found"
+    end
+  end
+
+  describe "POST /api/sessions/:id/terminate" do
+    test "returns 200 with terminated status", %{conn: conn} do
+      user = create_user("terminate_ok@example.com")
+      host = create_host()
+      session = create_session(user, host, %{status: "active"})
+      conn = authed_conn(conn, user)
+      conn = post(conn, "/api/sessions/#{session.id}/terminate")
+      assert json_response(conn, 200)["session"]["status"] == "terminated"
+    end
+
+    test "non-existent session → 404", %{conn: conn} do
+      user = create_user("terminate_notfound@example.com")
+      conn = authed_conn(conn, user)
+      conn = post(conn, "/api/sessions/#{Ecto.UUID.generate()}/terminate")
+      assert json_response(conn, 404)["error"] == "not found"
+    end
+  end
+
   describe "POST /api/sessions/:id/messages (send_message)" do
     test "creates a message in the session", %{conn: conn} do
       user = create_user("msg_sess@example.com")

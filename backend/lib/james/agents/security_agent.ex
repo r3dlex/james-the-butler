@@ -21,6 +21,57 @@ defmodule James.Agents.SecurityAgent do
       }
     },
     %{
+      name: "scan_file",
+      description: "Scan a source file for security vulnerabilities.",
+      input_schema: %{
+        type: "object",
+        properties: %{path: %{type: "string", description: "File path to scan"}},
+        required: ["path"]
+      }
+    },
+    %{
+      name: "scan_directory",
+      description: "List files in a directory matching a glob pattern for security review.",
+      input_schema: %{
+        type: "object",
+        properties: %{
+          path: %{type: "string", description: "Directory path to scan"},
+          pattern: %{type: "string", description: "Glob pattern to match files (e.g. *.ex)"}
+        },
+        required: ["path"]
+      }
+    },
+    %{
+      name: "check_dependencies",
+      description: "Read a dependency manifest file to check for known vulnerable packages.",
+      input_schema: %{
+        type: "object",
+        properties: %{
+          manifest_path: %{
+            type: "string",
+            description: "Path to the manifest file (mix.exs, package.json, etc.)"
+          }
+        },
+        required: ["manifest_path"]
+      }
+    },
+    %{
+      name: "generate_findings",
+      description:
+        "Save a structured list of security findings. Each finding must include severity, description, location, and remediation.",
+      input_schema: %{
+        type: "object",
+        properties: %{
+          findings_json: %{
+            type: "string",
+            description:
+              "JSON array of findings. Each entry: {severity, description, location, remediation}"
+          }
+        },
+        required: ["findings_json"]
+      }
+    },
+    %{
       name: "search_pattern",
       description: "Search for a regex pattern across files to find potential vulnerabilities.",
       input_schema: %{
@@ -164,6 +215,68 @@ defmodule James.Agents.SecurityAgent do
     end
   end
 
+  defp execute_tool("scan_file", %{"path" => path}, state) do
+    if path_allowed?(path, state.working_dirs) do
+      case File.read(path) do
+        {:ok, content} -> content
+        {:error, reason} -> "Error reading file: #{reason}"
+      end
+    else
+      "Error: Path not in allowed directories"
+    end
+  end
+
+  defp execute_tool("scan_directory", %{"path" => path} = input, state) do
+    if path_allowed?(path, state.working_dirs) do
+      pattern = Map.get(input, "pattern", "**/*")
+      glob = Path.join(path, pattern)
+
+      files =
+        glob
+        |> Path.wildcard()
+        |> Enum.filter(&File.regular?/1)
+
+      case files do
+        [] -> "No files matched pattern: #{glob}"
+        list -> Enum.join(list, "\n")
+      end
+    else
+      "Error: Path not in allowed directories"
+    end
+  end
+
+  defp execute_tool("check_dependencies", %{"manifest_path" => path}, state) do
+    if path_allowed?(path, state.working_dirs) do
+      case File.read(path) do
+        {:ok, content} -> content
+        {:error, reason} -> "Error reading manifest: #{reason}"
+      end
+    else
+      "Error: Path not in allowed directories"
+    end
+  end
+
+  defp execute_tool("generate_findings", %{"findings_json" => json}, state) do
+    case Jason.decode(json) do
+      {:ok, findings} when is_list(findings) ->
+        report = format_findings_report(findings)
+
+        Sessions.create_message(%{
+          session_id: state.session_id,
+          role: "system",
+          content: report
+        })
+
+        "#{length(findings)} finding(s) saved."
+
+      {:ok, _} ->
+        "Error: findings_json must be a JSON array"
+
+      {:error, reason} ->
+        "Error: Invalid JSON — #{inspect(reason)}"
+    end
+  end
+
   defp execute_tool("search_pattern", %{"pattern" => pattern} = input, state) do
     dir = Map.get(input, "path") || hd(state.working_dirs)
 
@@ -206,6 +319,28 @@ defmodule James.Agents.SecurityAgent do
   end
 
   defp execute_tool(name, _input, _state), do: "Unknown tool: #{name}"
+
+  defp format_findings_report(findings) do
+    header = "## Security Findings (#{length(findings)} total)\n\n"
+
+    body =
+      findings
+      |> Enum.with_index(1)
+      |> Enum.map_join("\n\n", fn {finding, idx} ->
+        severity = Map.get(finding, "severity", Map.get(finding, :severity, "unknown"))
+        description = Map.get(finding, "description", Map.get(finding, :description, ""))
+        location = Map.get(finding, "location", Map.get(finding, :location, ""))
+        remediation = Map.get(finding, "remediation", Map.get(finding, :remediation, ""))
+
+        """
+        ### #{idx}. [#{String.upcase(to_string(severity))}] #{description}
+        **Location:** #{location}
+        **Remediation:** #{remediation}\
+        """
+      end)
+
+    header <> body
+  end
 
   defp extract_text_content(content) when is_binary(content), do: content
 
@@ -266,9 +401,13 @@ defmodule James.Agents.SecurityAgent do
     You are James the Butler, a security-focused AI agent. You scan source code for vulnerabilities and provide severity-rated findings.
 
     Available tools:
+    - scan_file: Scan a single source file for vulnerabilities
+    - scan_directory: List files in a directory matching a glob pattern
+    - check_dependencies: Read a dependency manifest to check for vulnerable packages
+    - generate_findings: Save a structured list of findings (severity, description, location, remediation)
     - read_file: Read source files
-    - search_pattern: Search for vulnerability patterns
-    - report_finding: Report a security finding
+    - search_pattern: Search for vulnerability patterns across files
+    - report_finding: Report an individual security finding
 
     Focus areas:
     - Injection vulnerabilities (SQL, command, XSS)
@@ -279,10 +418,12 @@ defmodule James.Agents.SecurityAgent do
     - OWASP Top 10
 
     For each finding, provide:
-    - Severity level (critical/high/medium/low/info)
+    - Severity level (high/medium/low)
     - Clear description of the vulnerability
-    - Specific file and line number
-    - Concrete recommendation for remediation
+    - Specific file and line location
+    - Concrete remediation recommendation
+
+    Use generate_findings to produce the final structured report.
     """
   end
 end

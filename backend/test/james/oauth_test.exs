@@ -213,6 +213,144 @@ defmodule James.OAuthTest do
   # which exercises the {:error, reason} code paths.
   # ---------------------------------------------------------------------------
 
+  # ---------------------------------------------------------------------------
+  # generate_pkce/0
+  # ---------------------------------------------------------------------------
+
+  describe "generate_pkce/0" do
+    test "returns a two-element tuple {verifier, challenge}" do
+      assert {verifier, challenge} = OAuth.generate_pkce()
+      assert is_binary(verifier)
+      assert is_binary(challenge)
+    end
+
+    test "verifier is between 43 and 128 characters" do
+      {verifier, _challenge} = OAuth.generate_pkce()
+      len = String.length(verifier)
+      assert len >= 43 and len <= 128
+    end
+
+    test "verifier is base64url without padding" do
+      {verifier, _challenge} = OAuth.generate_pkce()
+      # base64url alphabet: A-Z a-z 0-9 - _  (no +, /, or =)
+      assert verifier =~ ~r/\A[A-Za-z0-9\-_]+\z/
+    end
+
+    test "challenge is a base64url SHA-256 of the verifier" do
+      {verifier, challenge} = OAuth.generate_pkce()
+      expected = :crypto.hash(:sha256, verifier) |> Base.url_encode64(padding: false)
+      assert challenge == expected
+    end
+
+    test "each call generates a unique verifier" do
+      {v1, _} = OAuth.generate_pkce()
+      {v2, _} = OAuth.generate_pkce()
+      refute v1 == v2
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # authorization_url/2 — PKCE params
+  # ---------------------------------------------------------------------------
+
+  describe "authorization_url/2 — PKCE inclusion" do
+    setup do
+      System.put_env(@google_id_key, "test-google-id")
+      System.put_env(@github_id_key, "test-github-id")
+      System.put_env(@microsoft_id_key, "test-ms-id")
+      :ok
+    end
+
+    test "google URL includes code_challenge param" do
+      url = OAuth.authorization_url("google", "state-g")
+      decoded = URI.decode_query(URI.parse(url).query)
+      assert Map.has_key?(decoded, "code_challenge")
+      assert String.length(decoded["code_challenge"]) > 0
+    end
+
+    test "google URL includes code_challenge_method=S256" do
+      url = OAuth.authorization_url("google", "state-g")
+      decoded = URI.decode_query(URI.parse(url).query)
+      assert decoded["code_challenge_method"] == "S256"
+    end
+
+    test "microsoft URL includes code_challenge param" do
+      url = OAuth.authorization_url("microsoft", "state-ms")
+      decoded = URI.decode_query(URI.parse(url).query)
+      assert Map.has_key?(decoded, "code_challenge")
+    end
+
+    test "microsoft URL includes code_challenge_method=S256" do
+      url = OAuth.authorization_url("microsoft", "state-ms")
+      decoded = URI.decode_query(URI.parse(url).query)
+      assert decoded["code_challenge_method"] == "S256"
+    end
+
+    test "github URL does NOT include code_challenge" do
+      url = OAuth.authorization_url("github", "state-gh")
+      decoded = URI.decode_query(URI.parse(url).query)
+      refute Map.has_key?(decoded, "code_challenge")
+    end
+
+    test "github URL does NOT include code_challenge_method" do
+      url = OAuth.authorization_url("github", "state-gh")
+      decoded = URI.decode_query(URI.parse(url).query)
+      refute Map.has_key?(decoded, "code_challenge_method")
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # generate_state/0 and verify_state/1
+  # ---------------------------------------------------------------------------
+
+  describe "generate_state/0" do
+    test "returns a non-empty binary string" do
+      state = OAuth.generate_state()
+      assert is_binary(state)
+      assert byte_size(state) > 0
+    end
+
+    test "each call generates a unique state token" do
+      s1 = OAuth.generate_state()
+      s2 = OAuth.generate_state()
+      refute s1 == s2
+    end
+  end
+
+  describe "verify_state/1" do
+    test "returns :ok for a freshly generated state" do
+      state = OAuth.generate_state()
+      assert OAuth.verify_state(state) == :ok
+    end
+
+    test "returns {:error, :invalid_state} for a tampered token" do
+      state = OAuth.generate_state()
+      tampered = state <> "x"
+      assert OAuth.verify_state(tampered) == {:error, :invalid_state}
+    end
+
+    test "returns {:error, :invalid_state} for a random string" do
+      assert OAuth.verify_state("totally-invalid-state") == {:error, :invalid_state}
+    end
+
+    test "returns {:error, :state_expired} for a state older than 10 minutes" do
+      # Generate a state with a timestamp 11 minutes in the past
+      past_ts = System.system_time(:second) - 11 * 60
+      expired = OAuth.generate_state_at(past_ts)
+      assert OAuth.verify_state(expired) == {:error, :state_expired}
+    end
+
+    test "returns :ok for a state just under 10 minutes old" do
+      nine_min_ago = System.system_time(:second) - 9 * 60
+      state = OAuth.generate_state_at(nine_min_ago)
+      assert OAuth.verify_state(state) == :ok
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # exchange_code/2 — raises when credentials missing
+  # ---------------------------------------------------------------------------
+
   describe "exchange_code/2 — raises when credentials missing" do
     test "raises RuntimeError for google when client_id is not set" do
       assert_raise RuntimeError, ~r/GOOGLE_CLIENT_ID not set/, fn ->

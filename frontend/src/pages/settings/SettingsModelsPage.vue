@@ -3,7 +3,10 @@
     <h1 class="mb-4 text-lg font-medium" style="color: var(--color-text)">
       Models
     </h1>
-    <div class="max-w-lg space-y-4">
+
+    <LoadingSpinner v-if="settingsStore.loading" />
+
+    <div v-else class="max-w-lg space-y-4">
       <div>
         <label
           class="mb-1 block text-xs font-medium"
@@ -35,12 +38,22 @@
         style="color: var(--color-accent-blue)"
         >Saved</span
       >
+      <span
+        v-if="settingsStore.error"
+        class="ml-2 text-xs"
+        style="color: var(--color-risk-red)"
+        >{{ settingsStore.error }}</span
+      >
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, onMounted, watch } from "vue";
+import { useSettingsStore } from "@/stores/settings";
+import LoadingSpinner from "@/components/common/LoadingSpinner.vue";
+
+const settingsStore = useSettingsStore();
 
 const models = [
   "claude-sonnet-4-20250514",
@@ -50,8 +63,22 @@ const models = [
 const selectedModel = ref("claude-sonnet-4-20250514");
 const saved = ref(false);
 
-function save() {
-  saved.value = true;
-  setTimeout(() => (saved.value = false), 2000);
+watch(
+  () => settingsStore.modelConfig,
+  (config) => {
+    if (config?.model) selectedModel.value = config.model;
+  },
+);
+
+async function save() {
+  await settingsStore.saveModelConfig({ model: selectedModel.value });
+  if (!settingsStore.error) {
+    saved.value = true;
+    setTimeout(() => (saved.value = false), 2000);
+  }
 }
+
+onMounted(() => {
+  settingsStore.fetchModelConfig();
+});
 </script>

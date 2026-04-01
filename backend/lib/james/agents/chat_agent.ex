@@ -10,7 +10,7 @@ defmodule James.Agents.ChatAgent do
   alias James.{Embeddings, LLMProvider, Memories, Personality, Sessions, Tasks, Tokens}
   alias James.Workers.MemoryExtractionWorker
 
-  defstruct [:session_id, :task_id, :messages, :system_prompt, :model]
+  defstruct [:session_id, :task_id, :messages, :system_prompt, :model, :provider]
 
   # --- Client API ---
 
@@ -25,6 +25,7 @@ defmodule James.Agents.ChatAgent do
     session_id = Keyword.fetch!(opts, :session_id)
     task_id = Keyword.get(opts, :task_id)
     model = Keyword.get(opts, :model)
+    provider = Keyword.get(opts, :provider)
     session = Sessions.get_session(session_id)
     system_prompt = Keyword.get(opts, :system_prompt) || resolve_system_prompt(session)
 
@@ -50,7 +51,8 @@ defmodule James.Agents.ChatAgent do
       task_id: task_id,
       messages: messages,
       system_prompt: full_system,
-      model: model
+      model: model,
+      provider: provider
     }
 
     # Start processing immediately
@@ -78,7 +80,9 @@ defmodule James.Agents.ChatAgent do
 
     opts = if state.model, do: Keyword.put(opts, :model, state.model), else: opts
 
-    case LLMProvider.configured().stream_message(state.messages, opts) do
+    llm_provider = state.provider || LLMProvider.configured()
+
+    case llm_provider.stream_message(state.messages, opts) do
       {:ok, %{content: content, usage: usage}} ->
         # Save assistant message
         {:ok, message} =

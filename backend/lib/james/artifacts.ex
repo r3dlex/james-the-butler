@@ -53,4 +53,24 @@ defmodule James.Artifacts do
 
     {:ok, count}
   end
+
+  @doc """
+  Marks all `"working_file"` artifacts for `session_id` as cleaned.
+  `"deliverable"` artifacts are always preserved.
+  Returns `{:ok, deleted_count}`.
+  """
+  def clean_session_working_files(session_id) do
+    now = DateTime.utc_now()
+
+    {count, _} =
+      from(a in Artifact,
+        where:
+          a.session_id == ^session_id and
+            a.type == "working_file" and
+            is_nil(a.cleaned_at)
+      )
+      |> Repo.update_all(set: [cleaned_at: now])
+
+    {:ok, count}
+  end
 end

@@ -1,7 +1,7 @@
 defmodule James.MemoriesTest do
   use James.DataCase
 
-  alias James.{Accounts, Memories}
+  alias James.{Accounts, Hosts, Memories, Projects, Sessions}
 
   defp create_user(email \\ "mem_user@example.com") do
     {:ok, user} = Accounts.create_user(%{email: email})
@@ -101,8 +101,6 @@ defmodule James.MemoriesTest do
 
   describe "list_memories/2 with source_session_id" do
     test "filters memories by source_session_id" do
-      alias James.{Accounts, Hosts, Sessions}
-
       user = create_user("src_sess_mem@example.com")
 
       {:ok, host} =
@@ -144,6 +142,102 @@ defmodule James.MemoriesTest do
       embedding = Enum.map(1..1536, fn _ -> 0.0 end)
       results = Memories.search_similar(user.id, embedding)
       assert results == []
+    end
+
+    test "falls back to text search when no embedding provided" do
+      user = create_user("search_text@example.com")
+      create_memory(user, %{content: "Elixir is functional"})
+      create_memory(user, %{content: "Phoenix is a web framework"})
+
+      results = Memories.search_text(user.id, "Elixir")
+      assert is_list(results)
+      assert Enum.any?(results, fn m -> m.content =~ "Elixir" end)
+    end
+
+    test "text search returns empty list when no matches" do
+      user = create_user("search_text_empty@example.com")
+      create_memory(user, %{content: "Some unrelated content"})
+
+      results = Memories.search_text(user.id, "quantum computing")
+      assert results == []
+    end
+
+    test "search_similar with project_id filters to sessions in that project" do
+      user = create_user("proj_search@example.com")
+
+      {:ok, host} =
+        Hosts.create_host(%{
+          name: "proj-host-#{System.unique_integer()}",
+          endpoint: "http://l:1"
+        })
+
+      {:ok, project} =
+        Projects.create_project(%{
+          name: "My Project",
+          user_id: user.id
+        })
+
+      {:ok, session_in_project} =
+        Sessions.create_session(%{
+          user_id: user.id,
+          host_id: host.id,
+          name: "In Project",
+          project_id: project.id,
+          agent_type: "chat"
+        })
+
+      {:ok, session_outside} =
+        Sessions.create_session(%{
+          user_id: user.id,
+          host_id: host.id,
+          name: "Outside",
+          agent_type: "chat"
+        })
+
+      embedding = Enum.map(1..1536, fn _ -> 0.5 end)
+
+      create_memory(user, %{
+        content: "Project memory",
+        embedding: embedding,
+        source_session_id: session_in_project.id
+      })
+
+      create_memory(user, %{
+        content: "Non-project memory",
+        embedding: embedding,
+        source_session_id: session_outside.id
+      })
+
+      results = Memories.search_similar(user.id, embedding, 10, project_id: project.id)
+      contents = Enum.map(results, & &1.content)
+      assert "Project memory" in contents
+      refute "Non-project memory" in contents
+    end
+  end
+
+  describe "list_memories_for_user/1" do
+    test "returns all memories for a user" do
+      user = create_user("all_mem_user@example.com")
+      create_memory(user, %{content: "Memory A"})
+      create_memory(user, %{content: "Memory B"})
+      create_memory(user, %{content: "Memory C"})
+
+      results = Memories.list_memories_for_user(user.id)
+      assert length(results) == 3
+    end
+
+    test "does not return other users' memories" do
+      user1 = create_user("for_user_u1@example.com")
+      user2 = create_user("for_user_u2@example.com")
+      create_memory(user1, %{content: "User1 memory"})
+
+      results = Memories.list_memories_for_user(user2.id)
+      assert results == []
+    end
+
+    test "returns empty list when user has no memories" do
+      user = create_user("no_mem_user@example.com")
+      assert Memories.list_memories_for_user(user.id) == []
     end
   end
 end

@@ -138,6 +138,59 @@ defmodule James.Agents.ChatAgentTest do
       assert_received {:assistant_chunk, _}
     end
 
+    test "uses explicitly provided :provider module instead of configured default" do
+      %{session: session, task: task} = setup_session()
+
+      # Push a response for our custom provider
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "From custom provider",
+           usage: %{input_tokens: 3, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
+
+      {:ok, pid} =
+        ChatAgent.start_link(
+          session_id: session.id,
+          task_id: task.id,
+          provider: James.Test.MockLLMProvider
+        )
+
+      ref = Process.monitor(pid)
+      assert_receive {:DOWN, ^ref, :process, ^pid, :normal}, 3000
+
+      messages = Sessions.list_messages(session.id)
+      assistant_msgs = Enum.filter(messages, &(&1.role == "assistant"))
+      assert assistant_msgs != []
+      assert hd(assistant_msgs).content == "From custom provider"
+    end
+
+    test "falls back to LLMProvider.configured() when no :provider opt is given" do
+      %{session: session, task: task} = setup_session()
+
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Fallback response",
+           usage: %{input_tokens: 2, output_tokens: 4},
+           stop_reason: "end_turn"
+         }}
+      )
+
+      # No :provider opt — should still use MockLLMProvider because that is what
+      # the test config sets as the default (James.Test.MockLLMProvider).
+      {:ok, pid} = ChatAgent.start_link(session_id: session.id, task_id: task.id)
+      ref = Process.monitor(pid)
+      assert_receive {:DOWN, ^ref, :process, ^pid, :normal}, 3000
+
+      messages = Sessions.list_messages(session.id)
+      assistant_msgs = Enum.filter(messages, &(&1.role == "assistant"))
+      assert assistant_msgs != []
+      assert hd(assistant_msgs).content == "Fallback response"
+    end
+
     test "handles session with no user messages (build_memory_context empty)" do
       {:ok, user} =
         Accounts.create_user(%{email: "chat_nomsg_#{System.unique_integer()}@example.com"})

@@ -198,5 +198,199 @@ defmodule James.Workers.MemoryExtractionWorkerTest do
       job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
       assert :ok = MemoryExtractionWorker.perform(job)
     end
+
+    test "skips duplicate memory — same content stored only once" do
+      user = create_user()
+      session = create_session(user)
+
+      Sessions.create_message(%{session_id: session.id, role: "user", content: "I love Elixir."})
+
+      Sessions.create_message(%{
+        session_id: session.id,
+        role: "assistant",
+        content: "Great language!"
+      })
+
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: ~s(["User loves Elixir"]),
+           usage: %{input_tokens: 10, output_tokens: 5}
+         }}
+      )
+
+      job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
+      assert :ok = MemoryExtractionWorker.perform(job)
+
+      # Run again with same content — should deduplicate
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: ~s(["User loves Elixir"]),
+           usage: %{input_tokens: 10, output_tokens: 5}
+         }}
+      )
+
+      assert :ok = MemoryExtractionWorker.perform(job)
+
+      memories = Memories.list_memories(user.id)
+      elixir_memories = Enum.filter(memories, fn m -> m.content == "User loves Elixir" end)
+      assert length(elixir_memories) == 1
+    end
+
+    test "stores memory without embedding when embedding service fails" do
+      user = create_user()
+      session = create_session(user)
+
+      Sessions.create_message(%{
+        session_id: session.id,
+        role: "user",
+        content: "I work in Phoenix."
+      })
+
+      Sessions.create_message(%{
+        session_id: session.id,
+        role: "assistant",
+        content: "Phoenix is great!"
+      })
+
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: ~s(["User works with Phoenix framework"]),
+           usage: %{input_tokens: 15, output_tokens: 8}
+         }}
+      )
+
+      # Embedding service will fail (no API key configured in test)
+      job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
+      assert :ok = MemoryExtractionWorker.perform(job)
+
+      memories = Memories.list_memories(user.id)
+      assert Enum.any?(memories, fn m -> m.content =~ "Phoenix" end)
+
+      # Embedding should be nil since service is not configured in tests
+      phoenix_mem = Enum.find(memories, fn m -> m.content =~ "Phoenix" end)
+      assert phoenix_mem.embedding == nil
+    end
+
+    test "is idempotent — running twice stores no duplicates" do
+      user = create_user()
+      session = create_session(user)
+
+      Sessions.create_message(%{session_id: session.id, role: "user", content: "I like Rust."})
+
+      Sessions.create_message(%{
+        session_id: session.id,
+        role: "assistant",
+        content: "Rust is powerful!"
+      })
+
+      job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
+
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: ~s(["User likes Rust programming language"]),
+           usage: %{input_tokens: 10, output_tokens: 5}
+         }}
+      )
+
+      assert :ok = MemoryExtractionWorker.perform(job)
+
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: ~s(["User likes Rust programming language"]),
+           usage: %{input_tokens: 10, output_tokens: 5}
+         }}
+      )
+
+      assert :ok = MemoryExtractionWorker.perform(job)
+
+      memories = Memories.list_memories(user.id)
+
+      rust_count =
+        Enum.count(memories, fn m -> m.content == "User likes Rust programming language" end)
+
+      assert rust_count == 1
+    end
+
+    test "processes only new messages since last extraction (delta tracking)" do
+      user = create_user()
+      session = create_session(user)
+
+      {:ok, msg1} =
+        Sessions.create_message(%{
+          session_id: session.id,
+          role: "user",
+          content: "First message"
+        })
+
+      {:ok, _msg2} =
+        Sessions.create_message(%{
+          session_id: session.id,
+          role: "assistant",
+          content: "First reply"
+        })
+
+      # First extraction
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: ~s(["Memory from first batch"]),
+           usage: %{input_tokens: 10, output_tokens: 5}
+         }}
+      )
+
+      job1 = %Oban.Job{
+        args: %{
+          "session_id" => session.id,
+          "user_id" => user.id,
+          "last_extracted_message_id" => nil
+        }
+      }
+
+      assert :ok = MemoryExtractionWorker.perform(job1)
+      memories_after_first = Memories.list_memories(user.id)
+      assert memories_after_first != []
+
+      # Add new messages after first extraction
+      Sessions.create_message(%{
+        session_id: session.id,
+        role: "user",
+        content: "Second message"
+      })
+
+      Sessions.create_message(%{
+        session_id: session.id,
+        role: "assistant",
+        content: "Second reply"
+      })
+
+      # Second extraction with last_extracted_message_id set to msg1.id
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: ~s(["Memory from second batch"]),
+           usage: %{input_tokens: 10, output_tokens: 5}
+         }}
+      )
+
+      job2 = %Oban.Job{
+        args: %{
+          "session_id" => session.id,
+          "user_id" => user.id,
+          "last_extracted_message_id" => msg1.id
+        }
+      }
+
+      assert :ok = MemoryExtractionWorker.perform(job2)
+
+      memories_after_second = Memories.list_memories(user.id)
+      # Should have memories from both batches
+      assert Enum.any?(memories_after_second, fn m -> m.content =~ "first batch" end)
+      assert Enum.any?(memories_after_second, fn m -> m.content =~ "second batch" end)
+    end
   end
 end
