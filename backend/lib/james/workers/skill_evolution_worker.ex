@@ -49,6 +49,7 @@ defmodule James.Workers.SkillEvolutionWorker do
   defp evolve(skill, reason, "mock", _ctx) do
     # In mock/test mode, append a comment to signal evolution without an LLM call
     evolved_content = skill.content <> "\n# evolved: #{reason} at #{DateTime.utc_now()}"
+
     case Skills.sync_skill(skill.name, evolved_content) do
       {:ok, _updated} ->
         Logger.info("SkillEvolutionWorker: mock evolution complete for '#{skill.name}'")
