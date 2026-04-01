@@ -18,7 +18,8 @@ defmodule James.Workers.SkillEvolutionWorkerTest do
     end
 
     test "returns :ok for an existing skill without LLM (mock mode)" do
-      {:ok, _skill} = Skills.sync_skill("test-evolve-skill", "# Original content\ndef run, do: :ok")
+      {:ok, _skill} =
+        Skills.sync_skill("test-evolve-skill", "# Original content\ndef run, do: :ok")
 
       job =
         build_job(%{
@@ -30,10 +31,31 @@ defmodule James.Workers.SkillEvolutionWorkerTest do
       assert :ok = SkillEvolutionWorker.perform(job)
     end
 
-    test "returns :ok via llm mode using mock provider" do
+    test "returns :ok via llm mode with tool_calls reason and session context" do
       {:ok, _skill} = Skills.sync_skill("llm-evolve-skill", "# Original")
 
-      job = build_job(%{"skill_name" => "llm-evolve-skill", "reason" => "retries"})
+      job =
+        build_job(%{
+          "skill_name" => "llm-evolve-skill",
+          "reason" => "tool_calls",
+          "session_context" => %{"turns" => 6}
+        })
+
+      assert :ok = SkillEvolutionWorker.perform(job)
+    end
+
+    test "returns :ok via llm mode with retries reason" do
+      {:ok, _skill} = Skills.sync_skill("llm-retry-skill", "# Original")
+
+      job = build_job(%{"skill_name" => "llm-retry-skill", "reason" => "retries"})
+
+      assert :ok = SkillEvolutionWorker.perform(job)
+    end
+
+    test "returns :ok via llm mode with unknown reason" do
+      {:ok, _skill} = Skills.sync_skill("llm-other-skill", "# Original")
+
+      job = build_job(%{"skill_name" => "llm-other-skill", "reason" => "overflow"})
 
       assert :ok = SkillEvolutionWorker.perform(job)
     end
