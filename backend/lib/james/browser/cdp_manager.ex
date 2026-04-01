@@ -46,4 +46,12 @@ defmodule James.Browser.CdpManager do
         "Unknown browser action: #{action}"
     end
   end
+
+  @doc "Close all tab groups that have been idle since `cutoff` datetime."
+  def close_idle_tab_groups(_cutoff) do
+    # Scaffold: in production, query active tab groups from registry and
+    # close any whose last_activity < cutoff via CDP Target.closeTarget.
+    Logger.info("CDP: close_idle_tab_groups called")
+    :ok
+  end
 end

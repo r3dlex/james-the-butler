@@ -23,7 +23,7 @@ defmodule James.Tasks do
 
   def get_task(id), do: Repo.get(Task, id)
 
-  def get_task!(id), do: Repo.get!(Task, id) |> Repo.preload([:sub_tasks, :artifacts])
+  def get_task!(id), do: Repo.get!(Task, id) |> Repo.preload([:sub_tasks])
 
   def create_task(attrs) do
     %Task{}
