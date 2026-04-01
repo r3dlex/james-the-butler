@@ -8,6 +8,7 @@ from pipeline_runner.stages.archgate import (
     check_adr_index,
     check_component_specs,
     check_coverage_config,
+    check_docs_config,
     check_lock_files,
     check_no_cross_imports,
     run_all_rules,
@@ -118,7 +119,20 @@ def test_check_coverage_config_missing(tmp_path: object) -> None:
         assert not result.passed
 
 
+def test_check_docs_config() -> None:
+    result = check_docs_config()
+    assert result.rule == "docs-config"
+    assert result.passed
+
+
+def test_check_docs_config_missing(tmp_path: object) -> None:
+    with patch("pipeline_runner.stages.archgate.PROJECT_ROOT", tmp_path):
+        result = check_docs_config()
+        assert not result.passed
+        assert "docs/package.json" in result.message
+
+
 def test_run_all_rules() -> None:
     results = run_all_rules()
-    assert len(results) == 5
+    assert len(results) == 6
     assert all(r.rule for r in results)
