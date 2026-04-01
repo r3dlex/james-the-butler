@@ -81,7 +81,7 @@ defmodule James.Workers.NarrativeSummaryWorkerTest do
                })
 
       entries = ExecutionHistory.list_entries(session_id: session.id)
-      assert length(entries) >= 1
+      assert entries != []
       assert hd(entries).narrative_summary =~ "deployed"
     end
 

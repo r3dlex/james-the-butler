@@ -2,8 +2,8 @@ defmodule James.Agents.DesktopAgentTest do
   @moduledoc "Tests for DesktopAgent — Daemon.status() always returns :disconnected in tests."
   use James.DataCase
 
-  alias James.Agents.DesktopAgent
   alias James.{Accounts, Hosts, Sessions, Tasks}
+  alias James.Agents.DesktopAgent
   alias James.Test.MockLLMProvider
 
   setup do
@@ -75,7 +75,7 @@ defmodule James.Agents.DesktopAgentTest do
 
       assert Enum.any?(chunks, fn c -> c =~ "daemon" end) or
                Enum.any?(chunks, fn c -> c =~ "not running" end) or
-               length(chunks) > 0
+               chunks != []
     end
 
     test "starts without task_id without crashing" do

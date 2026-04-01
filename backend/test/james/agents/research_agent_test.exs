@@ -2,8 +2,8 @@ defmodule James.Agents.ResearchAgentTest do
   @moduledoc "Tests for ResearchAgent tool execution using MockLLMProvider."
   use James.DataCase
 
-  alias James.Agents.ResearchAgent
   alias James.{Accounts, Hosts, Sessions, Tasks}
+  alias James.Agents.ResearchAgent
   alias James.Test.MockLLMProvider
 
   setup do

@@ -2,8 +2,8 @@ defmodule James.Agents.BrowserAgentTest do
   @moduledoc "Tests for BrowserAgent using MockLLMProvider and a fake Chrome binary."
   use James.DataCase
 
-  alias James.Agents.BrowserAgent
   alias James.{Accounts, Hosts, Sessions, Tasks}
+  alias James.Agents.BrowserAgent
   alias James.Test.MockLLMProvider
 
   setup do

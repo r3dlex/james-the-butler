@@ -4,8 +4,8 @@ defmodule James.Agents.ChatAgentTest do
   """
   use James.DataCase
 
-  alias James.Agents.ChatAgent
   alias James.{Accounts, Hosts, Sessions, Tasks}
+  alias James.Agents.ChatAgent
   alias James.Test.MockLLMProvider
 
   setup do
@@ -62,7 +62,7 @@ defmodule James.Agents.ChatAgentTest do
 
       messages = Sessions.list_messages(session.id)
       assistant_msgs = Enum.filter(messages, &(&1.role == "assistant"))
-      assert length(assistant_msgs) >= 1
+      assert assistant_msgs != []
       assert hd(assistant_msgs).content =~ "Hello"
     end
 

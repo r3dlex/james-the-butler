@@ -4,8 +4,8 @@ defmodule James.Agents.CodeAgentTest do
   """
   use James.DataCase
 
-  alias James.Agents.CodeAgent
   alias James.{Accounts, Hosts, Sessions, Tasks}
+  alias James.Agents.CodeAgent
   alias James.Test.MockLLMProvider
 
   setup do
