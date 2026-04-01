@@ -27,6 +27,6 @@ defmodule James.LLMProvider do
   Defaults to `James.Providers.Anthropic` if not configured.
   """
   def configured do
-    Application.get_env(:james, :llm_provider, James.Providers.Anthropic)
+    Application.fetch_env!(:james, :llm_provider)
   end
 end

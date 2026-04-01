@@ -31,12 +31,12 @@ defmodule James.Artifacts do
   def get_artifact!(id), do: Repo.get!(Artifact, id)
 
   def create_artifact(attrs) do
-    %Artifact{}
+    struct(Artifact)
     |> Artifact.changeset(attrs)
     |> Repo.insert()
   end
 
-  def mark_cleaned(%Artifact{} = artifact) do
+  def mark_cleaned(artifact) do
     artifact
     |> Artifact.changeset(%{cleaned_at: DateTime.utc_now()})
     |> Repo.update()
