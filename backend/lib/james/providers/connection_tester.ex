@@ -130,7 +130,7 @@ defmodule James.Providers.ConnectionTester do
 
     body =
       Jason.encode!(%{
-        model: "claude-3-5-sonnet-20241022",
+        model: "MiniMax-M2.7",
         max_tokens: 1,
         messages: [%{role: "user", content: "hi"}]
       })

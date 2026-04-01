@@ -50,11 +50,13 @@ defmodule James.Providers.ModelCatalog do
   )
 
   @minimax_models ~w(
-    abab6.5s-chat
-    abab6.5t-chat
-    abab6-chat
-    abab5.5s-chat
-    abab5.5-chat
+    MiniMax-M2.7
+    MiniMax-M2.7-highspeed
+    MiniMax-M2.5
+    MiniMax-M2.5-highspeed
+    MiniMax-M2.1
+    MiniMax-M2.1-highspeed
+    MiniMax-M2
   )
 
   @doc """

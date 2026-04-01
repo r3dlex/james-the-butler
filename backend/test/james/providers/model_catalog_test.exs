@@ -35,7 +35,7 @@ defmodule James.Providers.ModelCatalogTest do
     test "returns known MiniMax models" do
       assert {:ok, models} = ModelCatalog.list_models("minimax")
       assert is_list(models)
-      assert Enum.any?(models, &String.starts_with?(&1, "abab"))
+      assert Enum.any?(models, &String.starts_with?(&1, "MiniMax"))
     end
   end
 
