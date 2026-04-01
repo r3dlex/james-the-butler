@@ -137,7 +137,8 @@
             v-if="
               newProvider.providerType === 'ollama' ||
               newProvider.providerType === 'lm_studio' ||
-              newProvider.providerType === 'openai_compatible'
+              newProvider.providerType === 'openai_compatible' ||
+              newProvider.providerType === 'minimax'
             "
           >
             <label
@@ -148,7 +149,7 @@
             <input
               v-model="newProvider.baseUrl"
               type="text"
-              placeholder="http://localhost:11434"
+              :placeholder="baseUrlPlaceholder"
               class="w-full rounded border bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]"
               style="
                 border-color: var(--color-border);
@@ -239,7 +240,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useProviderStore } from "@/stores/providers";
 import LoadingSpinner from "@/components/common/LoadingSpinner.vue";
 import ProviderCard from "@/components/settings/ProviderCard.vue";
@@ -268,6 +269,26 @@ const newProvider = ref<{
   baseUrl: "",
 });
 
+const defaultBaseUrls: Partial<Record<ProviderType, string>> = {
+  minimax: "https://api.minimax.io/anthropic",
+  ollama: "http://localhost:11434",
+  lm_studio: "http://localhost:1234",
+};
+
+const baseUrlPlaceholder = computed(
+  () =>
+    defaultBaseUrls[newProvider.value.providerType] || "http://localhost:11434",
+);
+
+watch(
+  () => newProvider.value.providerType,
+  (type) => {
+    if (type in defaultBaseUrls && !newProvider.value.baseUrl) {
+      newProvider.value.baseUrl = defaultBaseUrls[type] || "";
+    }
+  },
+);
+
 function openConfigureForm(provider: ProviderConfig) {
   configuringProvider.value = provider;
   editName.value = provider.displayName;
@@ -280,6 +301,7 @@ async function submitAddProvider() {
     providerType: newProvider.value.providerType,
     displayName: newProvider.value.displayName,
     authMethod: newProvider.value.authMethod,
+    apiKey: newProvider.value.apiKey || undefined,
     baseUrl: newProvider.value.baseUrl || null,
   });
 

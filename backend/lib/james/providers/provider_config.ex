@@ -21,7 +21,7 @@ defmodule James.Providers.ProviderConfig do
     openai_compatible
   )
 
-  @local_providers ~w(ollama lm_studio openai_compatible)
+  @providers_requiring_base_url ~w(ollama lm_studio openai_compatible minimax)
 
   @valid_auth_methods ~w(api_key oauth none)
   @valid_statuses ~w(untested connected failed)
@@ -79,7 +79,7 @@ defmodule James.Providers.ProviderConfig do
   defp validate_base_url_for_local_providers(changeset) do
     provider_type = get_field(changeset, :provider_type)
 
-    if provider_type in @local_providers do
+    if provider_type in @providers_requiring_base_url do
       validate_required(changeset, [:base_url])
     else
       changeset

@@ -34,7 +34,7 @@ export const useProviderStore = defineStore("providers", () => {
     data: Omit<
       ProviderConfig,
       "id" | "status" | "apiKeyMasked" | "lastTestedAt" | "models"
-    >,
+    > & { apiKey?: string },
   ) {
     loading.value = true;
     error.value = null;

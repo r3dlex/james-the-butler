@@ -124,23 +124,25 @@ defmodule James.Providers.ConnectionTester do
   end
 
   defp test_cloud(%ProviderConfig{provider_type: "minimax"} = config) do
+    # MiniMax offers an Anthropic-compatible API at https://api.minimax.io/anthropic
     api_key = config.decrypted_api_key
-    base_url = config.base_url || "https://api.minimax.chat"
+    base_url = config.base_url || "https://api.minimax.io/anthropic"
 
     body =
       Jason.encode!(%{
-        model: "abab6.5s-chat",
+        model: "claude-3-5-sonnet-20241022",
         max_tokens: 1,
         messages: [%{role: "user", content: "hi"}]
       })
 
     headers = [
-      {"authorization", "Bearer #{api_key || ""}"},
+      {"x-api-key", api_key || ""},
+      {"anthropic-version", "2023-06-01"},
       {"content-type", "application/json"}
     ]
 
     measure(fn ->
-      Req.post("#{base_url}/v1/text/chatcompletion_v2",
+      Req.post("#{base_url}/v1/messages",
         body: body,
         headers: headers,
         receive_timeout: 10_000
