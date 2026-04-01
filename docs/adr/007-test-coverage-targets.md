@@ -31,3 +31,8 @@ Coverage is checked per-component. No global aggregate target.
 
 - **Positive**: Prevents coverage regression. Makes coverage expectations explicit. Catches untested code paths before merge.
 - **Negative**: Coverage percentage can be gamed with low-value tests. Thresholds may need adjustment as codebase grows. Initial setup requires configuring coverage tools per component.
+
+## Implementation Notes
+
+- **Backend**: Uses Ecto Sandbox for DB-backed tests, ensuring test isolation with automatic rollback. `DataCase` and `ConnCase` test helpers are provided at `test/support/` for database and HTTP/channel tests respectively.
+- **CI**: The backend CI pipeline includes a Postgres service container for integration tests.

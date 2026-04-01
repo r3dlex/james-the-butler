@@ -1,0 +1,298 @@
+<template>
+  <div class="flex h-full">
+    <!-- Main chat area (no left panel) -->
+    <div class="flex flex-1 flex-col">
+      <!-- Session header: title + host + paths + token cost -->
+      <div
+        class="flex items-center gap-3 border-b px-4 py-2"
+        style="border-color: var(--color-border)"
+      >
+        <!-- Editable title -->
+        <div class="min-w-0 shrink">
+          <input
+            v-if="editingTitle"
+            ref="titleInputRef"
+            v-model="titleDraft"
+            class="max-w-48 rounded border bg-transparent px-2 py-0.5 text-sm font-medium outline-none focus:border-[var(--color-gold)]"
+            style="border-color: var(--color-border); color: var(--color-text)"
+            @keydown.enter="saveTitle"
+            @keydown.escape="cancelEditTitle"
+            @blur="saveTitle"
+          />
+          <button
+            v-else
+            class="flex max-w-48 items-center gap-1 truncate rounded px-2 py-0.5 text-sm font-medium transition-colors hover:bg-[var(--color-surface)]"
+            style="color: var(--color-text)"
+            :title="session?.name"
+            @click="startEditTitle"
+          >
+            <span class="truncate">{{ session?.name ?? "New Session" }}</span>
+            <span
+              v-if="session && !session.nameSetByUser"
+              class="shrink-0 text-xs italic"
+              style="color: var(--color-text-dim)"
+            >
+              (auto)
+            </span>
+          </button>
+        </div>
+
+        <!-- Host badge -->
+        <div
+          class="flex items-center gap-1.5 rounded-md px-2 py-1"
+          style="background: var(--color-surface)"
+        >
+          <span
+            class="h-1.5 w-1.5 rounded-full"
+            style="background: var(--color-risk-green)"
+          />
+          <span class="text-xs" style="color: var(--color-text-dim)">
+            {{ session?.hostId ?? "primary" }}
+          </span>
+        </div>
+
+        <!-- Working paths -->
+        <div
+          v-if="session?.workingDirectories?.length"
+          class="flex items-center gap-1 rounded-md px-2 py-1"
+          style="background: var(--color-surface)"
+          :title="session.workingDirectories.join('\n')"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            style="color: var(--color-text-dim)"
+          >
+            <path
+              d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+            />
+          </svg>
+          <span
+            class="max-w-32 truncate text-xs"
+            style="color: var(--color-text-dim)"
+          >
+            {{ session.workingDirectories[0] }}
+          </span>
+          <span
+            v-if="session.workingDirectories.length > 1"
+            class="text-xs"
+            style="color: var(--color-text-dim)"
+          >
+            +{{ session.workingDirectories.length - 1 }}
+          </span>
+        </div>
+
+        <!-- Token cost -->
+        <div
+          class="flex items-center gap-1 rounded-md px-2 py-1"
+          style="background: var(--color-surface)"
+        >
+          <span
+            class="flex h-4 w-4 items-center justify-center rounded-full text-xs font-bold"
+            style="background: var(--color-gold); color: var(--color-navy-deep)"
+          >
+            $
+          </span>
+          <span
+            class="text-xs tabular-nums"
+            style="color: var(--color-text-dim)"
+          >
+            {{ sessionCost }}
+          </span>
+        </div>
+      </div>
+
+      <ChatMessageStream
+        :messages="messages"
+        :is-streaming="isStreaming"
+        :streaming-text="streamingText"
+      />
+      <ChatInput :disabled="isStreaming" @send="handleSend" />
+    </div>
+
+    <!-- Right: task panel -->
+    <SessionActivityPanel
+      :tasks="tasks"
+      :planner-status="plannerStatus"
+      @approve="handleApprove"
+      @reject="handleReject"
+    />
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted, nextTick } from "vue";
+import { useRoute } from "vue-router";
+import { useSessionStore } from "@/stores/sessions";
+import { useMessageStore } from "@/stores/messages";
+import { useTaskStore } from "@/stores/tasks";
+import { useSocketStore } from "@/stores/socket";
+import { useTokenStore } from "@/stores/tokens";
+import type { Message } from "@/types/message";
+import SessionActivityPanel from "@/components/session/SessionActivityPanel.vue";
+import ChatMessageStream from "@/components/session/ChatMessageStream.vue";
+import ChatInput from "@/components/session/ChatInput.vue";
+
+const route = useRoute();
+const sessionStore = useSessionStore();
+const messageStore = useMessageStore();
+const taskStore = useTaskStore();
+const socketStore = useSocketStore();
+const tokenStore = useTokenStore();
+
+const sessionId = computed(() => route.params.id as string);
+const session = computed(
+  () => sessionStore.sessions.find((s) => s.id === sessionId.value) ?? null,
+);
+const messages = computed(() => messageStore.getMessages(sessionId.value));
+const isStreaming = computed(
+  () => messageStore.streamingSessionId === sessionId.value,
+);
+const streamingText = computed(() =>
+  isStreaming.value ? messageStore.streamingContent : "",
+);
+const tasks = computed(() => taskStore.getTasksForSession(sessionId.value));
+
+const sessionCost = computed(() => {
+  const usage = tokenStore.getUsage(sessionId.value);
+  return usage ? `$${usage.cost.toFixed(4)}` : "$0.00";
+});
+
+// Title editing
+const editingTitle = ref(false);
+const titleDraft = ref("");
+const titleInputRef = ref<HTMLInputElement | null>(null);
+
+function startEditTitle() {
+  titleDraft.value = session.value?.name ?? "";
+  editingTitle.value = true;
+  nextTick(() => titleInputRef.value?.select());
+}
+
+function saveTitle() {
+  const trimmed = titleDraft.value.trim();
+  if (trimmed && trimmed !== session.value?.name) {
+    sessionStore.renameSession(sessionId.value, trimmed);
+  }
+  editingTitle.value = false;
+}
+
+function cancelEditTitle() {
+  editingTitle.value = false;
+}
+
+const plannerStatus = ref("");
+const hasSentFirstMessage = ref(false);
+
+onMounted(() => {
+  sessionStore.setActive(sessionId.value);
+  messageStore.fetchMessages(sessionId.value);
+  taskStore.fetchTasks(sessionId.value);
+
+  const channel = socketStore.joinChannel(`session:${sessionId.value}`);
+  // Load message history from channel join reply
+  channel.join().receive("ok", (resp: unknown) => {
+    const data = resp as { messages?: Message[] };
+    if (data.messages) messageStore.setMessages(sessionId.value, data.messages);
+  });
+  channel.on("message:new", (payload: unknown) => {
+    const msg = payload as Message;
+    // When assistant message completes, stop streaming and add the final message
+    if (
+      msg.role === "assistant" &&
+      messageStore.streamingSessionId === sessionId.value
+    ) {
+      messageStore.stopStreaming();
+    }
+    messageStore.appendMessage(sessionId.value, msg);
+  });
+  channel.on("message:chunk", (payload: unknown) => {
+    const { content } = payload as { content: string };
+    if (messageStore.streamingSessionId !== sessionId.value) {
+      messageStore.startStreaming(sessionId.value);
+    }
+    messageStore.appendStreamChunk(content);
+  });
+  channel.on("task:updated", (payload: unknown) => {
+    taskStore.updateTask(payload as import("@/types/task").Task);
+  });
+  channel.on("artifact:created", () => {});
+
+  // Join planner channel for live task decomposition
+  const plannerChannel = socketStore.joinChannel(`planner:${sessionId.value}`);
+  plannerChannel.join();
+  plannerChannel.on("planner:step", (payload: unknown) => {
+    const step = (payload as { step: { type: string; description?: string } })
+      .step;
+    if (step.type === "decomposing") plannerStatus.value = "decomposing";
+    else if (step.type === "dispatched") plannerStatus.value = "";
+    else if (step.type === "awaiting_approval")
+      plannerStatus.value = "awaiting approval";
+    else if (step.type === "task_created") plannerStatus.value = "dispatching";
+    else if (step.type === "error") plannerStatus.value = "";
+  });
+  plannerChannel.on("planner:tasks", (payload: unknown) => {
+    const data = payload as { tasks: import("@/types/task").Task[] };
+    data.tasks.forEach((t) => taskStore.updateTask(t));
+  });
+});
+
+onUnmounted(() => {
+  socketStore.leaveChannel(`session:${sessionId.value}`);
+  socketStore.leaveChannel(`planner:${sessionId.value}`);
+  sessionStore.setActive(null);
+});
+
+function handleApprove(taskId: string) {
+  taskStore.approveTask(taskId);
+}
+
+function handleReject(taskId: string) {
+  taskStore.rejectTask(taskId);
+}
+
+async function handleSend(text: string) {
+  if (!hasSentFirstMessage.value) {
+    hasSentFirstMessage.value = true;
+    sessionStore.autoNameSession(sessionId.value, text);
+  }
+
+  // Optimistic local user message
+  const userMsg: Message = {
+    id: `temp-${Date.now()}`,
+    sessionId: sessionId.value,
+    role: "user",
+    content: [{ type: "text", text }],
+    attachments: [],
+    tokenCount: 0,
+    createdAt: new Date().toISOString(),
+  };
+  messageStore.appendMessage(sessionId.value, userMsg);
+
+  // Start streaming state — chunks will arrive via channel
+  messageStore.startStreaming(sessionId.value);
+
+  // Send via REST — backend saves the message, dispatches to planner,
+  // agent response streams back via the WebSocket channel
+  const response = await messageStore.sendMessage(sessionId.value, text);
+  if (!response) {
+    messageStore.stopStreaming();
+    messageStore.appendMessage(sessionId.value, {
+      id: `error-${Date.now()}`,
+      sessionId: sessionId.value,
+      role: "assistant",
+      content: [{ type: "text", text: "Failed to reach the server." }],
+      attachments: [],
+      tokenCount: 0,
+      createdAt: new Date().toISOString(),
+    });
+  }
+  // Note: streaming stops when "message:new" arrives (assistant_message)
+  // which is handled by the channel listener above
+}
+</script>

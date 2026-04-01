@@ -1,7 +1,7 @@
 # James the Butler — Platform Specification
 
-**Version:** 1.4
-**Status:** Final — Ready for Implementation
+**Version:** 1.5
+**Status:** Implemented — v1.5
 **Owner:** Andre / EPL R&D
 
 ---
@@ -502,4 +502,4 @@ Ecto migrations run automatically on startup.
 
 ---
 
-*End of specification v1.4*
+*End of specification v1.5*

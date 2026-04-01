@@ -1,0 +1,19 @@
+[package]
+name = "james-the-butler"
+version = "0.1.0"
+description = "James the Butler — AI-native agent platform"
+authors = ["James the Butler"]
+edition = "2021"
+
+[lib]
+name = "james_the_butler_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"

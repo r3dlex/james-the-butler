@@ -1,0 +1,200 @@
+defmodule James.ExecutionHistoryTest do
+  use James.DataCase
+
+  alias James.{Accounts, ExecutionHistory, Hosts, Sessions}
+
+  defp create_session do
+    {:ok, user} = Accounts.create_user(%{email: "eh_#{System.unique_integer()}@example.com"})
+
+    {:ok, host} =
+      Hosts.create_host(%{
+        name: "eh-host-#{System.unique_integer()}",
+        endpoint: "http://localhost:9700"
+      })
+
+    {:ok, session} =
+      Sessions.create_session(%{user_id: user.id, host_id: host.id, name: "EH Session"})
+
+    session
+  end
+
+  describe "create_entry/1" do
+    test "creates with session_id only" do
+      session = create_session()
+
+      {:ok, entry} = ExecutionHistory.create_entry(%{session_id: session.id})
+      assert entry.session_id == session.id
+      assert is_nil(entry.narrative_summary)
+      assert is_nil(entry.structured_log)
+    end
+
+    test "creates with structured_log and narrative_summary" do
+      session = create_session()
+
+      {:ok, entry} =
+        ExecutionHistory.create_entry(%{
+          session_id: session.id,
+          structured_log: %{"steps" => 3, "tool" => "bash"},
+          narrative_summary: "Ran 3 bash commands successfully."
+        })
+
+      assert entry.structured_log == %{"steps" => 3, "tool" => "bash"}
+      assert entry.narrative_summary == "Ran 3 bash commands successfully."
+    end
+
+    test "requires session_id" do
+      assert {:error, changeset} = ExecutionHistory.create_entry(%{})
+      assert %{session_id: [_ | _]} = errors_on(changeset)
+    end
+  end
+
+  describe "list_entries/1" do
+    test "returns entries for session_id" do
+      session = create_session()
+
+      {:ok, _} = ExecutionHistory.create_entry(%{session_id: session.id})
+      {:ok, _} = ExecutionHistory.create_entry(%{session_id: session.id})
+
+      entries = ExecutionHistory.list_entries(session_id: session.id)
+      assert length(entries) == 2
+    end
+
+    test "does not return entries for other sessions" do
+      s1 = create_session()
+      s2 = create_session()
+
+      {:ok, _} = ExecutionHistory.create_entry(%{session_id: s1.id})
+
+      assert ExecutionHistory.list_entries(session_id: s2.id) == []
+    end
+
+    test "returns all entries when no filter" do
+      session = create_session()
+      before_count = length(ExecutionHistory.list_entries())
+
+      {:ok, _} = ExecutionHistory.create_entry(%{session_id: session.id})
+      assert length(ExecutionHistory.list_entries()) == before_count + 1
+    end
+  end
+
+  describe "get_entry/1 and get_entry!/1" do
+    test "get_entry returns entry" do
+      session = create_session()
+      {:ok, entry} = ExecutionHistory.create_entry(%{session_id: session.id})
+
+      assert ExecutionHistory.get_entry(entry.id).id == entry.id
+    end
+
+    test "get_entry returns nil for unknown id" do
+      assert is_nil(ExecutionHistory.get_entry(Ecto.UUID.generate()))
+    end
+
+    test "get_entry! raises for unknown id" do
+      assert_raise Ecto.NoResultsError, fn ->
+        ExecutionHistory.get_entry!(Ecto.UUID.generate())
+      end
+    end
+  end
+
+  describe "update_narrative/2" do
+    test "sets narrative_summary" do
+      session = create_session()
+      {:ok, entry} = ExecutionHistory.create_entry(%{session_id: session.id})
+
+      {:ok, updated} = ExecutionHistory.update_narrative(entry, "Summary text here.")
+      assert updated.narrative_summary == "Summary text here."
+    end
+  end
+
+  describe "log_action/3" do
+    test "creates an entry with session_id, action_type, and payload" do
+      session = create_session()
+
+      {:ok, entry} =
+        ExecutionHistory.log_action(session.id, "tool_call", %{"tool" => "bash", "exit" => 0})
+
+      assert entry.session_id == session.id
+      assert entry.action_type == "tool_call"
+      assert entry.payload == %{"tool" => "bash", "exit" => 0}
+    end
+
+    test "stores recognised action types: file_read and decision" do
+      session = create_session()
+
+      {:ok, e1} = ExecutionHistory.log_action(session.id, "file_read", %{"path" => "/tmp/a.txt"})
+      {:ok, e2} = ExecutionHistory.log_action(session.id, "decision", %{"choice" => "proceed"})
+
+      assert e1.action_type == "file_read"
+      assert e2.action_type == "decision"
+    end
+
+    test "entry includes a timestamp" do
+      session = create_session()
+      {:ok, entry} = ExecutionHistory.log_action(session.id, "tool_call", %{})
+      reloaded = ExecutionHistory.get_entry(entry.id)
+      assert %DateTime{} = reloaded.inserted_at
+    end
+
+    test "defaults payload to empty map when omitted" do
+      session = create_session()
+      {:ok, entry} = ExecutionHistory.log_action(session.id, "decision")
+      assert entry.payload == nil || is_map(entry.payload)
+    end
+  end
+
+  describe "list_entries/1 ordering and action_type" do
+    test "returns entries for a session in chronological order" do
+      session = create_session()
+
+      {:ok, _} = ExecutionHistory.log_action(session.id, "tool_call", %{"seq" => 1})
+      {:ok, _} = ExecutionHistory.log_action(session.id, "file_read", %{"seq" => 2})
+      {:ok, _} = ExecutionHistory.log_action(session.id, "decision", %{"seq" => 3})
+
+      entries = ExecutionHistory.list_entries(session_id: session.id)
+      assert length(entries) == 3
+      types = Enum.map(entries, & &1.action_type)
+      assert types == ["tool_call", "file_read", "decision"]
+    end
+
+    test "multiple entries for same session are returned in inserted_at order" do
+      session = create_session()
+
+      for i <- 1..5 do
+        ExecutionHistory.log_action(session.id, "tool_call", %{"i" => i})
+      end
+
+      entries = ExecutionHistory.list_entries(session_id: session.id)
+      assert length(entries) == 5
+
+      payloads = Enum.map(entries, fn e -> e.payload["i"] end)
+      assert payloads == Enum.sort(payloads)
+    end
+  end
+
+  describe "entry_count/1" do
+    test "returns 0 for a session with no entries" do
+      session = create_session()
+      assert ExecutionHistory.entry_count(session.id) == 0
+    end
+
+    test "returns correct count after logging actions" do
+      session = create_session()
+
+      ExecutionHistory.log_action(session.id, "tool_call", %{})
+      ExecutionHistory.log_action(session.id, "file_read", %{})
+      ExecutionHistory.log_action(session.id, "decision", %{})
+
+      assert ExecutionHistory.entry_count(session.id) == 3
+    end
+
+    test "does not count entries from other sessions" do
+      s1 = create_session()
+      s2 = create_session()
+
+      ExecutionHistory.log_action(s1.id, "tool_call", %{})
+      ExecutionHistory.log_action(s1.id, "tool_call", %{})
+
+      assert ExecutionHistory.entry_count(s2.id) == 0
+    end
+  end
+end

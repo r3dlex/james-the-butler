@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">
+  <!-- James the Butler — GitHub Avatar (The Whisper) -->
+  <rect width="200" height="200" rx="16" fill="#1a1a2e"/>
+  <!-- Speech bubble -->
+  <path d="M44 50 Q44 34 60 34 L140 34 Q156 34 156 50 L156 110 Q156 126 140 126 L88 126 L66 150 L68 126 Q44 126 44 110 Z" fill="#ffffff"/>
+  <!-- Prompt cursor -->
+  <rect x="62" y="64" width="6" height="36" rx="2" fill="#d4a574"/>
+  <!-- Text lines -->
+  <rect x="76" y="64" width="44" height="6" rx="3" fill="#d4a574" opacity="0.6"/>
+  <rect x="76" y="78" width="32" height="6" rx="3" fill="#d4a574" opacity="0.4"/>
+  <rect x="76" y="92" width="56" height="6" rx="3" fill="#d4a574" opacity="0.3"/>
+  <!-- Typing indicator -->
+  <circle cx="112" cy="114" r="4" fill="#d4a574" opacity="0.5"/>
+  <circle cx="126" cy="114" r="4" fill="#d4a574" opacity="0.35"/>
+  <circle cx="140" cy="114" r="4" fill="#d4a574" opacity="0.2"/>
+  <!-- Bow tie accent -->
+  <polygon points="156,34 168,26 168,42" fill="#d4a574"/>
+  <polygon points="156,34 144,26 144,42" fill="none" stroke="#d4a574" stroke-width="2"/>
+</svg>

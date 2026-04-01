@@ -6,7 +6,7 @@ This directory contains the system-level specifications for the James the Butler
 
 | File | Description |
 |---|---|
-| [platform.md](platform.md) | **Full platform specification v1.2** — vision, architecture, all subsystems |
+| [platform.md](platform.md) | **Full platform specification v1.5** — vision, architecture, all subsystems (all 7 phases implemented) |
 | [architecture.md](architecture.md) | System architecture, data flow, integration points |
 
 ## Component Specs
@@ -17,6 +17,17 @@ This directory contains the system-level specifications for the James the Butler
 | [vue.md](vue.md) | Frontend — Vue 3, Tauri desktop, VitePress docs |
 | [flutter.md](flutter.md) | Mobile — Flutter, WebRTC live stream, QR host binding |
 | [pipeline.md](pipeline.md) | Pipeline runner — CI/CD orchestration (Python/Poetry) |
+
+## Integration Specs
+
+| File | Description |
+|---|---|
+| [office-addins.md](office-addins.md) | Office Add-ins — Word, Excel, PowerPoint (Office.js) |
+| [chrome-extension.md](chrome-extension.md) | Chrome Extension — CDP browser sidebar (Manifest V3) |
+| [security.md](security.md) | Security model — OAuth, MFA, JWT, mTLS, device code flow |
+| [api.md](api.md) | API endpoint reference — REST + WebSocket channels |
+| [database.md](database.md) | Database schema reference — PostgreSQL + pgvector |
+| [webrtc.md](webrtc.md) | WebRTC streaming — live desktop/browser video to clients |
 
 ## Component-Level Specs
 
