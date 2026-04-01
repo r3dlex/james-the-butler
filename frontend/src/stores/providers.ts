@@ -23,6 +23,10 @@ export const useProviderStore = defineStore("providers", () => {
         ...p,
         models: p.models || [],
       }));
+      // Auto-fetch models for each provider in background (no global loading)
+      for (const p of providers.value) {
+        fetchModels(p.id).catch(() => {});
+      }
     } catch (e: unknown) {
       error.value =
         e && typeof e === "object" && "error" in e
@@ -51,7 +55,10 @@ export const useProviderStore = defineStore("providers", () => {
         models: result.provider.models || [],
       };
       providers.value.push(added);
-      // Auto-fetch available models for the new provider
+      // Auto-test connection for api_key providers, then fetch models
+      if (data.authMethod === "api_key" && data.apiKey) {
+        testConnection(added.id).catch(() => {});
+      }
       fetchModels(added.id).catch(() => {});
     } catch (e: unknown) {
       error.value =
@@ -64,7 +71,6 @@ export const useProviderStore = defineStore("providers", () => {
   }
 
   async function updateProvider(id: string, data: Partial<ProviderConfig>) {
-    loading.value = true;
     error.value = null;
     try {
       const result = await api.put<{ provider: ProviderConfig }>(
@@ -72,19 +78,20 @@ export const useProviderStore = defineStore("providers", () => {
         data,
       );
       const idx = providers.value.findIndex((p) => p.id === id);
-      if (idx !== -1) providers.value[idx] = result.provider;
+      if (idx !== -1)
+        providers.value[idx] = {
+          ...result.provider,
+          models: providers.value[idx].models || [],
+        };
     } catch (e: unknown) {
       error.value =
         e && typeof e === "object" && "error" in e
           ? String((e as { error: unknown }).error)
           : "Failed to update provider";
-    } finally {
-      loading.value = false;
     }
   }
 
   async function removeProvider(id: string) {
-    loading.value = true;
     error.value = null;
     try {
       await api.delete(`/api/providers/${id}`);
@@ -94,13 +101,13 @@ export const useProviderStore = defineStore("providers", () => {
         e && typeof e === "object" && "error" in e
           ? String((e as { error: unknown }).error)
           : "Failed to remove provider";
-    } finally {
-      loading.value = false;
     }
   }
 
-  async function testConnection(id: string) {
-    loading.value = true;
+  async function testConnection(
+    id: string,
+  ): Promise<{ status: string; reason?: string } | null> {
+    // No global loading — this runs in background on individual cards
     error.value = null;
     try {
       const result = await api.post<{
@@ -117,22 +124,21 @@ export const useProviderStore = defineStore("providers", () => {
             : "failed") as ProviderConfig["status"],
         };
       }
+      return { status: result.status, reason: result.reason };
     } catch (e: unknown) {
-      error.value =
+      const reason =
         e && typeof e === "object" && "error" in e
           ? String((e as { error: unknown }).error)
           : "Failed to test connection";
       const idx = providers.value.findIndex((p) => p.id === id);
       if (idx !== -1)
         providers.value[idx] = { ...providers.value[idx], status: "failed" };
-    } finally {
-      loading.value = false;
+      return { status: "failed", reason };
     }
   }
 
   async function fetchModels(id: string) {
-    loading.value = true;
-    error.value = null;
+    // No global loading — this runs in background
     try {
       const result = await api.get<{ models: string[] }>(
         `/api/providers/${id}/models`,
@@ -143,13 +149,8 @@ export const useProviderStore = defineStore("providers", () => {
           ...providers.value[idx],
           models: result.models,
         };
-    } catch (e: unknown) {
-      error.value =
-        e && typeof e === "object" && "error" in e
-          ? String((e as { error: unknown }).error)
-          : "Failed to fetch models";
-    } finally {
-      loading.value = false;
+    } catch {
+      // Silently fail — models list is non-critical
     }
   }
 

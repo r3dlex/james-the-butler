@@ -264,6 +264,31 @@ describe("ProviderCard", () => {
     expect(wrapper.text()).not.toContain("Save");
   });
 
+  it("shows error message after failed connection test", async () => {
+    const { api } = await import("../services/api");
+    const { useProviderStore } = await import("../stores/providers");
+    const { default: ProviderCard } =
+      await import("../components/settings/ProviderCard.vue");
+
+    const provider = makeProvider({ status: "untested" });
+    vi.mocked(api.post).mockResolvedValueOnce({
+      status: "failed",
+      reason: "invalid_api_key",
+    });
+
+    const store = useProviderStore();
+    store.providers.push(provider);
+
+    const wrapper = mount(ProviderCard, { props: { provider } });
+
+    const testBtn = wrapper.find("[data-testid='test-btn']");
+    await testBtn.trigger("click");
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Should show error inline on the card
+    expect(wrapper.text()).toContain("invalid_api_key");
+  });
+
   it("renders without crashing when models is undefined (API response without models field)", async () => {
     const { default: ProviderCard } =
       await import("../components/settings/ProviderCard.vue");

@@ -46,6 +46,19 @@
       </div>
     </div>
 
+    <!-- Inline error message -->
+    <div
+      v-if="testError"
+      class="mt-2 rounded border px-3 py-2 text-xs"
+      style="
+        border-color: var(--color-risk-red);
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--color-risk-red);
+      "
+    >
+      {{ testError }}
+    </div>
+
     <!-- Inline edit form (expanded) -->
     <div
       v-if="editing"
@@ -181,6 +194,7 @@ defineEmits<{
 const providerStore = useProviderStore();
 const testing = ref(false);
 const editing = ref(false);
+const testError = ref<string | null>(null);
 
 const editForm = ref({
   displayName: "",
@@ -244,8 +258,12 @@ async function submitUpdate() {
 
 async function onTestConnection() {
   testing.value = true;
+  testError.value = null;
   try {
-    await providerStore.testConnection(props.provider.id);
+    const result = await providerStore.testConnection(props.provider.id);
+    if (result && result.status === "failed" && result.reason) {
+      testError.value = result.reason;
+    }
   } finally {
     testing.value = false;
   }

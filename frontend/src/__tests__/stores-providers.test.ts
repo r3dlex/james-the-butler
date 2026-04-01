@@ -295,6 +295,136 @@ describe("useProviderStore", () => {
     expect(store.providers[0].models).toEqual(["MiniMax-M2.7", "MiniMax-M2.5"]);
   });
 
+  it("fetchProviders() auto-fetches models for each loaded provider", async () => {
+    const { api } = await import("../services/api");
+    const { useProviderStore } = await import("../stores/providers");
+
+    const p1 = {
+      id: "p1",
+      providerType: "minimax",
+      displayName: "MiniMax",
+      authMethod: "api_key",
+      status: "connected",
+      baseUrl: "https://api.minimax.io/anthropic",
+      lastTestedAt: null,
+    };
+    vi.mocked(api.get)
+      .mockResolvedValueOnce({ providers: [p1] })
+      .mockResolvedValueOnce({ models: ["MiniMax-M2.7", "MiniMax-M2"] });
+
+    const store = useProviderStore();
+    await store.fetchProviders();
+    // Wait for the background fetchModels to resolve
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(api.get).toHaveBeenCalledWith("/api/providers/p1/models");
+    expect(store.providers[0].models).toEqual(["MiniMax-M2.7", "MiniMax-M2"]);
+  });
+
+  it("addProvider() auto-tests connection when auth_method is api_key", async () => {
+    const { api } = await import("../services/api");
+    const { useProviderStore } = await import("../stores/providers");
+
+    const created = {
+      id: "p1",
+      providerType: "minimax",
+      displayName: "MiniMax",
+      authMethod: "api_key",
+      status: "untested",
+      baseUrl: "https://api.minimax.io/anthropic",
+      lastTestedAt: null,
+    };
+    vi.mocked(api.post)
+      .mockResolvedValueOnce({ provider: created }) // create
+      .mockResolvedValueOnce({ status: "connected", latencyMs: 500 }); // test
+    vi.mocked(api.get).mockResolvedValueOnce({ models: ["MiniMax-M2.7"] }); // models
+
+    const store = useProviderStore();
+    await store.addProvider({
+      providerType: "minimax",
+      displayName: "MiniMax",
+      authMethod: "api_key",
+      apiKey: "sk-test",
+      baseUrl: "https://api.minimax.io/anthropic",
+    });
+    // Wait for background auto-test and auto-fetch
+    await new Promise((r) => setTimeout(r, 10));
+
+    expect(api.post).toHaveBeenCalledWith("/api/providers/p1/test");
+    expect(store.providers[0].status).toBe("connected");
+  });
+
+  it("testConnection() does not set global loading (no page-level spinner)", async () => {
+    const { api } = await import("../services/api");
+    const { useProviderStore } = await import("../stores/providers");
+
+    const existing = makeProvider("p1");
+    vi.mocked(api.get).mockResolvedValueOnce({ providers: [existing] });
+
+    const store = useProviderStore();
+    await store.fetchProviders();
+
+    // Start testConnection but don't await — check loading stays false
+    let resolveTest!: (val: unknown) => void;
+    vi.mocked(api.post).mockReturnValueOnce(
+      new Promise((r) => {
+        resolveTest = r;
+      }),
+    );
+    const promise = store.testConnection("p1");
+    expect(store.loading).toBe(false); // should NOT set global loading
+
+    resolveTest({ status: "connected", latencyMs: 100 });
+    await promise;
+  });
+
+  it("fetchModels() does not set global loading", async () => {
+    const { api } = await import("../services/api");
+    const { useProviderStore } = await import("../stores/providers");
+
+    const existing = makeProvider("p1");
+    vi.mocked(api.get).mockResolvedValueOnce({ providers: [existing] });
+
+    const store = useProviderStore();
+    await store.fetchProviders();
+
+    let resolveModels!: (val: unknown) => void;
+    vi.mocked(api.get).mockReturnValueOnce(
+      new Promise((r) => {
+        resolveModels = r;
+      }),
+    );
+    const promise = store.fetchModels("p1");
+    expect(store.loading).toBe(false); // should NOT set global loading
+
+    resolveModels({ models: ["model-1"] });
+    await promise;
+  });
+
+  it("testConnection() returns error reason on failure", async () => {
+    const { api } = await import("../services/api");
+    const { useProviderStore } = await import("../stores/providers");
+
+    const existing = makeProvider("p1");
+    vi.mocked(api.get).mockResolvedValueOnce({ providers: [existing] });
+    // API returns 200 with status: "failed" (not an HTTP error)
+    vi.mocked(api.post).mockResolvedValueOnce({
+      status: "failed",
+      reason: "invalid_api_key",
+    });
+
+    const store = useProviderStore();
+    await store.fetchProviders();
+    const result = await store.testConnection("p1");
+
+    expect(store.providers[0].status).toBe("failed");
+    // testConnection should return the reason for the UI to display
+    expect(result).toEqual({
+      status: "failed",
+      reason: "invalid_api_key",
+    });
+  });
+
   it("error handling sets error ref", async () => {
     const { api } = await import("../services/api");
     const { useProviderStore } = await import("../stores/providers");
