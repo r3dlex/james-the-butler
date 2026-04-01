@@ -353,7 +353,7 @@ defmodule James.Workers.MemoryExtractionWorkerTest do
 
       assert :ok = MemoryExtractionWorker.perform(job1)
       memories_after_first = Memories.list_memories(user.id)
-      assert length(memories_after_first) >= 1
+      assert memories_after_first != []
 
       # Add new messages after first extraction
       Sessions.create_message(%{

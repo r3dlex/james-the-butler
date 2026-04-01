@@ -67,11 +67,9 @@ defmodule James.Workers.MemoryExtractionWorker do
   defp extract_and_store(conversation, user_id, session_id) do
     case extract_memories(conversation) do
       {:ok, extracted} ->
-        Enum.each(extracted, fn text ->
-          unless duplicate?(text, user_id) do
-            store_memory(text, user_id, session_id)
-          end
-        end)
+        extracted
+        |> Enum.reject(&duplicate?(&1, user_id))
+        |> Enum.each(&store_memory(&1, user_id, session_id))
 
       {:error, _reason} ->
         :ok

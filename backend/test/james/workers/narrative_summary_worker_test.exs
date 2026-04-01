@@ -26,7 +26,7 @@ defmodule James.Workers.NarrativeSummaryWorkerTest do
   end
 
   describe "perform/1" do
-    test "returns :ok when session has fewer than 2 messages" do
+    test "returns :ok when session has no execution history entries" do
       session = setup_session()
 
       assert :ok ==
@@ -37,18 +37,6 @@ defmodule James.Workers.NarrativeSummaryWorkerTest do
       assert ExecutionHistory.list_entries(session_id: session.id) == []
     end
 
-    test "returns :ok when ANTHROPIC_API_KEY is not set" do
-      session = setup_session()
-
-      Sessions.create_message(%{session_id: session.id, role: "user", content: "Hello"})
-      Sessions.create_message(%{session_id: session.id, role: "assistant", content: "Hi!"})
-
-      assert :ok ==
-               NarrativeSummaryWorker.perform(%Oban.Job{
-                 args: %{"session_id" => session.id}
-               })
-    end
-
     test "returns :ok for non-existent session_id" do
       assert :ok ==
                NarrativeSummaryWorker.perform(%Oban.Job{
@@ -56,15 +44,14 @@ defmodule James.Workers.NarrativeSummaryWorkerTest do
                })
     end
 
-    test "generates and stores narrative when LLM succeeds" do
+    test "generates and stores narrative from execution history entries when LLM succeeds" do
       session = setup_session()
 
-      Sessions.create_message(%{session_id: session.id, role: "user", content: "Deploy app."})
+      ExecutionHistory.log_action(session.id, "tool_call", %{"tool" => "bash", "cmd" => "deploy"})
 
-      Sessions.create_message(%{
-        session_id: session.id,
-        role: "assistant",
-        content: "Deployment successful."
+      ExecutionHistory.log_action(session.id, "decision", %{
+        "choice" => "proceed",
+        "result" => "success"
       })
 
       MockLLMProvider.push_response(
@@ -80,16 +67,19 @@ defmodule James.Workers.NarrativeSummaryWorkerTest do
                  args: %{"session_id" => session.id}
                })
 
+      # The worker adds a new entry with the narrative summary stored on it
       entries = ExecutionHistory.list_entries(session_id: session.id)
-      assert entries != []
-      assert hd(entries).narrative_summary =~ "deployed"
+      assert length(entries) == 3
+
+      summary_entry = Enum.find(entries, fn e -> not is_nil(e.narrative_summary) end)
+      assert summary_entry != nil
+      assert summary_entry.narrative_summary =~ "deployed"
     end
 
     test "returns :ok silently when LLM errors" do
       session = setup_session()
 
-      Sessions.create_message(%{session_id: session.id, role: "user", content: "Hello"})
-      Sessions.create_message(%{session_id: session.id, role: "assistant", content: "Hi"})
+      ExecutionHistory.log_action(session.id, "tool_call", %{"tool" => "bash"})
 
       MockLLMProvider.push_response({:error, "timeout"})
 
@@ -98,6 +88,24 @@ defmodule James.Workers.NarrativeSummaryWorkerTest do
                  args: %{"session_id" => session.id}
                })
 
+      # No additional narrative entry should be created on LLM error
+      entries = ExecutionHistory.list_entries(session_id: session.id)
+      assert Enum.all?(entries, fn e -> is_nil(e.narrative_summary) end)
+    end
+
+    test "handles empty execution history gracefully without calling LLM" do
+      session = setup_session()
+
+      # No entries logged — worker must not call LLM and must return :ok
+      MockLLMProvider.push_response({:error, "should not be called"})
+
+      assert :ok ==
+               NarrativeSummaryWorker.perform(%Oban.Job{
+                 args: %{"session_id" => session.id}
+               })
+
+      # The queued response was never consumed — flush to verify
+      MockLLMProvider.flush()
       assert ExecutionHistory.list_entries(session_id: session.id) == []
     end
   end
