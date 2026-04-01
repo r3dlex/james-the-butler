@@ -16,7 +16,8 @@ defmodule James.Application do
       :test ->
         [
           James.Repo,
-          {Phoenix.PubSub, name: James.PubSub}
+          {Phoenix.PubSub, name: James.PubSub},
+          JamesWeb.Endpoint
         ]
 
       _ ->

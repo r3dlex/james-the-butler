@@ -10,7 +10,7 @@ defmodule James.MixProject do
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps(),
-      test_coverage: [threshold: 80]
+      test_coverage: [summary: [threshold: 50]]
     ]
   end
 

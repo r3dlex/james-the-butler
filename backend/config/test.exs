@@ -9,6 +9,9 @@ config :james, James.Repo,
   pool: Ecto.Adapters.SQL.Sandbox,
   pool_size: 10
 
+# Don't start a real HTTP server in tests — use Phoenix.ConnTest dispatch instead
+config :james, JamesWeb.Endpoint, server: false
+
 # Disable Oban in tests
 config :james, Oban, testing: :inline
 

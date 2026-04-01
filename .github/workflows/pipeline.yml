@@ -139,7 +139,7 @@ jobs:
           DB_PORT: 5432
 
       - name: Run tests
-        run: mix test || (echo "::error::mix test failed — see output above" && exit 1)
+        run: mix test --cover || (echo "::error::mix test --cover failed — see output above" && exit 1)
         env:
           MIX_ENV: test
           DB_PORT: 5432
