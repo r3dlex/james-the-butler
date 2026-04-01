@@ -100,9 +100,12 @@ defmodule James.EmbeddingsTest do
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{
-          "data" => [%{"embedding" => [0.1, 0.2], "index" => 0}]
-        }))
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "data" => [%{"embedding" => [0.1, 0.2], "index" => 0}]
+          })
+        )
       end)
 
       Embeddings.generate("test text")

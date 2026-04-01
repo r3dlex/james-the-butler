@@ -448,7 +448,12 @@ defmodule James.OAuthTest do
         |> Plug.Conn.put_resp_content_type("application/json")
         |> Plug.Conn.send_resp(
           200,
-          Jason.encode!(%{"id" => 77, "login" => "failmail", "name" => "Fail Mail", "email" => nil})
+          Jason.encode!(%{
+            "id" => 77,
+            "login" => "failmail",
+            "name" => "Fail Mail",
+            "email" => nil
+          })
         )
       end)
 

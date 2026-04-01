@@ -87,7 +87,11 @@ defmodule James.Hosts.ClusterTest do
   describe "select_host_for_task/1 — primary fallback" do
     test "returns primary host when no online hosts are available" do
       {:ok, primary} =
-        Hosts.create_host(%{name: "Primary Host", endpoint: "http://primary:7000", is_primary: true})
+        Hosts.create_host(%{
+          name: "Primary Host",
+          endpoint: "http://primary:7000",
+          is_primary: true
+        })
 
       Hosts.update_host(primary, %{status: "offline"})
       result = Cluster.select_host_for_task(%{})

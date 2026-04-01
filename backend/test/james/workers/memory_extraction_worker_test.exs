@@ -111,10 +111,13 @@ defmodule James.Workers.MemoryExtractionWorkerTest do
         content: "Great choice!"
       })
 
-      MockLLMProvider.push_response({:ok, %{
-        content: ~s(["User prefers Elixir programming language"]),
-        usage: %{input_tokens: 30, output_tokens: 10}
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: ~s(["User prefers Elixir programming language"]),
+           usage: %{input_tokens: 30, output_tokens: 10}
+         }}
+      )
 
       job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
       assert :ok = MemoryExtractionWorker.perform(job)
@@ -130,7 +133,9 @@ defmodule James.Workers.MemoryExtractionWorkerTest do
       Sessions.create_message(%{session_id: session.id, role: "user", content: "Hi"})
       Sessions.create_message(%{session_id: session.id, role: "assistant", content: "Hello!"})
 
-      MockLLMProvider.push_response({:ok, %{content: "[]", usage: %{input_tokens: 10, output_tokens: 2}}})
+      MockLLMProvider.push_response(
+        {:ok, %{content: "[]", usage: %{input_tokens: 10, output_tokens: 2}}}
+      )
 
       job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
       assert :ok = MemoryExtractionWorker.perform(job)
@@ -145,10 +150,13 @@ defmodule James.Workers.MemoryExtractionWorkerTest do
       Sessions.create_message(%{session_id: session.id, role: "user", content: "I love Erlang."})
       Sessions.create_message(%{session_id: session.id, role: "assistant", content: "Nice!"})
 
-      MockLLMProvider.push_response({:ok, %{
-        content: ~s(Here are the memories: ["User loves Erlang"]\n),
-        usage: %{input_tokens: 20, output_tokens: 8}
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: ~s(Here are the memories: ["User loves Erlang"]\n),
+           usage: %{input_tokens: 20, output_tokens: 8}
+         }}
+      )
 
       job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
       assert :ok = MemoryExtractionWorker.perform(job)
@@ -164,10 +172,13 @@ defmodule James.Workers.MemoryExtractionWorkerTest do
       Sessions.create_message(%{session_id: session.id, role: "user", content: "Hello"})
       Sessions.create_message(%{session_id: session.id, role: "assistant", content: "Hi!"})
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Nothing worth remembering here.",
-        usage: %{input_tokens: 10, output_tokens: 5}
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Nothing worth remembering here.",
+           usage: %{input_tokens: 10, output_tokens: 5}
+         }}
+      )
 
       job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
       assert :ok = MemoryExtractionWorker.perform(job)

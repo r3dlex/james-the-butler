@@ -47,11 +47,14 @@ defmodule James.Agents.CodeAgentTest do
     test "completes without tool use" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "I can help with that.",
-        usage: %{input_tokens: 5, output_tokens: 10},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "I can help with that.",
+           usage: %{input_tokens: 5, output_tokens: 10},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} = CodeAgent.start_link(session_id: session.id, task_id: task.id)
       ref = Process.monitor(pid)
@@ -83,21 +86,31 @@ defmodule James.Agents.CodeAgentTest do
       File.write!(test_file, "file content here")
 
       # First response: tool_use requesting read_file
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "tool_1", "name" => "read_file",
-            "input" => %{"path" => test_file}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 15},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "tool_1",
+               "name" => "read_file",
+               "input" => %{"path" => test_file}
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 15},
+           stop_reason: "tool_use"
+         }}
+      )
 
       # Second response: end_turn after seeing tool result
-      MockLLMProvider.push_response({:ok, %{
-        content: "File read successfully.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "File read successfully.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} =
         CodeAgent.start_link(
@@ -118,20 +131,30 @@ defmodule James.Agents.CodeAgentTest do
     test "read_file returns error for path outside working_dirs" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "tool_2", "name" => "read_file",
-            "input" => %{"path" => "/etc/passwd"}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "tool_2",
+               "name" => "read_file",
+               "input" => %{"path" => "/etc/passwd"}
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Understood, path was not allowed.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Understood, path was not allowed.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} =
         CodeAgent.start_link(
@@ -146,7 +169,10 @@ defmodule James.Agents.CodeAgentTest do
       # Check the tool result message was saved
       messages = Sessions.list_messages(session.id)
       system_msgs = Enum.filter(messages, &(&1.role == "system"))
-      assert Enum.any?(system_msgs, fn m -> m.content =~ "not allowed" or m.content =~ "outside" end)
+
+      assert Enum.any?(system_msgs, fn m ->
+               m.content =~ "not allowed" or m.content =~ "outside"
+             end)
     end
   end
 
@@ -155,20 +181,30 @@ defmodule James.Agents.CodeAgentTest do
       %{session: session, task: task} = setup_session()
       tmp = System.tmp_dir!()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "tool_3", "name" => "list_directory",
-            "input" => %{"path" => tmp}}
-        ],
-        usage: %{input_tokens: 15, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "tool_3",
+               "name" => "list_directory",
+               "input" => %{"path" => tmp}
+             }
+           ],
+           usage: %{input_tokens: 15, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Directory listed.",
-        usage: %{input_tokens: 25, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Directory listed.",
+           usage: %{input_tokens: 25, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} =
         CodeAgent.start_link(
@@ -191,20 +227,30 @@ defmodule James.Agents.CodeAgentTest do
       tmp = System.tmp_dir!()
       out_path = Path.join(tmp, "code_agent_write_#{System.unique_integer()}.txt")
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "tool_4", "name" => "write_file",
-            "input" => %{"path" => out_path, "content" => "written content"}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "tool_4",
+               "name" => "write_file",
+               "input" => %{"path" => out_path, "content" => "written content"}
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Done writing.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Done writing.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} =
         CodeAgent.start_link(
@@ -227,20 +273,30 @@ defmodule James.Agents.CodeAgentTest do
       %{session: session, task: task} = setup_session()
       tmp = System.tmp_dir!()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "tool_5", "name" => "execute_command",
-            "input" => %{"command" => "echo hello_from_tool"}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "tool_5",
+               "name" => "execute_command",
+               "input" => %{"command" => "echo hello_from_tool"}
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Command executed.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Command executed.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} =
         CodeAgent.start_link(
@@ -263,20 +319,30 @@ defmodule James.Agents.CodeAgentTest do
       %{session: session, task: task} = setup_session()
       tmp = System.tmp_dir!()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "tool_6", "name" => "search_files",
-            "input" => %{"pattern" => "*.exs", "path" => tmp}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "tool_6",
+               "name" => "search_files",
+               "input" => %{"pattern" => "*.exs", "path" => tmp}
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Search complete.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Search complete.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} =
         CodeAgent.start_link(
@@ -297,20 +363,30 @@ defmodule James.Agents.CodeAgentTest do
     test "returns error message for unknown tool" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "tool_unknown", "name" => "nonexistent_tool",
-            "input" => %{}}
-        ],
-        usage: %{input_tokens: 10, output_tokens: 5},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "tool_unknown",
+               "name" => "nonexistent_tool",
+               "input" => %{}
+             }
+           ],
+           usage: %{input_tokens: 10, output_tokens: 5},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Understood.",
-        usage: %{input_tokens: 20, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Understood.",
+           usage: %{input_tokens: 20, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} =
         CodeAgent.start_link(
@@ -332,20 +408,30 @@ defmodule James.Agents.CodeAgentTest do
     test "returns error when read_file path is outside allowed dirs" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "t1", "name" => "read_file",
-            "input" => %{"path" => "/etc/passwd"}}
-        ],
-        usage: %{input_tokens: 10, output_tokens: 5},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "t1",
+               "name" => "read_file",
+               "input" => %{"path" => "/etc/passwd"}
+             }
+           ],
+           usage: %{input_tokens: 10, output_tokens: 5},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Got it.",
-        usage: %{input_tokens: 20, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Got it.",
+           usage: %{input_tokens: 20, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} =
         CodeAgent.start_link(
@@ -362,20 +448,30 @@ defmodule James.Agents.CodeAgentTest do
     test "returns error when write_file path is outside allowed dirs" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "t2", "name" => "write_file",
-            "input" => %{"path" => "/etc/malicious", "content" => "bad"}}
-        ],
-        usage: %{input_tokens: 10, output_tokens: 5},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "t2",
+               "name" => "write_file",
+               "input" => %{"path" => "/etc/malicious", "content" => "bad"}
+             }
+           ],
+           usage: %{input_tokens: 10, output_tokens: 5},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Got it.",
-        usage: %{input_tokens: 20, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Got it.",
+           usage: %{input_tokens: 20, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} =
         CodeAgent.start_link(
@@ -392,20 +488,30 @@ defmodule James.Agents.CodeAgentTest do
     test "returns error when execute_command working_dir is outside allowed dirs" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "t3", "name" => "execute_command",
-            "input" => %{"command" => "echo hi", "working_dir" => "/etc"}}
-        ],
-        usage: %{input_tokens: 10, output_tokens: 5},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "t3",
+               "name" => "execute_command",
+               "input" => %{"command" => "echo hi", "working_dir" => "/etc"}
+             }
+           ],
+           usage: %{input_tokens: 10, output_tokens: 5},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Got it.",
-        usage: %{input_tokens: 20, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Got it.",
+           usage: %{input_tokens: 20, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} =
         CodeAgent.start_link(
@@ -423,20 +529,30 @@ defmodule James.Agents.CodeAgentTest do
       %{session: session, task: task} = setup_session()
       tmp = System.tmp_dir!()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "t4", "name" => "search_files",
-            "input" => %{"pattern" => "*.ex", "path" => tmp, "content" => "defmodule"}}
-        ],
-        usage: %{input_tokens: 10, output_tokens: 5},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "t4",
+               "name" => "search_files",
+               "input" => %{"pattern" => "*.ex", "path" => tmp, "content" => "defmodule"}
+             }
+           ],
+           usage: %{input_tokens: 10, output_tokens: 5},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Search done.",
-        usage: %{input_tokens: 20, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Search done.",
+           usage: %{input_tokens: 20, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} =
         CodeAgent.start_link(
@@ -455,20 +571,30 @@ defmodule James.Agents.CodeAgentTest do
       tmp = System.tmp_dir!()
       nonexistent = Path.join(tmp, "nonexistent_#{System.unique_integer()}.txt")
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "t5", "name" => "read_file",
-            "input" => %{"path" => nonexistent}}
-        ],
-        usage: %{input_tokens: 10, output_tokens: 5},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "t5",
+               "name" => "read_file",
+               "input" => %{"path" => nonexistent}
+             }
+           ],
+           usage: %{input_tokens: 10, output_tokens: 5},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Got it.",
-        usage: %{input_tokens: 20, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Got it.",
+           usage: %{input_tokens: 20, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} =
         CodeAgent.start_link(

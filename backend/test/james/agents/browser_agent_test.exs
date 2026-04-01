@@ -74,11 +74,14 @@ defmodule James.Agents.BrowserAgentTest do
       # Use an empty PATH so no Chrome is found
       System.put_env("PATH", "")
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "done",
-        usage: %{input_tokens: 5, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "done",
+           usage: %{input_tokens: 5, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} = BrowserAgent.start_link(session_id: session.id, task_id: task.id)
       ref = Process.monitor(pid)
@@ -93,11 +96,14 @@ defmodule James.Agents.BrowserAgentTest do
     test "completes successfully with fake Chrome and mock LLM" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Navigation complete.",
-        usage: %{input_tokens: 15, output_tokens: 8},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Navigation complete.",
+           usage: %{input_tokens: 15, output_tokens: 8},
+           stop_reason: "end_turn"
+         }}
+      )
 
       with_fake_chrome(fn ->
         {:ok, pid} = BrowserAgent.start_link(session_id: session.id, task_id: task.id)
@@ -125,20 +131,30 @@ defmodule James.Agents.BrowserAgentTest do
     test "executes navigate tool call" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "nav_1", "name" => "navigate",
-            "input" => %{"url" => "https://example.com"}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "nav_1",
+               "name" => "navigate",
+               "input" => %{"url" => "https://example.com"}
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Page loaded successfully.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Page loaded successfully.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       with_fake_chrome(fn ->
         {:ok, pid} = BrowserAgent.start_link(session_id: session.id, task_id: task.id)
@@ -152,20 +168,30 @@ defmodule James.Agents.BrowserAgentTest do
     test "executes click_element tool call" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "click_1", "name" => "click_element",
-            "input" => %{"selector" => "#submit-btn"}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "click_1",
+               "name" => "click_element",
+               "input" => %{"selector" => "#submit-btn"}
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Button clicked.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Button clicked.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       with_fake_chrome(fn ->
         {:ok, pid} = BrowserAgent.start_link(session_id: session.id, task_id: task.id)
@@ -179,20 +205,30 @@ defmodule James.Agents.BrowserAgentTest do
     test "executes get_page_content tool call" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "content_1", "name" => "get_page_content",
-            "input" => %{}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "content_1",
+               "name" => "get_page_content",
+               "input" => %{}
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Content extracted.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Content extracted.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       with_fake_chrome(fn ->
         {:ok, pid} = BrowserAgent.start_link(session_id: session.id, task_id: task.id)
@@ -206,20 +242,30 @@ defmodule James.Agents.BrowserAgentTest do
     test "executes run_javascript tool call" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "js_1", "name" => "run_javascript",
-            "input" => %{"script" => "document.title"}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "js_1",
+               "name" => "run_javascript",
+               "input" => %{"script" => "document.title"}
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "JS executed.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "JS executed.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       with_fake_chrome(fn ->
         {:ok, pid} = BrowserAgent.start_link(session_id: session.id, task_id: task.id)
@@ -233,20 +279,25 @@ defmodule James.Agents.BrowserAgentTest do
     test "executes screenshot_page tool call" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "ss_1", "name" => "screenshot_page",
-            "input" => %{}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{"type" => "tool_use", "id" => "ss_1", "name" => "screenshot_page", "input" => %{}}
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Screenshot taken.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Screenshot taken.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       with_fake_chrome(fn ->
         {:ok, pid} = BrowserAgent.start_link(session_id: session.id, task_id: task.id)
@@ -260,20 +311,30 @@ defmodule James.Agents.BrowserAgentTest do
     test "executes fill_form tool call" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "form_1", "name" => "fill_form",
-            "input" => %{"selector" => "#email", "value" => "test@example.com"}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "form_1",
+               "name" => "fill_form",
+               "input" => %{"selector" => "#email", "value" => "test@example.com"}
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Form filled.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Form filled.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       with_fake_chrome(fn ->
         {:ok, pid} = BrowserAgent.start_link(session_id: session.id, task_id: task.id)
@@ -287,20 +348,25 @@ defmodule James.Agents.BrowserAgentTest do
     test "handles unknown tool call gracefully" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "unk_1", "name" => "unknown_action",
-            "input" => %{}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{"type" => "tool_use", "id" => "unk_1", "name" => "unknown_action", "input" => %{}}
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Done.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Done.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       with_fake_chrome(fn ->
         {:ok, pid} = BrowserAgent.start_link(session_id: session.id, task_id: task.id)

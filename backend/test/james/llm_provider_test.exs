@@ -33,8 +33,13 @@ defmodule James.LLMProviderTest do
     end
 
     test "returns pushed response in FIFO order" do
-      MockLLMProvider.push_response({:ok, %{content: "first", usage: %{}, stop_reason: "end_turn"}})
-      MockLLMProvider.push_response({:ok, %{content: "second", usage: %{}, stop_reason: "end_turn"}})
+      MockLLMProvider.push_response(
+        {:ok, %{content: "first", usage: %{}, stop_reason: "end_turn"}}
+      )
+
+      MockLLMProvider.push_response(
+        {:ok, %{content: "second", usage: %{}, stop_reason: "end_turn"}}
+      )
 
       {:ok, r1} = MockLLMProvider.stream_message([])
       {:ok, r2} = MockLLMProvider.stream_message([])
@@ -49,7 +54,10 @@ defmodule James.LLMProviderTest do
     end
 
     test "flush clears all queued responses" do
-      MockLLMProvider.push_response({:ok, %{content: "queued", usage: %{}, stop_reason: "end_turn"}})
+      MockLLMProvider.push_response(
+        {:ok, %{content: "queued", usage: %{}, stop_reason: "end_turn"}}
+      )
+
       MockLLMProvider.flush()
       # Should return default now
       assert {:ok, result} = MockLLMProvider.stream_message([])

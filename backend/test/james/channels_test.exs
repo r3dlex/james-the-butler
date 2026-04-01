@@ -24,7 +24,10 @@ defmodule James.ChannelsTest do
     test "updates an existing channel config" do
       user = create_user("update_chan@example.com")
       config = create_config(user)
-      assert {:ok, updated} = Channels.update_channel_config(config, %{config: %{bot_token: "new-tok"}})
+
+      assert {:ok, updated} =
+               Channels.update_channel_config(config, %{config: %{bot_token: "new-tok"}})
+
       # Reload from DB to ensure JSONB string keys
       reloaded = Channels.get_channel_config(updated.id)
       assert reloaded.config["bot_token"] == "new-tok"

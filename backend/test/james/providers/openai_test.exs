@@ -81,7 +81,10 @@ defmodule James.Providers.OpenAITest do
       Bypass.expect_once(bypass, "POST", "/v1/chat/completions", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(401, Jason.encode!(%{"error" => %{"message" => "Invalid API key"}}))
+        |> Plug.Conn.send_resp(
+          401,
+          Jason.encode!(%{"error" => %{"message" => "Invalid API key"}})
+        )
       end)
 
       assert {:error, reason} = OpenAI.send_message([%{role: "user", content: "hi"}])
@@ -95,10 +98,13 @@ defmodule James.Providers.OpenAITest do
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{
-          "choices" => [%{"message" => %{"content" => "ok"}, "finish_reason" => "stop"}],
-          "usage" => %{"prompt_tokens" => 1, "completion_tokens" => 1}
-        }))
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "choices" => [%{"message" => %{"content" => "ok"}, "finish_reason" => "stop"}],
+            "usage" => %{"prompt_tokens" => 1, "completion_tokens" => 1}
+          })
+        )
       end)
 
       OpenAI.send_message([%{role: "user", content: "hi"}])
@@ -108,10 +114,13 @@ defmodule James.Providers.OpenAITest do
       Bypass.expect_once(bypass, "POST", "/v1/chat/completions", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{
-          "choices" => [],
-          "usage" => %{"prompt_tokens" => 1, "completion_tokens" => 0}
-        }))
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "choices" => [],
+            "usage" => %{"prompt_tokens" => 1, "completion_tokens" => 0}
+          })
+        )
       end)
 
       assert {:ok, %{content: ""}} = OpenAI.send_message([%{role: "user", content: "hi"}])
@@ -127,14 +136,16 @@ defmodule James.Providers.OpenAITest do
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{
-          "choices" => [%{"message" => %{"content" => "sure"}, "finish_reason" => "stop"}],
-          "usage" => %{"prompt_tokens" => 5, "completion_tokens" => 2}
-        }))
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "choices" => [%{"message" => %{"content" => "sure"}, "finish_reason" => "stop"}],
+            "usage" => %{"prompt_tokens" => 5, "completion_tokens" => 2}
+          })
+        )
       end)
 
       OpenAI.send_message([%{role: "user", content: "hi"}], system: "be helpful")
     end
   end
-
 end

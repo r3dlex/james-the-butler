@@ -49,11 +49,14 @@ defmodule James.Agents.SecurityAgentTest do
     test "completes without tool use" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "No vulnerabilities found.",
-        usage: %{input_tokens: 10, output_tokens: 8},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "No vulnerabilities found.",
+           usage: %{input_tokens: 10, output_tokens: 8},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} = SecurityAgent.start_link(session_id: session.id, task_id: task.id)
       ref = Process.monitor(pid)
@@ -82,20 +85,30 @@ defmodule James.Agents.SecurityAgentTest do
       test_file = Path.join(tmp, "sec_test_#{System.unique_integer()}.ex")
       File.write!(test_file, "def vulnerable, do: System.cmd(input, [])")
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "sec_tool_1", "name" => "read_file",
-            "input" => %{"path" => test_file}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "sec_tool_1",
+               "name" => "read_file",
+               "input" => %{"path" => test_file}
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "File analyzed.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "File analyzed.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} =
         SecurityAgent.start_link(
@@ -114,20 +127,30 @@ defmodule James.Agents.SecurityAgentTest do
     test "returns error for path outside allowed dirs" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "sec_tool_2", "name" => "read_file",
-            "input" => %{"path" => "/etc/shadow"}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "sec_tool_2",
+               "name" => "read_file",
+               "input" => %{"path" => "/etc/shadow"}
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Understood.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Understood.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} =
         SecurityAgent.start_link(
@@ -150,31 +173,37 @@ defmodule James.Agents.SecurityAgentTest do
     test "saves a security finding as system message" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{
-            "type" => "tool_use",
-            "id" => "sec_tool_3",
-            "name" => "report_finding",
-            "input" => %{
-              "severity" => "high",
-              "title" => "SQL Injection",
-              "description" => "Unsanitized input in query",
-              "file" => "lib/repo.ex",
-              "line" => 42,
-              "recommendation" => "Use parameterized queries"
-            }
-          }
-        ],
-        usage: %{input_tokens: 30, output_tokens: 15},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "sec_tool_3",
+               "name" => "report_finding",
+               "input" => %{
+                 "severity" => "high",
+                 "title" => "SQL Injection",
+                 "description" => "Unsanitized input in query",
+                 "file" => "lib/repo.ex",
+                 "line" => 42,
+                 "recommendation" => "Use parameterized queries"
+               }
+             }
+           ],
+           usage: %{input_tokens: 30, output_tokens: 15},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Finding reported.",
-        usage: %{input_tokens: 40, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Finding reported.",
+           usage: %{input_tokens: 40, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} =
         SecurityAgent.start_link(
@@ -197,20 +226,30 @@ defmodule James.Agents.SecurityAgentTest do
       %{session: session, task: task} = setup_session()
       tmp = System.tmp_dir!()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "sec_tool_4", "name" => "search_pattern",
-            "input" => %{"pattern" => "System\\.cmd", "path" => tmp, "file_pattern" => "*.ex"}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "sec_tool_4",
+               "name" => "search_pattern",
+               "input" => %{"pattern" => "System\\.cmd", "path" => tmp, "file_pattern" => "*.ex"}
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Pattern search done.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Pattern search done.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} =
         SecurityAgent.start_link(

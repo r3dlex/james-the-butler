@@ -67,10 +67,13 @@ defmodule James.Workers.NarrativeSummaryWorkerTest do
         content: "Deployment successful."
       })
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "User deployed the application successfully.",
-        usage: %{input_tokens: 20, output_tokens: 10}
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "User deployed the application successfully.",
+           usage: %{input_tokens: 20, output_tokens: 10}
+         }}
+      )
 
       assert :ok ==
                NarrativeSummaryWorker.perform(%Oban.Job{

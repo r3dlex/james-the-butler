@@ -59,7 +59,12 @@ defmodule James.Test.MockLLMProvider do
 
     case :ets.first(@table) do
       :"$end_of_table" ->
-        {:ok, %{content: "Mock response", usage: %{input_tokens: 10, output_tokens: 5}, stop_reason: "end_turn"}}
+        {:ok,
+         %{
+           content: "Mock response",
+           usage: %{input_tokens: 10, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
 
       key ->
         [{^key, response}] = :ets.lookup(@table, key)

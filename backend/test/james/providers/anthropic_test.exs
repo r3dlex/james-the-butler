@@ -96,10 +96,13 @@ defmodule James.Providers.AnthropicTest do
 
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{
-          "content" => [%{"type" => "text", "text" => "ok"}],
-          "usage" => %{"input_tokens" => 1, "output_tokens" => 1}
-        }))
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "content" => [%{"type" => "text", "text" => "ok"}],
+            "usage" => %{"input_tokens" => 1, "output_tokens" => 1}
+          })
+        )
       end)
 
       Anthropic.send_message([%{role: "user", content: "hi"}])
@@ -109,14 +112,16 @@ defmodule James.Providers.AnthropicTest do
       Bypass.expect_once(bypass, "POST", "/v1/messages", fn conn ->
         conn
         |> Plug.Conn.put_resp_content_type("application/json")
-        |> Plug.Conn.send_resp(200, Jason.encode!(%{
-          "content" => [],
-          "usage" => %{"input_tokens" => 1, "output_tokens" => 0}
-        }))
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "content" => [],
+            "usage" => %{"input_tokens" => 1, "output_tokens" => 0}
+          })
+        )
       end)
 
       assert {:ok, %{content: ""}} = Anthropic.send_message([%{role: "user", content: "hi"}])
     end
   end
-
 end

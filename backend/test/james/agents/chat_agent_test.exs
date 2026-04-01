@@ -14,7 +14,8 @@ defmodule James.Agents.ChatAgentTest do
   end
 
   defp setup_session do
-    {:ok, user} = Accounts.create_user(%{email: "chat_agent_#{System.unique_integer()}@example.com"})
+    {:ok, user} =
+      Accounts.create_user(%{email: "chat_agent_#{System.unique_integer()}@example.com"})
 
     {:ok, host} =
       Hosts.create_host(%{
@@ -46,11 +47,14 @@ defmodule James.Agents.ChatAgentTest do
     test "completes successfully and saves assistant message" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Hello! How can I help you today?",
-        usage: %{input_tokens: 10, output_tokens: 15},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Hello! How can I help you today?",
+           usage: %{input_tokens: 10, output_tokens: 15},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} = ChatAgent.start_link(session_id: session.id, task_id: task.id)
       ref = Process.monitor(pid)
@@ -65,11 +69,14 @@ defmodule James.Agents.ChatAgentTest do
     test "marks task as completed on success" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Done!",
-        usage: %{input_tokens: 5, output_tokens: 3},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Done!",
+           usage: %{input_tokens: 5, output_tokens: 3},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} = ChatAgent.start_link(session_id: session.id, task_id: task.id)
       ref = Process.monitor(pid)
@@ -95,11 +102,14 @@ defmodule James.Agents.ChatAgentTest do
     test "starts without task_id (nil task) without crashing" do
       %{session: session} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "No task",
-        usage: %{},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "No task",
+           usage: %{},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} = ChatAgent.start_link(session_id: session.id)
       ref = Process.monitor(pid)
@@ -111,11 +121,14 @@ defmodule James.Agents.ChatAgentTest do
 
       Phoenix.PubSub.subscribe(James.PubSub, "session:#{session.id}")
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "streamed chunk text",
-        usage: %{input_tokens: 5, output_tokens: 10},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "streamed chunk text",
+           usage: %{input_tokens: 5, output_tokens: 10},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} = ChatAgent.start_link(session_id: session.id, task_id: task.id)
       ref = Process.monitor(pid)
@@ -126,7 +139,8 @@ defmodule James.Agents.ChatAgentTest do
     end
 
     test "handles session with no user messages (build_memory_context empty)" do
-      {:ok, user} = Accounts.create_user(%{email: "chat_nomsg_#{System.unique_integer()}@example.com"})
+      {:ok, user} =
+        Accounts.create_user(%{email: "chat_nomsg_#{System.unique_integer()}@example.com"})
 
       {:ok, host} =
         Hosts.create_host(%{
@@ -144,11 +158,14 @@ defmodule James.Agents.ChatAgentTest do
 
       # No user messages created
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Hello.",
-        usage: %{input_tokens: 5, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Hello.",
+           usage: %{input_tokens: 5, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} = ChatAgent.start_link(session_id: session.id)
       ref = Process.monitor(pid)
