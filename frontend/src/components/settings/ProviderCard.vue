@@ -40,7 +40,7 @@
       </div>
     </div>
 
-    <div v-if="provider.models.length > 0" class="mt-3">
+    <div v-if="provider.models && provider.models.length > 0" class="mt-3">
       <p class="mb-1 text-xs" style="color: var(--color-text-dim)">Models</p>
       <ul class="space-y-0.5">
         <li

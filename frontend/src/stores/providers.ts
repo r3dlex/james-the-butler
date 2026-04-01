@@ -19,7 +19,10 @@ export const useProviderStore = defineStore("providers", () => {
       const data = await api.get<{ providers: ProviderConfig[] }>(
         "/api/providers",
       );
-      providers.value = data.providers;
+      providers.value = (data.providers || []).map((p) => ({
+        ...p,
+        models: p.models || [],
+      }));
     } catch (e: unknown) {
       error.value =
         e && typeof e === "object" && "error" in e
@@ -43,7 +46,10 @@ export const useProviderStore = defineStore("providers", () => {
         "/api/providers",
         data,
       );
-      providers.value.push(result.provider);
+      providers.value.push({
+        ...result.provider,
+        models: result.provider.models || [],
+      });
     } catch (e: unknown) {
       error.value =
         e && typeof e === "object" && "error" in e
