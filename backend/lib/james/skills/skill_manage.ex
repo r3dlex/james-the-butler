@@ -89,7 +89,6 @@ defmodule James.Skills.SkillManage do
   end
 
   defp format_errors(changeset) do
-    changeset.errors
-    |> Enum.map_join(", ", fn {field, {msg, _}} -> "#{field}: #{msg}" end)
+    Enum.map_join(changeset.errors, ", ", fn {field, {msg, _}} -> "#{field}: #{msg}" end)
   end
 end
