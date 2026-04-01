@@ -3,6 +3,7 @@ defmodule JamesWeb.SessionChannel do
   use Phoenix.Channel
 
   alias James.Sessions
+  alias James.Sessions.AwayDetector
 
   @impl true
   def join("session:" <> session_id, _params, socket) do
@@ -23,6 +24,28 @@ defmodule JamesWeb.SessionChannel do
         {:ok, %{messages: Enum.map(messages, &message_payload/1)},
          assign(socket, :session_id, session_id)}
     end
+  end
+
+  @impl true
+  def handle_in("session:resume", _params, socket) do
+    session_id = socket.assigns.session_id
+
+    case AwayDetector.on_resume(session_id) do
+      {:inject, summary} ->
+        {:ok, _} =
+          Sessions.create_message(%{
+            session_id: session_id,
+            role: "planner",
+            content: summary
+          })
+
+        push(socket, "away_summary", %{content: summary})
+
+      :no_summary_needed ->
+        :ok
+    end
+
+    {:noreply, socket}
   end
 
   @impl true

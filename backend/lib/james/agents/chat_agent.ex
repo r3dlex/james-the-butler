@@ -8,6 +8,7 @@ defmodule James.Agents.ChatAgent do
   use GenServer, restart: :temporary
 
   alias James.{Embeddings, LLMProvider, Memories, Personality, Sessions, Tasks, Tokens}
+  alias James.Hooks.Dispatcher
   alias James.Workers.MemoryExtractionWorker
 
   defstruct [:session_id, :task_id, :messages, :system_prompt, :model, :provider]
@@ -111,6 +112,12 @@ defmodule James.Agents.ChatAgent do
         broadcast_task_status(session_id, state.task_id, "completed")
 
       {:error, reason} ->
+        Dispatcher.fire(:post_tool_use_failure, %{
+          session_id: session_id,
+          tool_name: "llm",
+          error_message: inspect(reason)
+        })
+
         # Broadcast error as a system message
         Phoenix.PubSub.broadcast(
           James.PubSub,

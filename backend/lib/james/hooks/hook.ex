@@ -7,9 +7,13 @@ defmodule James.Hooks.Hook do
 
   @events ~w[
     session_start session_end session_suspend
-    pre_tool_use post_tool_use
-    pre_prompt_submit
+    session_setup
+    pre_tool_use post_tool_use post_tool_use_failure
+    pre_prompt_submit user_prompt_submit
     task_start task_complete task_failed
+    subagent_start subagent_stop
+    teammate_idle
+    permission_denied
     pre_desktop_action post_desktop_action
     pre_browser_action post_browser_action
     memory_extracted config_change
