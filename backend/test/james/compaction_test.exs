@@ -170,8 +170,7 @@ defmodule James.CompactionTest do
 
       forked_name = forked.name || ""
 
-      assert String.contains?(forked_name, "fork") or
-               String.contains?(forked_name, session.id)
+      assert String.contains?(forked_name, "fork") or String.contains?(forked_name, session.id)
     end
   end
 end

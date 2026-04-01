@@ -65,21 +65,22 @@ defmodule James.Workers.SkillEvolutionWorker do
     provider = James.LLMProvider.configured()
 
     case provider.send_message([%{role: "user", content: prompt}]) do
-      {:ok, %{content: improved_content}} ->
-        case Skills.sync_skill(skill.name, improved_content) do
-          {:ok, _updated} ->
-            Logger.info("SkillEvolutionWorker: evolved skill '#{skill.name}'")
-            :ok
-
-          {:error, err} ->
-            Logger.error("SkillEvolutionWorker: sync failed: #{inspect(err)}")
-            {:error, err}
-        end
-
+      {:ok, %{content: improved_content}} -> sync_evolved(skill, improved_content)
       {:error, llm_reason} ->
         Logger.error("SkillEvolutionWorker: LLM call failed: #{inspect(llm_reason)}")
-        # Non-fatal: skill is left unchanged
         :ok
+    end
+  end
+
+  defp sync_evolved(skill, improved_content) do
+    case Skills.sync_skill(skill.name, improved_content) do
+      {:ok, _updated} ->
+        Logger.info("SkillEvolutionWorker: evolved skill '#{skill.name}'")
+        :ok
+
+      {:error, err} ->
+        Logger.error("SkillEvolutionWorker: sync failed: #{inspect(err)}")
+        {:error, err}
     end
   end
 

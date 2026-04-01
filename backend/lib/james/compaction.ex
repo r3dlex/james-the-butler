@@ -36,11 +36,7 @@ defmodule James.Compaction do
           select: sum(m.token_count)
       ) || 0
 
-    if total == 0 do
-      0.0
-    else
-      min(total / context_limit, 1.0)
-    end
+    if total == 0, do: 0.0, else: min(total / context_limit, 1.0)
   end
 
   @doc """

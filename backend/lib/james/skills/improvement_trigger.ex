@@ -37,9 +37,7 @@ defmodule James.Skills.ImprovementTrigger do
   """
   @spec score(map()) :: number()
   def score(context) do
-    tool_calls(context) * 1 +
-      retries(context) * 3 +
-      failures(context) * 5
+    tool_calls(context) * 1 + retries(context) * 3 + failures(context) * 5
   end
 
   @doc """
