@@ -120,6 +120,31 @@ defmodule JamesWeb.AuthControllerTest do
     end
   end
 
+  describe "GET /api/auth/:provider/callback with error param" do
+    test "redirects to login page with error", %{conn: conn} do
+      conn = get(conn, "/api/auth/google/callback?error=access_denied")
+      assert conn.status == 302
+      assert get_resp_header(conn, "location") |> hd() =~ "error"
+    end
+  end
+
+  describe "POST /api/auth/device-code/token" do
+    test "returns 428 when code is pending (not yet verified)", %{conn: conn} do
+      # Generate a device code — it starts as :pending
+      resp = post(conn, "/api/auth/device-code", %{})
+      device_code = json_response(resp, 200)["device_code"]
+      conn2 = post(conn, "/api/auth/device-code/token", %{device_code: device_code})
+      assert conn2.status == 428
+      assert json_response(conn2, 428)["error"] == "authorization_pending"
+    end
+
+    test "returns 400 for invalid device_code" do
+      conn = Phoenix.ConnTest.build_conn()
+      conn = post(conn, "/api/auth/device-code/token", %{device_code: "invalid-code"})
+      assert conn.status in [400, 410]
+    end
+  end
+
   describe "POST /api/auth/device-code/verify" do
     test "returns 401 when not authenticated", %{conn: conn} do
       conn = post(conn, "/api/auth/device-code/verify", %{user_code: "ABCD-1234"})
