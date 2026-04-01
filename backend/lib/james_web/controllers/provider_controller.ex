@@ -28,7 +28,7 @@ defmodule JamesWeb.ProviderController do
   def index(conn, _params) do
     user = conn.assigns.current_user
     configs = ProviderSettings.list_provider_configs(user)
-    json(conn, %{configs: Enum.map(configs, &render_config/1)})
+    json(conn, %{providers: Enum.map(configs, &render_config/1)})
   end
 
   @doc """
@@ -46,7 +46,7 @@ defmodule JamesWeb.ProviderController do
 
         conn
         |> put_status(:created)
-        |> json(%{config: render_config(full)})
+        |> json(%{provider: render_config(full)})
 
       {:error, changeset} ->
         conn
@@ -68,7 +68,7 @@ defmodule JamesWeb.ProviderController do
         conn |> put_status(:not_found) |> json(%{error: "not found"})
 
       config ->
-        json(conn, %{config: render_config(config)})
+        json(conn, %{provider: render_config(config)})
     end
   end
 
@@ -89,7 +89,7 @@ defmodule JamesWeb.ProviderController do
         case ProviderSettings.update_provider_config(config, attrs) do
           {:ok, updated} ->
             full = ProviderSettings.get_provider_config!(updated.id)
-            json(conn, %{config: render_config(full)})
+            json(conn, %{provider: render_config(full)})
 
           {:error, changeset} ->
             conn

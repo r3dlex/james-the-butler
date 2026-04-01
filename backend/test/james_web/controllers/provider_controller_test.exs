@@ -228,9 +228,9 @@ defmodule JamesWeb.ProviderControllerTest do
       conn = authed_conn(conn, user)
       conn = get(conn, "/api/providers")
       body = json_response(conn, 200)
-      assert is_list(body["configs"])
-      assert length(body["configs"]) == 1
-      config = hd(body["configs"])
+      assert is_list(body["providers"])
+      assert length(body["providers"]) == 1
+      config = hd(body["providers"])
       assert config["provider_type"] == "anthropic"
       # API key must be masked, not the plain value
       assert config["api_key"] == "sk-...test"
@@ -243,7 +243,7 @@ defmodule JamesWeb.ProviderControllerTest do
       conn = authed_conn(conn, user2)
       conn = get(conn, "/api/providers")
       body = json_response(conn, 200)
-      assert body["configs"] == []
+      assert body["providers"] == []
     end
 
     test "requires authentication", %{conn: conn} do
@@ -270,9 +270,9 @@ defmodule JamesWeb.ProviderControllerTest do
         })
 
       body = json_response(conn, 201)
-      assert body["config"]["provider_type"] == "anthropic"
-      assert body["config"]["display_name"] == "My Anthropic"
-      assert String.starts_with?(body["config"]["api_key"] || "", "sk-...")
+      assert body["provider"]["provider_type"] == "anthropic"
+      assert body["provider"]["display_name"] == "My Anthropic"
+      assert String.starts_with?(body["provider"]["api_key"] || "", "sk-...")
     end
 
     test "returns 422 with invalid params", %{conn: conn} do
@@ -306,8 +306,8 @@ defmodule JamesWeb.ProviderControllerTest do
       conn = authed_conn(conn, user)
       conn = get(conn, "/api/providers/#{config.id}")
       body = json_response(conn, 200)
-      assert body["config"]["id"] == config.id
-      assert body["config"]["api_key"] == "sk-...test"
+      assert body["provider"]["id"] == config.id
+      assert body["provider"]["api_key"] == "sk-...test"
     end
 
     test "returns 404 for other user's config", %{conn: conn} do
@@ -344,8 +344,8 @@ defmodule JamesWeb.ProviderControllerTest do
         })
 
       body = json_response(conn, 200)
-      assert body["config"]["display_name"] == "Updated Name"
-      assert body["config"]["api_key"] == "sk-...9999"
+      assert body["provider"]["display_name"] == "Updated Name"
+      assert body["provider"]["api_key"] == "sk-...9999"
     end
 
     test "returns 404 for other user's config", %{conn: conn} do
@@ -416,7 +416,7 @@ defmodule JamesWeb.ProviderControllerTest do
       conn = authed_conn(conn, user)
       conn = get(conn, "/api/providers/#{config.id}")
       body = json_response(conn, 200)
-      assert body["config"]["api_key"] == "sk-...6789"
+      assert body["provider"]["api_key"] == "sk-...6789"
     end
   end
 end
