@@ -112,7 +112,8 @@ defmodule JamesWeb.Router do
     get "/personality/presets", PersonalityController, :presets
     resources "/personality/profiles", PersonalityController, except: [:new, :edit, :show]
 
-    # Provider connection testing and model listing
+    # Provider CRUD + connection testing and model listing
+    resources "/providers", ProviderController, except: [:new, :edit]
     post "/providers/:id/test", ProviderController, :test_connection
     get "/providers/:id/models", ProviderController, :list_models
   end

@@ -216,4 +216,207 @@ defmodule JamesWeb.ProviderControllerTest do
       assert conn.status == 401
     end
   end
+
+  # ---------------------------------------------------------------------------
+  # GET /api/providers — index
+  # ---------------------------------------------------------------------------
+
+  describe "GET /api/providers — index" do
+    test "returns list of user's configs with masked API keys", %{conn: conn} do
+      user = create_user("crud_index@example.com")
+      _config = create_anthropic_config(user)
+      conn = authed_conn(conn, user)
+      conn = get(conn, "/api/providers")
+      body = json_response(conn, 200)
+      assert is_list(body["configs"])
+      assert length(body["configs"]) == 1
+      config = hd(body["configs"])
+      assert config["provider_type"] == "anthropic"
+      # API key must be masked, not the plain value
+      assert config["api_key"] == "sk-...test"
+    end
+
+    test "does not return other users' configs", %{conn: conn} do
+      user1 = create_user("crud_idx_u1@example.com")
+      user2 = create_user("crud_idx_u2@example.com")
+      _config = create_anthropic_config(user1)
+      conn = authed_conn(conn, user2)
+      conn = get(conn, "/api/providers")
+      body = json_response(conn, 200)
+      assert body["configs"] == []
+    end
+
+    test "requires authentication", %{conn: conn} do
+      conn = get(conn, "/api/providers")
+      assert conn.status == 401
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # POST /api/providers — create
+  # ---------------------------------------------------------------------------
+
+  describe "POST /api/providers — create" do
+    test "creates new config and returns 201", %{conn: conn} do
+      user = create_user("crud_create@example.com")
+      conn = authed_conn(conn, user)
+
+      conn =
+        post(conn, "/api/providers", %{
+          provider_type: "anthropic",
+          display_name: "My Anthropic",
+          api_key: "sk-newkey123456",
+          auth_method: "api_key"
+        })
+
+      body = json_response(conn, 201)
+      assert body["config"]["provider_type"] == "anthropic"
+      assert body["config"]["display_name"] == "My Anthropic"
+      assert String.starts_with?(body["config"]["api_key"] || "", "sk-...")
+    end
+
+    test "returns 422 with invalid params", %{conn: conn} do
+      user = create_user("crud_invalid@example.com")
+      conn = authed_conn(conn, user)
+
+      conn =
+        post(conn, "/api/providers", %{
+          provider_type: "unknown_provider",
+          display_name: ""
+        })
+
+      body = json_response(conn, 422)
+      assert is_map(body["errors"])
+    end
+
+    test "requires authentication", %{conn: conn} do
+      conn = post(conn, "/api/providers", %{})
+      assert conn.status == 401
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # GET /api/providers/:id — show
+  # ---------------------------------------------------------------------------
+
+  describe "GET /api/providers/:id — show" do
+    test "returns single config with masked key", %{conn: conn} do
+      user = create_user("crud_show@example.com")
+      config = create_anthropic_config(user)
+      conn = authed_conn(conn, user)
+      conn = get(conn, "/api/providers/#{config.id}")
+      body = json_response(conn, 200)
+      assert body["config"]["id"] == config.id
+      assert body["config"]["api_key"] == "sk-...test"
+    end
+
+    test "returns 404 for other user's config", %{conn: conn} do
+      user1 = create_user("crud_show_u1@example.com")
+      user2 = create_user("crud_show_u2@example.com")
+      config = create_anthropic_config(user1)
+      conn = authed_conn(conn, user2)
+      conn = get(conn, "/api/providers/#{config.id}")
+      assert json_response(conn, 404)["error"] == "not found"
+    end
+
+    test "requires authentication", %{conn: conn} do
+      user = create_user("crud_show_auth@example.com")
+      config = create_anthropic_config(user)
+      conn = get(conn, "/api/providers/#{config.id}")
+      assert conn.status == 401
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # PUT /api/providers/:id — update
+  # ---------------------------------------------------------------------------
+
+  describe "PUT /api/providers/:id — update" do
+    test "updates config and re-encrypts key when changed", %{conn: conn} do
+      user = create_user("crud_update@example.com")
+      config = create_anthropic_config(user)
+      conn = authed_conn(conn, user)
+
+      conn =
+        put(conn, "/api/providers/#{config.id}", %{
+          display_name: "Updated Name",
+          api_key: "sk-newkey9999"
+        })
+
+      body = json_response(conn, 200)
+      assert body["config"]["display_name"] == "Updated Name"
+      assert body["config"]["api_key"] == "sk-...9999"
+    end
+
+    test "returns 404 for other user's config", %{conn: conn} do
+      user1 = create_user("crud_upd_u1@example.com")
+      user2 = create_user("crud_upd_u2@example.com")
+      config = create_anthropic_config(user1)
+      conn = authed_conn(conn, user2)
+      conn = put(conn, "/api/providers/#{config.id}", %{display_name: "Hacked"})
+      assert json_response(conn, 404)["error"] == "not found"
+    end
+
+    test "requires authentication", %{conn: conn} do
+      user = create_user("crud_upd_auth@example.com")
+      config = create_anthropic_config(user)
+      conn = put(conn, "/api/providers/#{config.id}", %{display_name: "No auth"})
+      assert conn.status == 401
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # DELETE /api/providers/:id — delete
+  # ---------------------------------------------------------------------------
+
+  describe "DELETE /api/providers/:id — delete" do
+    test "deletes config and returns 200", %{conn: conn} do
+      user = create_user("crud_delete@example.com")
+      config = create_anthropic_config(user)
+      conn = authed_conn(conn, user)
+      conn = delete(conn, "/api/providers/#{config.id}")
+      body = json_response(conn, 200)
+      assert body["ok"] == true
+    end
+
+    test "returns 404 for other user's config", %{conn: conn} do
+      user1 = create_user("crud_del_u1@example.com")
+      user2 = create_user("crud_del_u2@example.com")
+      config = create_anthropic_config(user1)
+      conn = authed_conn(conn, user2)
+      conn = delete(conn, "/api/providers/#{config.id}")
+      assert json_response(conn, 404)["error"] == "not found"
+    end
+
+    test "requires authentication", %{conn: conn} do
+      user = create_user("crud_del_auth@example.com")
+      config = create_anthropic_config(user)
+      conn = delete(conn, "/api/providers/#{config.id}")
+      assert conn.status == 401
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # API key masking
+  # ---------------------------------------------------------------------------
+
+  describe "API key masking" do
+    test "sk-abc123456789 becomes sk-...6789", %{conn: conn} do
+      user = create_user("crud_mask@example.com")
+
+      {:ok, config} =
+        James.ProviderSettings.create_provider_config(%{
+          user_id: user.id,
+          provider_type: "anthropic",
+          display_name: "Mask Test",
+          api_key: "sk-abc123456789",
+          auth_method: "api_key"
+        })
+
+      conn = authed_conn(conn, user)
+      conn = get(conn, "/api/providers/#{config.id}")
+      body = json_response(conn, 200)
+      assert body["config"]["api_key"] == "sk-...6789"
+    end
+  end
 end

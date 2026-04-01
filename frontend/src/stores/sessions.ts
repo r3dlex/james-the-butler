@@ -2,12 +2,19 @@ import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { api } from "@/services/api";
 import type { Session, CreateSessionPayload } from "@/types/session";
+import { useProviderStore } from "@/stores/providers";
 
 export const useSessionStore = defineStore("sessions", () => {
   const sessions = ref<Session[]>([]);
   const activeSessionId = ref<string | null>(null);
   const loading = ref(false);
   const creating = ref(false);
+  const createError = ref<string | null>(null);
+
+  const canCreateSession = computed(() => {
+    const providerStore = useProviderStore();
+    return providerStore.hasVerifiedProvider;
+  });
 
   const activeSession = computed(
     () => sessions.value.find((s) => s.id === activeSessionId.value) ?? null,
@@ -60,6 +67,15 @@ export const useSessionStore = defineStore("sessions", () => {
   async function createSession(
     payload: CreateSessionPayload,
   ): Promise<Session | null> {
+    createError.value = null;
+
+    const providerStore = useProviderStore();
+    if (!providerStore.hasVerifiedProvider) {
+      createError.value =
+        "No connected provider found. Please go to Settings > Models to configure and test a provider.";
+      return null;
+    }
+
     creating.value = true;
     try {
       const data = await api.post<{ session: Session }>("/api/sessions", {
@@ -151,6 +167,8 @@ export const useSessionStore = defineStore("sessions", () => {
     sortedSessions,
     loading,
     creating,
+    createError,
+    canCreateSession,
     fetchSessions,
     createSession,
     createLocalSession,
