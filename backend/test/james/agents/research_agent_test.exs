@@ -49,11 +49,14 @@ defmodule James.Agents.ResearchAgentTest do
     test "completes without tool use" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Elixir follows functional programming best practices.",
-        usage: %{input_tokens: 10, output_tokens: 20},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Elixir follows functional programming best practices.",
+           usage: %{input_tokens: 10, output_tokens: 20},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} = ResearchAgent.start_link(session_id: session.id, task_id: task.id)
       ref = Process.monitor(pid)
@@ -79,20 +82,30 @@ defmodule James.Agents.ResearchAgentTest do
     test "executes web_search and returns stub response" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "tool_ws1", "name" => "web_search",
-            "input" => %{"query" => "Elixir pattern matching"}}
-        ],
-        usage: %{input_tokens: 15, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "tool_ws1",
+               "name" => "web_search",
+               "input" => %{"query" => "Elixir pattern matching"}
+             }
+           ],
+           usage: %{input_tokens: 15, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Web search stub returned results.",
-        usage: %{input_tokens: 25, output_tokens: 10},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Web search stub returned results.",
+           usage: %{input_tokens: 25, output_tokens: 10},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} = ResearchAgent.start_link(session_id: session.id, task_id: task.id)
       ref = Process.monitor(pid)
@@ -106,20 +119,33 @@ defmodule James.Agents.ResearchAgentTest do
     test "saves a research report via create_report tool" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "tool_cr1", "name" => "create_report",
-            "input" => %{"title" => "Elixir Report", "content" => "## Summary\nElixir is great."}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 15},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "tool_cr1",
+               "name" => "create_report",
+               "input" => %{
+                 "title" => "Elixir Report",
+                 "content" => "## Summary\nElixir is great."
+               }
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 15},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Report saved.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Report saved.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} = ResearchAgent.start_link(session_id: session.id, task_id: task.id)
       ref = Process.monitor(pid)
@@ -135,20 +161,25 @@ defmodule James.Agents.ResearchAgentTest do
     test "returns unknown tool message" do
       %{session: session, task: task} = setup_session()
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "tool_unk", "name" => "nonexistent",
-            "input" => %{}}
-        ],
-        usage: %{input_tokens: 10, output_tokens: 5},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{"type" => "tool_use", "id" => "tool_unk", "name" => "nonexistent", "input" => %{}}
+           ],
+           usage: %{input_tokens: 10, output_tokens: 5},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Acknowledged.",
-        usage: %{input_tokens: 20, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Acknowledged.",
+           usage: %{input_tokens: 20, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} = ResearchAgent.start_link(session_id: session.id, task_id: task.id)
       ref = Process.monitor(pid)
@@ -169,20 +200,30 @@ defmodule James.Agents.ResearchAgentTest do
         |> Plug.Conn.send_resp(200, "<html><body><p>Hello World</p></body></html>")
       end)
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "fetch_1", "name" => "fetch_url",
-            "input" => %{"url" => "http://localhost:#{bypass.port}/page"}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "fetch_1",
+               "name" => "fetch_url",
+               "input" => %{"url" => "http://localhost:#{bypass.port}/page"}
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "Page fetched.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "Page fetched.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} = ResearchAgent.start_link(session_id: session.id, task_id: task.id)
       ref = Process.monitor(pid)
@@ -201,20 +242,30 @@ defmodule James.Agents.ResearchAgentTest do
         |> Plug.Conn.send_resp(404, "Not Found")
       end)
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "fetch_2", "name" => "fetch_url",
-            "input" => %{"url" => "http://localhost:#{bypass.port}/missing"}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "fetch_2",
+               "name" => "fetch_url",
+               "input" => %{"url" => "http://localhost:#{bypass.port}/missing"}
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "URL error noted.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "URL error noted.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} = ResearchAgent.start_link(session_id: session.id, task_id: task.id)
       ref = Process.monitor(pid)
@@ -228,20 +279,30 @@ defmodule James.Agents.ResearchAgentTest do
       bypass = Bypass.open()
       Bypass.down(bypass)
 
-      MockLLMProvider.push_response({:ok, %{
-        content: [
-          %{"type" => "tool_use", "id" => "fetch_3", "name" => "fetch_url",
-            "input" => %{"url" => "http://localhost:#{bypass.port}/unreachable"}}
-        ],
-        usage: %{input_tokens: 20, output_tokens: 10},
-        stop_reason: "tool_use"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: [
+             %{
+               "type" => "tool_use",
+               "id" => "fetch_3",
+               "name" => "fetch_url",
+               "input" => %{"url" => "http://localhost:#{bypass.port}/unreachable"}
+             }
+           ],
+           usage: %{input_tokens: 20, output_tokens: 10},
+           stop_reason: "tool_use"
+         }}
+      )
 
-      MockLLMProvider.push_response({:ok, %{
-        content: "URL error noted.",
-        usage: %{input_tokens: 30, output_tokens: 5},
-        stop_reason: "end_turn"
-      }})
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: "URL error noted.",
+           usage: %{input_tokens: 30, output_tokens: 5},
+           stop_reason: "end_turn"
+         }}
+      )
 
       {:ok, pid} = ResearchAgent.start_link(session_id: session.id, task_id: task.id)
       ref = Process.monitor(pid)
