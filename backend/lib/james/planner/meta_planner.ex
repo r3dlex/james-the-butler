@@ -15,6 +15,7 @@ defmodule James.Planner.MetaPlanner do
   use GenServer
 
   alias James.{ExecutionMode, Sessions, Tasks}
+  alias James.Hooks.Dispatcher
   alias James.LLMProvider
   alias James.OpenClaw.Orchestrator
 
@@ -44,6 +45,8 @@ defmodule James.Planner.MetaPlanner do
     session = Sessions.get_session(session_id)
 
     if session do
+      Dispatcher.fire(:user_prompt_submit, %{session_id: session_id, message: message})
+
       broadcast_planner_step(session_id, %{
         type: "decomposing",
         description: "Analyzing input and creating tasks..."
@@ -112,6 +115,12 @@ defmodule James.Planner.MetaPlanner do
        when task.risk_level == "destructive" do
     {:ok, _} = Tasks.update_task_status(task, "pending")
 
+    Dispatcher.fire(:permission_denied, %{
+      session_id: session_id,
+      task_id: task.id,
+      risk_level: :destructive
+    })
+
     broadcast_planner_step(session_id, %{
       type: "awaiting_approval",
       task_id: task.id,
@@ -134,7 +143,44 @@ defmodule James.Planner.MetaPlanner do
   # LLM-driven decomposition
   # ---------------------------------------------------------------------------
 
-  @decomposition_prompt """
+  @synthesis_rules """
+
+  ## Synthesis Requirement
+
+  When producing the final response for any task or set of tasks, you MUST
+  synthesise findings into a coherent, direct answer rather than merely
+  reporting what each sub-agent returned.
+
+  ### Anti-patterns to avoid
+
+  The following phrases indicate poor synthesis and MUST NOT appear in final
+  responses:
+  - "Based on your findings…"
+  - "As the research agent found…"
+  - "According to the sub-task result…"
+  - "The agent reported that…"
+  - "Tool X returned…"
+
+  ### Continue vs. Spawn decision table
+
+  | Condition                          | Action                          |
+  |------------------------------------|---------------------------------|
+  | Follow-up fits within context      | Continue in current session     |
+  | New independent domain/goal        | Spawn dedicated sub-agent       |
+  | Requires different agent_type      | Spawn with appropriate type     |
+  | User explicitly requests isolation | Spawn new session               |
+  | Clarification of prior message     | Continue in current session     |
+
+  ### Verification requirements
+
+  Before returning any synthesised result:
+  1. Confirm all required sub-tasks have completed successfully.
+  2. Resolve any contradictions between sub-task outputs.
+  3. Ensure the response directly addresses the original user intent.
+  4. Remove any raw tool output or intermediate agent commentary.
+  """
+
+  @decomposition_prompt_base """
   You are a task decomposition assistant. Given the user message below, break it
   down into one or more concrete tasks.
 
@@ -149,6 +195,8 @@ defmodule James.Planner.MetaPlanner do
 
   User message:
   """
+
+  @decomposition_prompt @decomposition_prompt_base <> @synthesis_rules
 
   defp decompose_message(session, message) do
     messages = [%{role: "user", content: @decomposition_prompt <> message}]

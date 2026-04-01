@@ -9,6 +9,17 @@ defmodule James.Hooks.Dispatcher do
   require Logger
 
   @doc """
+  Fire a system-level event (no user context). Used for platform lifecycle
+  events such as `session_setup`, `subagent_start`, `permission_denied`, etc.
+  Always returns `:ok`.
+  """
+  @spec fire(atom(), map()) :: :ok
+  def fire(event, payload) when is_atom(event) do
+    Logger.info("System hook event: #{event} payload=#{inspect(payload)}")
+    :ok
+  end
+
+  @doc """
   Fire an event for a user. Returns :ok for fire-and-forget events.
   For pre_tool_use events, returns {:allow | :deny | {:modify, map}}.
   """

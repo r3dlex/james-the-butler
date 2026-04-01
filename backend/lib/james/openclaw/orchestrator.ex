@@ -19,6 +19,7 @@ defmodule James.OpenClaw.Orchestrator do
     SecurityAgent
   }
 
+  alias James.Hooks.Dispatcher
   alias James.{Hosts, Sessions}
   alias James.OpenClaw.Supervisor, as: AgentSupervisor
 
@@ -123,6 +124,8 @@ defmodule James.OpenClaw.Orchestrator do
   def handle_call({:start_session, attrs}, _from, state) do
     case Sessions.create_session(attrs) do
       {:ok, session} ->
+        Dispatcher.fire(:session_setup, %{session_id: session.id})
+
         case start_agent_for_session(session) do
           {:ok, pid} ->
             ref = Process.monitor(pid)
@@ -184,6 +187,11 @@ defmodule James.OpenClaw.Orchestrator do
       {:ok, pid} ->
         ref = Process.monitor(pid)
 
+        Dispatcher.fire(:subagent_start, %{
+          parent_session_id: session.id,
+          sub_session_id: task.id
+        })
+
         active_tasks =
           Map.put(state.active_tasks, ref, %{
             task_id: task.id,
@@ -194,6 +202,12 @@ defmodule James.OpenClaw.Orchestrator do
         {:noreply, %{state | active_tasks: active_tasks}}
 
       {:error, reason} ->
+        Dispatcher.fire(:subagent_stop, %{
+          parent_session_id: session.id,
+          sub_session_id: task.id,
+          status: :error
+        })
+
         case James.Tasks.get_task(task.id) do
           nil -> :ok
           t -> James.Tasks.update_task_status(t, "failed")
@@ -212,9 +226,17 @@ defmodule James.OpenClaw.Orchestrator do
   # ---- DOWN messages ----
 
   @impl true
-  def handle_info({:DOWN, ref, :process, pid, _reason}, state) do
+  def handle_info({:DOWN, ref, :process, pid, reason}, state) do
     # Could be from a dispatched task agent or a session agent
-    {active_tasks, _} = Map.pop(state.active_tasks, ref)
+    {task_entry, active_tasks} = Map.pop(state.active_tasks, ref)
+
+    if task_entry do
+      Dispatcher.fire(:subagent_stop, %{
+        parent_session_id: task_entry.session_id,
+        sub_session_id: task_entry.task_id,
+        status: if(reason == :normal, do: :done, else: :error)
+      })
+    end
 
     # Check active_sessions for a matching ref
     {session_id, _entry} =
@@ -229,7 +251,7 @@ defmodule James.OpenClaw.Orchestrator do
 
     _ = pid
 
-    {:noreply, %{state | active_tasks: active_tasks || %{}, active_sessions: active_sessions}}
+    {:noreply, %{state | active_tasks: active_tasks, active_sessions: active_sessions}}
   end
 
   def handle_info(:heartbeat, state) do
@@ -237,6 +259,15 @@ defmodule James.OpenClaw.Orchestrator do
     schedule_heartbeat()
     {:noreply, %{state | host: updated_host}}
   end
+
+  # ---------------------------------------------------------------------------
+  # Future hook fire-points (not yet implemented)
+  # ---------------------------------------------------------------------------
+  # :teammate_idle — fire Dispatcher.fire(:teammate_idle, %{session_id: id, idle_minutes: n})
+  #   when a session agent has been idle beyond a configurable threshold. This
+  #   requires a separate idle-detection mechanism (e.g., a periodic timer that
+  #   checks last_activity_at on the session record).
+  # ---------------------------------------------------------------------------
 
   # ---------------------------------------------------------------------------
   # Private
