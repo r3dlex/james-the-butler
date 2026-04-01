@@ -135,14 +135,17 @@ describe("useProviderStore", () => {
     expect(store.providers[0].id).toBe("p2");
   });
 
-  it("testConnection(id) calls POST /providers/:id/test and updates status", async () => {
+  it("testConnection(id) calls POST /providers/:id/test and updates status from real API response shape", async () => {
     const { api } = await import("../services/api");
     const { useProviderStore } = await import("../stores/providers");
 
     const existing = makeProvider("p1");
-    const tested = { ...existing, status: "connected" as const };
     vi.mocked(api.get).mockResolvedValueOnce({ providers: [existing] });
-    vi.mocked(api.post).mockResolvedValueOnce({ provider: tested });
+    // Real API response: {status: "connected", latencyMs: 1618} (no provider wrapper)
+    vi.mocked(api.post).mockResolvedValueOnce({
+      status: "connected",
+      latencyMs: 1618,
+    });
 
     const store = useProviderStore();
     await store.fetchProviders();
@@ -150,6 +153,7 @@ describe("useProviderStore", () => {
 
     expect(api.post).toHaveBeenCalledWith("/api/providers/p1/test");
     expect(store.providers[0].status).toBe("connected");
+    expect(store.loading).toBe(false);
   });
 
   it("fetchModels(id) calls GET /providers/:id/models and updates models array", async () => {
@@ -202,6 +206,61 @@ describe("useProviderStore", () => {
     await store.fetchProviders();
 
     expect(store.hasVerifiedProvider).toBe(true);
+  });
+
+  it("fetchProviders() defaults models to [] when API response omits models field", async () => {
+    const { api } = await import("../services/api");
+    const { useProviderStore } = await import("../stores/providers");
+
+    // API returns providers without 'models' field (real API behavior)
+    const apiResponse = {
+      id: "p1",
+      providerType: "minimax",
+      displayName: "MiniMax",
+      authMethod: "api_key",
+      status: "untested",
+      baseUrl: "https://api.minimax.io/anthropic",
+      apiKeyMasked: "sk-...1234",
+      lastTestedAt: null,
+      // no models field!
+    };
+    vi.mocked(api.get).mockResolvedValueOnce({ providers: [apiResponse] });
+
+    const store = useProviderStore();
+    await store.fetchProviders();
+
+    expect(store.providers[0].models).toEqual([]);
+  });
+
+  it("addProvider() defaults models to [] when API response omits models field", async () => {
+    const { api } = await import("../services/api");
+    const { useProviderStore } = await import("../stores/providers");
+
+    // API returns created provider without 'models' field
+    const apiResponse = {
+      id: "p1",
+      providerType: "minimax",
+      displayName: "MiniMax",
+      authMethod: "api_key",
+      status: "untested",
+      baseUrl: "https://api.minimax.io/anthropic",
+      apiKey: "sk-...1234",
+      lastTestedAt: null,
+      // no models field!
+    };
+    vi.mocked(api.post).mockResolvedValueOnce({ provider: apiResponse });
+
+    const store = useProviderStore();
+    await store.addProvider({
+      providerType: "minimax",
+      displayName: "MiniMax",
+      authMethod: "api_key",
+      baseUrl: "https://api.minimax.io/anthropic",
+    });
+
+    expect(store.providers).toHaveLength(1);
+    expect(store.providers[0].models).toEqual([]);
+    expect(store.providers[0].displayName).toBe("MiniMax");
   });
 
   it("error handling sets error ref", async () => {

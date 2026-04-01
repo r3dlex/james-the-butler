@@ -168,4 +168,20 @@ describe("ProviderCard", () => {
 
     expect(wrapper.text()).toContain("No models");
   });
+
+  it("renders without crashing when models is undefined (API response without models field)", async () => {
+    const { default: ProviderCard } =
+      await import("../components/settings/ProviderCard.vue");
+    // Simulate API response that has no models field at all
+    const provider = makeProvider();
+    delete (provider as Record<string, unknown>).models;
+
+    const wrapper = mount(ProviderCard, {
+      props: { provider },
+    });
+
+    // Should render without throwing, and show "No models"
+    expect(wrapper.text()).toContain("No models");
+    expect(wrapper.text()).toContain("Anthropic");
+  });
 });

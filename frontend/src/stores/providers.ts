@@ -100,11 +100,20 @@ export const useProviderStore = defineStore("providers", () => {
     loading.value = true;
     error.value = null;
     try {
-      const result = await api.post<{ provider: ProviderConfig }>(
-        `/api/providers/${id}/test`,
-      );
+      const result = await api.post<{
+        status: string;
+        latencyMs?: number;
+        reason?: string;
+      }>(`/api/providers/${id}/test`);
       const idx = providers.value.findIndex((p) => p.id === id);
-      if (idx !== -1) providers.value[idx] = result.provider;
+      if (idx !== -1) {
+        providers.value[idx] = {
+          ...providers.value[idx],
+          status: (result.status === "connected"
+            ? "connected"
+            : "failed") as ProviderConfig["status"],
+        };
+      }
     } catch (e: unknown) {
       error.value =
         e && typeof e === "object" && "error" in e
