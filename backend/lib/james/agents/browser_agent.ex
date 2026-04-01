@@ -7,8 +7,7 @@ defmodule James.Agents.BrowserAgent do
   use GenServer, restart: :temporary
 
   alias James.Browser.CdpManager
-  alias James.Providers.Anthropic
-  alias James.{Sessions, Tasks, Tokens}
+  alias James.{LLMProvider, Sessions, Tasks, Tokens}
 
   defstruct [:session_id, :task_id, :messages, :system_prompt, :model]
 
@@ -118,13 +117,13 @@ defmodule James.Agents.BrowserAgent do
 
     opts = if state.model, do: Keyword.put(opts, :model, state.model), else: opts
 
-    case Anthropic.stream_message(state.messages, opts) do
+    case LLMProvider.configured().stream_message(state.messages, opts) do
       {:ok, %{content: content, usage: usage, stop_reason: stop_reason}} ->
         {:ok, _msg} =
           Sessions.create_message(%{
             session_id: state.session_id,
             role: "assistant",
-            content: content,
+            content: extract_text_content(content),
             model: state.model || "claude-sonnet-4-20250514"
           })
 
@@ -196,6 +195,14 @@ defmodule James.Agents.BrowserAgent do
           )
       })
     end
+  end
+
+  defp extract_text_content(content) when is_binary(content), do: content
+
+  defp extract_text_content(content) when is_list(content) do
+    content
+    |> Enum.filter(fn b -> is_map(b) and Map.get(b, "type") == "text" end)
+    |> Enum.map_join("\n", fn b -> Map.get(b, "text", "") end)
   end
 
   defp normalize_role("user"), do: "user"

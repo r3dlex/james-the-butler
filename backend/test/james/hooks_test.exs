@@ -157,4 +157,25 @@ defmodule James.HooksTest do
       assert Hooks.get_hook(hook.id) == nil
     end
   end
+
+  describe "Hook.valid_events/0 and Hook.valid_types/0" do
+    alias James.Hooks.Hook
+
+    test "valid_events returns a non-empty list of strings" do
+      events = Hook.valid_events()
+      assert is_list(events)
+      assert events != []
+      assert "session_start" in events
+      assert "pre_tool_use" in events
+    end
+
+    test "valid_types returns a non-empty list of strings" do
+      types = Hook.valid_types()
+      assert is_list(types)
+      assert "command" in types
+      assert "http" in types
+      assert "prompt" in types
+      assert "agent" in types
+    end
+  end
 end

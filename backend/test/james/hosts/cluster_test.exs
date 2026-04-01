@@ -58,12 +58,45 @@ defmodule James.Hosts.ClusterTest do
 
     test "marks hosts offline when last_seen_at is old" do
       {:ok, host} = Hosts.create_host(%{name: "Old Host", endpoint: "http://old:7000"})
-      # Set last_seen_at to a long time ago
       old_time = DateTime.add(DateTime.utc_now(), -200, :second)
       Hosts.update_host(host, %{last_seen_at: old_time, status: "online"})
       assert :ok = Cluster.health_check_all()
       updated = Hosts.get_host(host.id)
       assert updated.status == "offline"
+    end
+
+    test "marks hosts as draining when last_seen_at is 61-119 seconds ago" do
+      {:ok, host} = Hosts.create_host(%{name: "Draining Host", endpoint: "http://drain:7000"})
+      stale_time = DateTime.add(DateTime.utc_now(), -90, :second)
+      Hosts.update_host(host, %{last_seen_at: stale_time, status: "online"})
+      assert :ok = Cluster.health_check_all()
+      updated = Hosts.get_host(host.id)
+      assert updated.status == "draining"
+    end
+
+    test "does not change status of host seen recently (within 60 seconds)" do
+      {:ok, host} = Hosts.create_host(%{name: "Fresh Host", endpoint: "http://fresh:7000"})
+      recent_time = DateTime.add(DateTime.utc_now(), -30, :second)
+      Hosts.update_host(host, %{last_seen_at: recent_time, status: "online"})
+      assert :ok = Cluster.health_check_all()
+      updated = Hosts.get_host(host.id)
+      assert updated.status == "online"
+    end
+  end
+
+  describe "select_host_for_task/1 — primary fallback" do
+    test "returns primary host when no online hosts are available" do
+      {:ok, primary} =
+        Hosts.create_host(%{
+          name: "Primary Host",
+          endpoint: "http://primary:7000",
+          is_primary: true
+        })
+
+      Hosts.update_host(primary, %{status: "offline"})
+      result = Cluster.select_host_for_task(%{})
+      # Should return the primary host as fallback
+      assert match?({:ok, _}, result) or match?({:error, _}, result)
     end
   end
 

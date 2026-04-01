@@ -98,4 +98,52 @@ defmodule James.MemoriesTest do
       end
     end
   end
+
+  describe "list_memories/2 with source_session_id" do
+    test "filters memories by source_session_id" do
+      alias James.{Accounts, Hosts, Sessions}
+
+      user = create_user("src_sess_mem@example.com")
+
+      {:ok, host} =
+        Hosts.create_host(%{name: "mem-host-#{System.unique_integer()}", endpoint: "http://l:1"})
+
+      {:ok, session} =
+        Sessions.create_session(%{
+          user_id: user.id,
+          host_id: host.id,
+          name: "Mem Session",
+          agent_type: "chat"
+        })
+
+      create_memory(user, %{content: "Session memory", source_session_id: session.id})
+      create_memory(user, %{content: "Unrelated memory"})
+
+      results = Memories.list_memories(user.id, source_session_id: session.id)
+      assert length(results) == 1
+      assert hd(results).content == "Session memory"
+    end
+  end
+
+  describe "search_similar/3" do
+    test "returns memories sorted by embedding similarity" do
+      user = create_user("search_sim@example.com")
+      embedding = Enum.map(1..1536, fn i -> rem(i, 10) / 10.0 end)
+      create_memory(user, %{content: "Similar memory", embedding: embedding})
+      create_memory(user, %{content: "Other memory"})
+
+      results = Memories.search_similar(user.id, embedding, 5)
+      # At least the memory with embedding should be returned
+      assert is_list(results)
+      contents = Enum.map(results, & &1.content)
+      assert "Similar memory" in contents
+    end
+
+    test "returns empty list when user has no memories" do
+      user = create_user("search_empty@example.com")
+      embedding = Enum.map(1..1536, fn _ -> 0.0 end)
+      results = Memories.search_similar(user.id, embedding)
+      assert results == []
+    end
+  end
 end

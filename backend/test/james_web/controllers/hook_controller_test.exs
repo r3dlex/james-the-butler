@@ -82,6 +82,22 @@ defmodule JamesWeb.HookControllerTest do
     end
   end
 
+  describe "POST /api/hooks (create) — invalid" do
+    test "returns 422 when event is invalid", %{conn: conn} do
+      user = create_user("hook_inv_create@example.com")
+      conn = authed_conn(conn, user)
+
+      conn =
+        post(conn, "/api/hooks", %{
+          scope: "session",
+          event: "not_a_real_event",
+          type: "http"
+        })
+
+      assert json_response(conn, 422)["errors"]["event"] != nil
+    end
+  end
+
   describe "PUT /api/hooks/:id (update)" do
     test "updates hook config", %{conn: conn} do
       user = create_user("hook_update@example.com")

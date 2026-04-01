@@ -63,10 +63,17 @@ defmodule James.OAuth do
 
   # --- Private ---
 
-  defp fetch_token("github", code) do
-    config = @providers["github"]
+  defp token_url(provider) do
+    System.get_env("OAUTH_#{String.upcase(provider)}_TOKEN_URL") || @providers[provider].token_url
+  end
 
-    case Req.post(config.token_url,
+  defp userinfo_url(provider) do
+    System.get_env("OAUTH_#{String.upcase(provider)}_USERINFO_URL") ||
+      @providers[provider].userinfo_url
+  end
+
+  defp fetch_token("github", code) do
+    case Req.post(token_url("github"),
            headers: [{"Accept", "application/json"}],
            form: [
              client_id: client_id!("github"),
@@ -87,9 +94,7 @@ defmodule James.OAuth do
   end
 
   defp fetch_token(provider, code) do
-    config = @providers[provider]
-
-    case Req.post(config.token_url,
+    case Req.post(token_url(provider),
            form: [
              client_id: client_id!(provider),
              client_secret: client_secret!(provider),
@@ -110,9 +115,7 @@ defmodule James.OAuth do
   end
 
   defp fetch_profile("github", token) do
-    config = @providers["github"]
-
-    case Req.get(config.userinfo_url,
+    case Req.get(userinfo_url("github"),
            headers: [{"Authorization", "Bearer #{token}"}, {"User-Agent", "james-the-butler"}]
          ) do
       {:ok, %{status: 200, body: user}} ->
@@ -139,9 +142,7 @@ defmodule James.OAuth do
   end
 
   defp fetch_profile("google", token) do
-    config = @providers["google"]
-
-    case Req.get(config.userinfo_url,
+    case Req.get(userinfo_url("google"),
            headers: [{"Authorization", "Bearer #{token}"}]
          ) do
       {:ok, %{status: 200, body: user}} ->
@@ -162,9 +163,7 @@ defmodule James.OAuth do
   end
 
   defp fetch_profile("microsoft", token) do
-    config = @providers["microsoft"]
-
-    case Req.get(config.userinfo_url,
+    case Req.get(userinfo_url("microsoft"),
            headers: [{"Authorization", "Bearer #{token}"}]
          ) do
       {:ok, %{status: 200, body: user}} ->
@@ -185,7 +184,10 @@ defmodule James.OAuth do
   end
 
   defp fetch_github_primary_email(token) do
-    case Req.get("https://api.github.com/user/emails",
+    emails_url =
+      System.get_env("OAUTH_GITHUB_EMAILS_URL", "https://api.github.com/user/emails")
+
+    case Req.get(emails_url,
            headers: [
              {"Authorization", "Bearer #{token}"},
              {"User-Agent", "james-the-butler"}

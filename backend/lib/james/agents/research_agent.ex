@@ -6,8 +6,7 @@ defmodule James.Agents.ResearchAgent do
 
   use GenServer, restart: :temporary
 
-  alias James.Providers.Anthropic
-  alias James.{Sessions, Tokens}
+  alias James.{LLMProvider, Sessions, Tokens}
 
   defstruct [:session_id, :task_id, :messages, :system_prompt, :model]
 
@@ -93,13 +92,13 @@ defmodule James.Agents.ResearchAgent do
 
     opts = if state.model, do: Keyword.put(opts, :model, state.model), else: opts
 
-    case Anthropic.stream_message(state.messages, opts) do
+    case LLMProvider.configured().stream_message(state.messages, opts) do
       {:ok, %{content: content, usage: usage, stop_reason: stop_reason}} ->
         {:ok, message} =
           Sessions.create_message(%{
             session_id: state.session_id,
             role: "assistant",
-            content: content,
+            content: extract_text_content(content),
             token_count: Map.get(usage, :output_tokens, 0),
             model: state.model || "claude-sonnet-4-20250514"
           })
@@ -181,6 +180,14 @@ defmodule James.Agents.ResearchAgent do
   end
 
   defp execute_tool(name, _input, _state), do: "Unknown tool: #{name}"
+
+  defp extract_text_content(content) when is_binary(content), do: content
+
+  defp extract_text_content(content) when is_list(content) do
+    content
+    |> Enum.filter(fn b -> is_map(b) and Map.get(b, "type") == "text" end)
+    |> Enum.map_join("\n", fn b -> Map.get(b, "text", "") end)
+  end
 
   defp broadcast_chunk(session_id, text) do
     Phoenix.PubSub.broadcast(James.PubSub, "session:#{session_id}", {:assistant_chunk, text})

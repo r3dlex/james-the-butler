@@ -95,6 +95,71 @@ defmodule James.Hooks.DispatcherTest do
     end
   end
 
+  describe "fire/3 with command hook" do
+    test "returns :ok for command hook with non-empty command" do
+      user = create_user("disp_cmd@example.com")
+
+      create_hook(user, %{
+        event: "post_tool_use",
+        type: "command",
+        config: %{"command" => "echo done"}
+      })
+
+      assert :ok == Dispatcher.fire(user.id, "post_tool_use", %{})
+    end
+
+    test "returns :ok for command hook with empty command" do
+      user = create_user("disp_cmd_empty@example.com")
+
+      create_hook(user, %{
+        event: "post_tool_use",
+        type: "command",
+        config: %{"command" => ""}
+      })
+
+      assert :ok == Dispatcher.fire(user.id, "post_tool_use", %{})
+    end
+  end
+
+  describe "fire/3 with agent hook" do
+    test "returns :ok for agent hook" do
+      user = create_user("disp_agent@example.com")
+      create_hook(user, %{event: "task_complete", type: "agent", config: %{}})
+      assert :ok == Dispatcher.fire(user.id, "task_complete", %{})
+    end
+  end
+
+  describe "fire/2 (default payload)" do
+    test "returns :ok when called with 2 args using default empty payload" do
+      user = create_user("disp_2arg@example.com")
+      assert Dispatcher.fire(user.id, "post_tool_use") == :ok
+    end
+  end
+
+  describe "fire/3 with http hook and empty url" do
+    test "returns :ok when url is empty" do
+      user = create_user("disp_http_empty@example.com")
+      create_hook(user, %{event: "post_tool_use", type: "http", config: %{"url" => ""}})
+      assert :ok == Dispatcher.fire(user.id, "post_tool_use", %{})
+    end
+  end
+
+  describe "fire/3 with empty string matcher" do
+    test "matches any payload when matcher is empty string" do
+      user = create_user("disp_empty_str@example.com")
+
+      create_hook(user, %{
+        event: "pre_tool_use",
+        type: "prompt",
+        config: %{"prompt" => "Always run"},
+        matcher: ""
+      })
+
+      result = Dispatcher.fire(user.id, "pre_tool_use", %{tool_name: "anything"})
+      assert {:modify, _} = result
+    end
+  end
+
   describe "fire/3 matcher patterns" do
     test "matches when tool_name is in pipe-separated pattern" do
       user = create_user("disp_matcher@example.com")

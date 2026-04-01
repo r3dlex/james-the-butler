@@ -7,8 +7,7 @@ defmodule James.Agents.ChatAgent do
 
   use GenServer, restart: :temporary
 
-  alias James.{Embeddings, Memories, Personality, Sessions, Tasks, Tokens}
-  alias James.Providers.Anthropic
+  alias James.{Embeddings, LLMProvider, Memories, Personality, Sessions, Tasks, Tokens}
   alias James.Workers.MemoryExtractionWorker
 
   defstruct [:session_id, :task_id, :messages, :system_prompt, :model]
@@ -79,7 +78,7 @@ defmodule James.Agents.ChatAgent do
 
     opts = if state.model, do: Keyword.put(opts, :model, state.model), else: opts
 
-    case Anthropic.stream_message(state.messages, opts) do
+    case LLMProvider.configured().stream_message(state.messages, opts) do
       {:ok, %{content: content, usage: usage}} ->
         # Save assistant message
         {:ok, message} =
@@ -199,9 +198,15 @@ defmodule James.Agents.ChatAgent do
   defp enqueue_memory_extraction(session_id) do
     case Sessions.get_session(session_id) do
       %{user_id: user_id} ->
-        %{session_id: session_id, user_id: user_id}
-        |> MemoryExtractionWorker.new()
-        |> Oban.insert()
+        job =
+          %{session_id: session_id, user_id: user_id}
+          |> MemoryExtractionWorker.new()
+
+        try do
+          Oban.insert(job)
+        rescue
+          _ -> :ok
+        end
 
       _ ->
         :ok

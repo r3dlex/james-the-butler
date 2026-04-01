@@ -81,6 +81,74 @@ defmodule JamesWeb.SessionChannelTest do
   end
 
   describe "pubsub event relay" do
+    test "relays user_message events to client" do
+      user = create_user()
+      host = create_host()
+      session = create_session(user, host)
+      socket = connect_socket(user)
+
+      {:ok, _, socket} =
+        subscribe_and_join(socket, JamesWeb.SessionChannel, "session:#{session.id}")
+
+      fake_msg = %{
+        id: Ecto.UUID.generate(),
+        role: "user",
+        content: "hello",
+        inserted_at: DateTime.utc_now()
+      }
+
+      Phoenix.PubSub.broadcast(James.PubSub, "session:#{session.id}", {:user_message, fake_msg})
+      assert_push("message:new", %{content: "hello"})
+      _ = socket
+    end
+
+    test "relays assistant_message events to client" do
+      user = create_user()
+      host = create_host()
+      session = create_session(user, host)
+      socket = connect_socket(user)
+
+      {:ok, _, socket} =
+        subscribe_and_join(socket, JamesWeb.SessionChannel, "session:#{session.id}")
+
+      fake_msg = %{
+        id: Ecto.UUID.generate(),
+        role: "assistant",
+        content: "hi there",
+        inserted_at: DateTime.utc_now()
+      }
+
+      Phoenix.PubSub.broadcast(
+        James.PubSub,
+        "session:#{session.id}",
+        {:assistant_message, fake_msg}
+      )
+
+      assert_push("message:new", %{content: "hi there"})
+      _ = socket
+    end
+
+    test "relays artifact_created events to client" do
+      user = create_user()
+      host = create_host()
+      session = create_session(user, host)
+      socket = connect_socket(user)
+
+      {:ok, _, socket} =
+        subscribe_and_join(socket, JamesWeb.SessionChannel, "session:#{session.id}")
+
+      fake_artifact = %{id: Ecto.UUID.generate(), type: "file", path: "/tmp/output.txt"}
+
+      Phoenix.PubSub.broadcast(
+        James.PubSub,
+        "session:#{session.id}",
+        {:artifact_created, fake_artifact}
+      )
+
+      assert_push("artifact:created", %{type: "file"})
+      _ = socket
+    end
+
     test "relays assistant_chunk events to client" do
       user = create_user()
       host = create_host()
