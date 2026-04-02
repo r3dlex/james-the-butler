@@ -129,12 +129,7 @@
         </h2>
         <div class="space-y-3">
           <div class="flex items-center gap-3">
-            <img
-              src="/logo-light.svg"
-              alt="James the Butler"
-              width="36"
-              height="36"
-            />
+            <img :src="logoSrc" alt="James the Butler" width="36" height="36" />
             <div>
               <p
                 class="text-sm font-semibold"
@@ -216,9 +211,11 @@
 
 <script setup lang="ts">
 import { reactive, onMounted } from "vue";
+import { useLogoSrc } from "@/composables/useLogoSrc";
 import { applyTheme } from "@/utils/theme";
 import type { ThemeMode } from "@/utils/theme";
 
+const logoSrc = useLogoSrc();
 const STORAGE_KEY = "james_general_settings";
 
 interface GeneralSettings {

@@ -9,7 +9,7 @@
       :class="collapsed ? 'justify-center px-0' : 'px-4'"
     >
       <img
-        src="/logo-light.svg"
+        :src="logoSrc"
         alt="James the Butler"
         width="28"
         height="28"
@@ -193,6 +193,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
 import { useRoute, RouterLink } from "vue-router";
+import { useLogoSrc } from "@/composables/useLogoSrc";
 import SidebarNavItem from "./SidebarNavItem.vue";
 import SidebarFooter from "./SidebarFooter.vue";
 import SidebarSessionsSection from "./SidebarSessionsSection.vue";
@@ -216,6 +217,7 @@ defineProps<{
   collapsed?: boolean;
 }>();
 
+const logoSrc = useLogoSrc();
 const route = useRoute();
 const searchQuery = ref("");
 

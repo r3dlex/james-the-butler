@@ -5,7 +5,7 @@
       message="Start a conversation"
     >
       <template #icon>
-        <img src="/logo.svg" alt="" width="48" height="48" class="opacity-40" />
+        <img :src="logoSrc" alt="" width="48" height="48" class="opacity-40" />
       </template>
     </EmptyState>
 
@@ -44,11 +44,13 @@
 
 <script setup lang="ts">
 import { ref, watch, nextTick } from "vue";
+import { useLogoSrc } from "@/composables/useLogoSrc";
 import MarkdownIt from "markdown-it";
 import type { Message } from "@/types/message";
 import MessageBubble from "./MessageBubble.vue";
 import EmptyState from "@/components/common/EmptyState.vue";
 
+const logoSrc = useLogoSrc();
 const md = new MarkdownIt({ html: false, linkify: true, breaks: true });
 
 function renderMarkdown(text: string): string {

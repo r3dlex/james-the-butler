@@ -4,7 +4,7 @@
     style="background: var(--color-navy-deep)"
   >
     <div class="flex flex-col items-center gap-4">
-      <img src="/logo.svg" alt="James the Butler" width="64" height="64" />
+      <img :src="logoSrc" alt="James the Butler" width="64" height="64" />
       <h1 class="font-serif text-2xl" style="color: var(--color-gold)">
         James the Butler
       </h1>
@@ -91,7 +91,9 @@
 <script setup lang="ts">
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
+import { useLogoSrc } from "@/composables/useLogoSrc";
 
+const logoSrc = useLogoSrc();
 const auth = useAuthStore();
 const router = useRouter();
 

@@ -4,13 +4,7 @@
     style="background: var(--color-navy-deep)"
   >
     <div class="flex flex-col items-center gap-4">
-      <img
-        src="/logo-light.svg"
-        alt=""
-        width="48"
-        height="48"
-        class="opacity-60"
-      />
+      <img :src="logoSrc" alt="" width="48" height="48" class="opacity-60" />
       <p class="text-sm" style="color: var(--color-text-dim)">
         {{ message }}
       </p>
@@ -23,7 +17,9 @@ import { onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuthStore } from "@/stores/auth";
 import { api } from "@/services/api";
+import { useLogoSrc } from "@/composables/useLogoSrc";
 
+const logoSrc = useLogoSrc();
 const router = useRouter();
 const auth = useAuthStore();
 const message = ref("Signing you in…");
