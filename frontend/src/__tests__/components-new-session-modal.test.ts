@@ -103,13 +103,14 @@ describe("NewSessionModal", () => {
   it("has a folder picker button that opens a file picker (not another text input)", async () => {
     const wrapper = await mountModal();
     const text = wrapper.text();
-    expect(text).toMatch(/choose folder|add folder/i);
+    // Button says "Choose folder" when empty, "+ Add another" when dirs exist
+    expect(text).toMatch(/choose folder|add another/i);
 
     // Button should exist
-    const addFolderBtn = wrapper
+    const folderBtn = wrapper
       .findAll("button")
-      .find((b) => b.text().match(/choose folder|add folder/i));
-    expect(addFolderBtn).toBeDefined();
+      .find((b) => b.text().match(/choose folder|add another/i));
+    expect(folderBtn).toBeDefined();
 
     // There should be a hidden file input for the picker
     const fileInput = wrapper.find("input[type='file']");
