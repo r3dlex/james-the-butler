@@ -23,8 +23,15 @@ defmodule James.OpenClaw.OrchestratorTest do
     {:ok, orchestrator} = Orchestrator.start_link([])
 
     on_exit(fn ->
-      if Process.alive?(orchestrator) do
-        GenServer.stop(orchestrator, :normal)
+      # Guard against a TOCTOU race: the orchestrator may have stopped between
+      # the alive? check and the stop call (e.g. when suspend_session terminates
+      # the underlying agent GenServer and triggers a cascade).
+      try do
+        if Process.alive?(orchestrator) do
+          GenServer.stop(orchestrator, :normal)
+        end
+      catch
+        :exit, _ -> :ok
       end
     end)
 
