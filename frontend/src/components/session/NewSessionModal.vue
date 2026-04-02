@@ -73,7 +73,26 @@
               class="flex items-center gap-2 rounded border px-2 py-1"
               style="border-color: var(--color-border)"
             >
+              <!-- git branch icon for git repos, folder icon otherwise -->
               <svg
+                v-if="dir.isGit"
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="shrink-0"
+                style="color: var(--color-gold)"
+              >
+                <line x1="6" y1="3" x2="6" y2="15" />
+                <circle cx="18" cy="6" r="3" />
+                <circle cx="6" cy="18" r="3" />
+                <path d="M18 9a9 9 0 0 1-9 9" />
+              </svg>
+              <svg
+                v-else
                 xmlns="http://www.w3.org/2000/svg"
                 width="12"
                 height="12"
@@ -91,15 +110,15 @@
               <span
                 class="min-w-0 flex-1 truncate text-xs"
                 style="color: var(--color-text)"
-                :title="dir"
+                :title="dir.path"
               >
-                {{ dir }}
+                {{ dir.path }}
               </span>
               <button
                 type="button"
                 class="shrink-0 text-xs transition-colors hover:text-[var(--color-risk-red)]"
                 style="color: var(--color-text-dim)"
-                :aria-label="`Remove ${dir}`"
+                :aria-label="`Remove ${dir.path}`"
                 @click="removeFolder(idx)"
               >
                 ×
@@ -123,7 +142,11 @@
             style="color: var(--color-text-dim)"
             @click="openFolderPicker"
           >
-            + Add folder
+            {{
+              workingDirectories.length === 0
+                ? "Choose folder"
+                : "+ Add another"
+            }}
           </button>
         </div>
 
@@ -153,6 +176,7 @@
 
 <script setup lang="ts">
 import { ref, watch } from "vue";
+import { api } from "@/services/api";
 import type { ExecutionMode } from "@/types/session";
 
 const SETTINGS_KEY = "james_general_settings";
@@ -176,10 +200,11 @@ const emit = defineEmits<{
 }>();
 
 type ExecutionModeChoice = ExecutionMode | "user_default";
+type WorkspaceDir = { path: string; isGit: boolean };
 
 const name = ref("");
 const executionModeChoice = ref<ExecutionModeChoice>("user_default");
-const workingDirectories = ref<string[]>([]);
+const workingDirectories = ref<WorkspaceDir[]>([]);
 const folderPickerRef = ref<HTMLInputElement | null>(null);
 
 // Reset state when modal opens
@@ -198,7 +223,7 @@ function openFolderPicker() {
   folderPickerRef.value?.click();
 }
 
-function onFolderSelected(event: Event) {
+async function onFolderSelected(event: Event) {
   const input = event.target as HTMLInputElement;
   const files = input.files;
   if (!files || files.length === 0) return;
@@ -213,8 +238,20 @@ function onFolderSelected(event: Event) {
       ? firstFile.webkitRelativePath.split("/")[0]
       : firstFile.name);
 
-  if (folderPath && !workingDirectories.value.includes(folderPath)) {
-    workingDirectories.value.push(folderPath);
+  if (
+    folderPath &&
+    !workingDirectories.value.find((d) => d.path === folderPath)
+  ) {
+    let isGit = false;
+    try {
+      const result = await api.get<{ is_git: boolean; path: string }>(
+        `/api/paths/git-check?path=${encodeURIComponent(folderPath)}`,
+      );
+      isGit = result.is_git ?? false;
+    } catch {
+      // ignore, treat as non-git
+    }
+    workingDirectories.value.push({ path: folderPath, isGit });
   }
 
   // Reset so the same folder can be re-selected if needed
@@ -249,7 +286,7 @@ function handleCreate() {
   emit("create", {
     name: name.value.trim() || undefined,
     executionMode: resolveExecutionMode(),
-    workingDirectories: [...workingDirectories.value],
+    workingDirectories: workingDirectories.value.map((d) => d.path),
     projectId: props.projectId,
   });
 }

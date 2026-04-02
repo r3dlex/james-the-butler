@@ -89,8 +89,29 @@
         :streaming-text="streamingText"
       />
 
+      <!-- Resize handle between messages and input -->
+      <div
+        class="shrink-0 cursor-row-resize border-t"
+        style="
+          height: 4px;
+          border-color: var(--color-border);
+          background: transparent;
+          transition: background 0.15s;
+        "
+        @mouseenter="
+          ($event.target as HTMLElement).style.background = 'var(--color-gold)'
+        "
+        @mouseleave="
+          ($event.target as HTMLElement).style.background = 'transparent'
+        "
+        @mousedown.prevent="startChatResize"
+      />
+
       <!-- Input + workspace panel -->
-      <div class="shrink-0">
+      <div
+        class="shrink-0"
+        :style="{ height: chatInputHeight + 'px', overflow: 'auto' }"
+      >
         <!-- Chat input — always enabled; messages queue when James is busy -->
         <ChatInput @send="handleSend" />
 
@@ -99,40 +120,175 @@
           class="flex items-center gap-3 border-t px-4 py-2"
           style="border-color: var(--color-border)"
         >
-          <!-- Working directories -->
-          <div class="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="12"
-              height="12"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              class="shrink-0"
-              style="color: var(--color-text-dim)"
+          <!-- Working directories (clickable to open editor) -->
+          <div
+            class="flex min-w-0 flex-1 cursor-pointer flex-wrap items-center gap-1.5"
+            style="position: relative"
+            @click="showWorkspaceEditor = !showWorkspaceEditor"
+          >
+            <!-- Workspace editor popup -->
+            <div
+              v-if="showWorkspaceEditor"
+              class="absolute bottom-full left-0 z-50 mb-1 w-72 rounded-xl border p-3 shadow-xl"
+              style="
+                background: var(--color-navy);
+                border-color: var(--color-border);
+              "
+              @click.stop
             >
-              <path
-                d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+              <p
+                class="mb-2 text-xs font-medium"
+                style="color: var(--color-text)"
+              >
+                Working Directories
+              </p>
+              <!-- List of dirs -->
+              <div
+                v-for="(dir, i) in editableWorkspaceDirs"
+                :key="dir.path"
+                class="mb-1 flex items-center gap-2"
+              >
+                <!-- git icon or folder icon -->
+                <svg
+                  v-if="dir.isGit"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="shrink-0"
+                  style="color: var(--color-gold)"
+                >
+                  <line x1="6" y1="3" x2="6" y2="15" />
+                  <circle cx="18" cy="6" r="3" />
+                  <circle cx="6" cy="18" r="3" />
+                  <path d="M18 9a9 9 0 0 1-9 9" />
+                </svg>
+                <svg
+                  v-else
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="10"
+                  height="10"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  class="shrink-0"
+                  style="color: var(--color-text-dim)"
+                >
+                  <path
+                    d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+                  />
+                </svg>
+                <span
+                  class="flex-1 truncate text-xs"
+                  style="color: var(--color-text-dim)"
+                  :title="dir.path"
+                >
+                  {{ dir.path }}
+                </span>
+                <button
+                  class="text-xs"
+                  style="color: var(--color-text-dim)"
+                  @click="removeWorkspaceDir(i)"
+                >
+                  ✕
+                </button>
+              </div>
+              <p
+                v-if="editableWorkspaceDirs.length === 0"
+                class="mb-2 text-xs"
+                style="color: var(--color-text-dim)"
+              >
+                No directories added
+              </p>
+              <button
+                type="button"
+                class="mt-1 text-xs"
+                style="color: var(--color-gold)"
+                @click="openFolderPicker"
+              >
+                + Add directory
+              </button>
+              <input
+                ref="folderPickerRef"
+                type="file"
+                webkitdirectory
+                style="display: none"
+                @change="onFolderSelected"
               />
-            </svg>
-            <template v-if="session?.workingDirectories?.length">
+            </div>
+
+            <!-- Show icon per dir or fallback -->
+            <template v-if="editableWorkspaceDirs.length">
+              <svg
+                v-if="editableWorkspaceDirs[0].isGit"
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="shrink-0"
+                style="color: var(--color-gold)"
+              >
+                <line x1="6" y1="3" x2="6" y2="15" />
+                <circle cx="18" cy="6" r="3" />
+                <circle cx="6" cy="18" r="3" />
+                <path d="M18 9a9 9 0 0 1-9 9" />
+              </svg>
+              <svg
+                v-else
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="shrink-0"
+                style="color: var(--color-text-dim)"
+              >
+                <path
+                  d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+                />
+              </svg>
               <span
-                v-for="dir in session.workingDirectories"
-                :key="dir"
+                v-for="dir in editableWorkspaceDirs"
+                :key="dir.path"
                 class="max-w-32 truncate rounded px-1.5 py-0.5 text-xs"
                 style="
                   background: var(--color-surface);
                   color: var(--color-text-dim);
                 "
-                :title="dir"
+                :title="dir.path"
               >
-                {{ dir }}
+                {{ dir.path }}
               </span>
             </template>
-            <span v-else class="text-xs" style="color: var(--color-text-dim)">
-              No workspace
-            </span>
+            <template v-else>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                class="shrink-0"
+                style="color: var(--color-text-dim)"
+              >
+                <path
+                  d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+                />
+              </svg>
+              <span class="text-xs" style="color: var(--color-text-dim)">
+                No workspace
+              </span>
+            </template>
           </div>
 
           <!-- Execution mode selector -->
@@ -159,10 +315,29 @@
       </div>
     </div>
 
+    <!-- Resize handle for task panel -->
+    <div
+      class="shrink-0 cursor-col-resize border-l"
+      style="
+        width: 4px;
+        border-color: var(--color-border);
+        background: transparent;
+        transition: background 0.15s;
+      "
+      @mouseenter="
+        ($event.target as HTMLElement).style.background = 'var(--color-gold)'
+      "
+      @mouseleave="
+        ($event.target as HTMLElement).style.background = 'transparent'
+      "
+      @mousedown.prevent="startPanelResize"
+    />
+
     <!-- Right: task panel -->
     <SessionActivityPanel
       :tasks="tasks"
       :planner-status="plannerStatus"
+      :style="{ width: taskPanelWidth + 'px', minWidth: taskPanelWidth + 'px' }"
       @approve="handleApprove"
       @reject="handleReject"
     />
@@ -177,6 +352,7 @@ import { useMessageStore } from "@/stores/messages";
 import { useTaskStore } from "@/stores/tasks";
 import { useSocketStore } from "@/stores/socket";
 import { useTokenStore } from "@/stores/tokens";
+import { api } from "@/services/api";
 import type { Message } from "@/types/message";
 import type { ExecutionMode } from "@/types/session";
 import SessionActivityPanel from "@/components/session/SessionActivityPanel.vue";
@@ -211,8 +387,6 @@ const sessionCost = computed(() => {
 });
 
 // ── Execution mode selector ──────────────────────────────────────────────────
-// Shows "user_default" when the session's executionMode matches the persisted
-// general setting, otherwise shows the overriding value.
 const sessionModeChoice = computed<"direct" | "confirmed" | "user_default">(
   () => {
     if (!session.value) return "user_default";
@@ -264,9 +438,112 @@ function cancelEditTitle() {
   editingTitle.value = false;
 }
 
+// ── Resizable chat input area ────────────────────────────────────────────────
+const chatInputHeight = ref(200);
+const MIN_CHAT_INPUT_HEIGHT = 120;
+
+function startChatResize(e: MouseEvent) {
+  const startY = e.clientY;
+  const startH = chatInputHeight.value;
+
+  function onMove(ev: MouseEvent) {
+    const delta = startY - ev.clientY;
+    chatInputHeight.value = Math.max(MIN_CHAT_INPUT_HEIGHT, startH + delta);
+  }
+  function onUp() {
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+  }
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+}
+
+// ── Resizable task panel ─────────────────────────────────────────────────────
+const taskPanelWidth = ref(288);
+const MIN_PANEL_WIDTH = 200;
+const MAX_PANEL_WIDTH = 500;
+
+function startPanelResize(e: MouseEvent) {
+  const startX = e.clientX;
+  const startW = taskPanelWidth.value;
+
+  function onMove(ev: MouseEvent) {
+    const delta = startX - ev.clientX;
+    taskPanelWidth.value = Math.max(
+      MIN_PANEL_WIDTH,
+      Math.min(MAX_PANEL_WIDTH, startW + delta),
+    );
+  }
+  function onUp() {
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+  }
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+}
+
+// ── Workspace editor ─────────────────────────────────────────────────────────
+type WorkspaceDir = { path: string; isGit: boolean };
+
+const showWorkspaceEditor = ref(false);
+const folderPickerRef = ref<HTMLInputElement | null>(null);
+const editableWorkspaceDirs = ref<WorkspaceDir[]>([]);
+
+// Sync editable dirs from session when session loads
+watch(
+  () => session.value?.workingDirectories,
+  (dirs) => {
+    if (dirs && editableWorkspaceDirs.value.length === 0) {
+      editableWorkspaceDirs.value = dirs.map((p) => ({
+        path: p,
+        isGit: false,
+      }));
+    }
+  },
+  { immediate: true },
+);
+
+function openFolderPicker() {
+  folderPickerRef.value?.click();
+}
+
+async function onFolderSelected(event: Event) {
+  const input = event.target as HTMLInputElement;
+  const files = input.files;
+  if (!files || files.length === 0) return;
+
+  const firstFile = files[0];
+  const folderPath =
+    (firstFile as unknown as { path?: string }).path ||
+    (firstFile.webkitRelativePath
+      ? firstFile.webkitRelativePath.split("/")[0]
+      : firstFile.name);
+
+  if (
+    folderPath &&
+    !editableWorkspaceDirs.value.find((d) => d.path === folderPath)
+  ) {
+    let isGit = false;
+    try {
+      const result = await api.get<{ is_git: boolean; path: string }>(
+        `/api/paths/git-check?path=${encodeURIComponent(folderPath)}`,
+      );
+      isGit = result.is_git ?? false;
+    } catch {
+      // ignore, treat as non-git
+    }
+    editableWorkspaceDirs.value.push({ path: folderPath, isGit });
+  }
+
+  // Reset so the same folder can be re-selected if needed
+  input.value = "";
+}
+
+function removeWorkspaceDir(i: number) {
+  editableWorkspaceDirs.value.splice(i, 1);
+}
+
 // ── FIFO message queue ───────────────────────────────────────────────────────
-// Messages are always accepted. While James is responding we queue them and
-// drain the queue as soon as streaming stops.
 const sendQueue = ref<string[]>([]);
 const hasSentFirstMessage = ref(false);
 const streamingError = ref<string | null>(null);

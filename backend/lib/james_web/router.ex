@@ -120,6 +120,9 @@ defmodule JamesWeb.Router do
     # Provider OAuth PKCE flow
     post "/providers/oauth/start", ProviderOAuthController, :start
     get "/providers/oauth/status/:state_key", ProviderOAuthController, :status
+
+    # Path utilities
+    get "/paths/git-check", PathController, :git_check
   end
 
   # OAuth callback is unauthenticated — the browser redirects here after the

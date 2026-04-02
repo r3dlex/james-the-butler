@@ -99,6 +99,53 @@ defmodule James.Agents.ChatAgentTest do
       assert updated.status == "failed"
     end
 
+    test "saves error as assistant message in DB on LLM error" do
+      %{session: session, task: task} = setup_session()
+
+      MockLLMProvider.push_response({:error, "LLM unavailable"})
+
+      {:ok, pid} = ChatAgent.start_link(session_id: session.id, task_id: task.id)
+      ref = Process.monitor(pid)
+      assert_receive {:DOWN, ^ref, :process, ^pid, :normal}, 3000
+
+      messages = Sessions.list_messages(session.id)
+      assistant_msgs = Enum.filter(messages, &(&1.role == "assistant"))
+      assert length(assistant_msgs) == 1
+      assert String.contains?(List.first(assistant_msgs).content, "⚠️")
+    end
+
+    test "broadcasts assistant_message on LLM error to close streaming" do
+      %{session: session, task: task} = setup_session()
+
+      Phoenix.PubSub.subscribe(James.PubSub, "session:#{session.id}")
+
+      MockLLMProvider.push_response({:error, "LLM unavailable"})
+
+      {:ok, pid} = ChatAgent.start_link(session_id: session.id, task_id: task.id)
+      ref = Process.monitor(pid)
+      assert_receive {:DOWN, ^ref, :process, ^pid, :normal}, 3000
+
+      assert_received {:assistant_message, msg}
+      assert msg.role == "assistant"
+      assert String.contains?(msg.content, "⚠️")
+    end
+
+    test "formats missing API key error with helpful Settings message" do
+      %{session: session, task: task} = setup_session()
+
+      MockLLMProvider.push_response({:error, "ANTHROPIC_API_KEY not configured"})
+
+      {:ok, pid} = ChatAgent.start_link(session_id: session.id, task_id: task.id)
+      ref = Process.monitor(pid)
+      assert_receive {:DOWN, ^ref, :process, ^pid, :normal}, 3000
+
+      messages = Sessions.list_messages(session.id)
+      assistant_msgs = Enum.filter(messages, &(&1.role == "assistant"))
+      content = List.first(assistant_msgs).content
+      assert String.contains?(content, "Settings")
+      assert String.contains?(content, "Models")
+    end
+
     test "starts without task_id (nil task) without crashing" do
       %{session: session} = setup_session()
 
