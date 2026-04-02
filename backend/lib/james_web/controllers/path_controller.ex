@@ -1,5 +1,5 @@
 defmodule JamesWeb.PathController do
-  use JamesWeb, :controller
+  use Phoenix.Controller, formats: [:json]
 
   @doc """
   GET /api/paths/git-check?path=/some/dir

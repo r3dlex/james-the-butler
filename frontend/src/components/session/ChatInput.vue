@@ -529,7 +529,7 @@ function selectModelOnly(model: string) {
 }
 
 /** Keep for backward compat — selects both provider and model at once. */
-function selectModel(providerId: string, model: string) {
+function _selectModel(providerId: string, model: string) {
   activeProviderId.value = providerId;
   activeModelId.value = model;
   showModelMenu.value = false;

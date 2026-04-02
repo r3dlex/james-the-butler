@@ -16,7 +16,6 @@ defmodule James.Providers.ProviderOAuth do
 
   use GenServer
 
-  alias James.Accounts
   alias James.ProviderSettings
 
   @table :provider_oauth_states
