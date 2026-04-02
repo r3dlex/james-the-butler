@@ -20,7 +20,8 @@ defmodule James.Providers.ProviderOAuth do
   alias James.Accounts
 
   @table :provider_oauth_states
-  @state_ttl_seconds 600 # 10 minutes
+  # 10 minutes
+  @state_ttl_seconds 600
 
   # ---------------------------------------------------------------------------
   # Provider definitions
@@ -203,11 +204,11 @@ defmodule James.Providers.ProviderOAuth do
   end
 
   defp exchange_code(provider_type, code, verifier, redirect_uri) do
-    def = Map.fetch!(@provider_defs, provider_type)
-    client_id = System.get_env(def.client_id_env, "")
-    client_secret = System.get_env(def.client_secret_env, "")
+    pdef = Map.fetch!(@provider_defs, provider_type)
+    client_id = System.get_env(pdef.client_id_env, "")
+    client_secret = System.get_env(pdef.client_secret_env, "")
 
-    case Req.post(def.token_url,
+    case Req.post(pdef.token_url,
            form: [
              grant_type: "authorization_code",
              code: code,

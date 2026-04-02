@@ -311,8 +311,7 @@ async function _doSend(text: string) {
   const msgs = messageStore.getMessages(sessionId.value);
   const qIdx = msgs.findIndex(
     (m) =>
-      m.id.startsWith("queued-") &&
-      m.content[0]?.text === `[queued] ${text}`,
+      m.id.startsWith("queued-") && m.content[0]?.text === `[queued] ${text}`,
   );
   if (qIdx !== -1) {
     msgs.splice(qIdx, 1);

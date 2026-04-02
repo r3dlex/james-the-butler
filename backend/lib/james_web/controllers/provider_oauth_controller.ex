@@ -8,7 +8,7 @@ defmodule JamesWeb.ProviderOAuthController do
     GET  /api/providers/oauth/status/:key   — frontend polls until :completed
   """
 
-  use JamesWeb, :controller
+  use Phoenix.Controller, formats: [:html, :json]
 
   alias James.Providers.ProviderOAuth
 

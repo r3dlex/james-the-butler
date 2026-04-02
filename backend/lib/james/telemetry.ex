@@ -54,17 +54,9 @@ defmodule James.Telemetry do
       end)
   """
   def with_span(name, attrs \\ %{}, fun) when is_binary(name) and is_function(fun, 0) do
-    Tracer.with_span name, %{attributes: stringify_keys(attrs)} do
+    Tracer.with_span(name, %{attributes: stringify_keys(attrs)}) do
       fun.()
     end
-  end
-
-  @doc """
-  Records an exception on the current span without re-raising.
-  """
-  def record_exception(exception, stacktrace \\ []) do
-    Tracer.record_exception(exception, stacktrace)
-    Tracer.set_status(OpenTelemetry.status(:error, Exception.message(exception)))
   end
 
   @doc """
