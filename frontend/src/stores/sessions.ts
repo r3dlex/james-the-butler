@@ -3,6 +3,7 @@ import { ref, computed } from "vue";
 import { api } from "@/services/api";
 import type { Session, CreateSessionPayload } from "@/types/session";
 import { useProviderStore } from "@/stores/providers";
+import { generateSessionName } from "@/utils/sessionNames";
 
 export const useSessionStore = defineStore("sessions", () => {
   const sessions = ref<Session[]>([]);
@@ -48,10 +49,11 @@ export const useSessionStore = defineStore("sessions", () => {
 
   function createLocalSession(payload: CreateSessionPayload): Session {
     const now = new Date().toISOString();
+    const providedName = payload.name?.trim();
     const session: Session = {
       id: `local-${Date.now()}`,
-      name: payload.name?.trim() || "New Session",
-      nameSetByUser: !!payload.name?.trim(),
+      name: providedName || generateSessionName(),
+      nameSetByUser: !!providedName,
       agentType: payload.agentType,
       hostId: payload.hostId,
       projectId: payload.projectId ?? null,
@@ -83,9 +85,11 @@ export const useSessionStore = defineStore("sessions", () => {
     }
 
     creating.value = true;
+    // Always send a name — generate an interesting default when none is provided
+    const resolvedName = payload.name?.trim() || generateSessionName();
     try {
       const data = await api.post<{ session: Session }>("/api/sessions", {
-        name: payload.name,
+        name: resolvedName,
         agent_type: payload.agentType,
         host_id: payload.hostId,
         project_id: payload.projectId,
@@ -93,11 +97,16 @@ export const useSessionStore = defineStore("sessions", () => {
         execution_mode: payload.executionMode,
         keep_intermediates: payload.keepIntermediates,
       });
-      sessions.value.unshift(data.session);
-      return data.session;
+      // Mark as not user-set when the name was auto-generated
+      const session = {
+        ...data.session,
+        nameSetByUser: !!payload.name?.trim(),
+      };
+      sessions.value.unshift(session);
+      return session;
     } catch {
       // API not available — create locally for dev mode
-      return createLocalSession(payload);
+      return createLocalSession({ ...payload, name: resolvedName });
     } finally {
       creating.value = false;
     }

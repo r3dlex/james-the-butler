@@ -61,26 +61,55 @@ export const useMessageStore = defineStore("messages", () => {
     }
   }
 
+  /**
+   * Normalises the `content` field of a server message.
+   * The backend may send content as a plain string at runtime even though
+   * the TypeScript type says ContentBlock[].  We always store ContentBlock[].
+   */
+  function normalizeMessage(message: Message): Message {
+    const raw = message.content as unknown;
+    if (Array.isArray(raw)) return message; // already ContentBlock[]
+    if (typeof raw === "string" && raw.length > 0) {
+      return { ...message, content: [{ type: "text", text: raw }] };
+    }
+    return { ...message, content: [] };
+  }
+
   function appendMessage(sessionId: string, message: Message) {
     const msgs = messagesBySession.value.get(sessionId) ?? [];
-    msgs.push(message);
+    msgs.push(normalizeMessage(message));
     messagesBySession.value.set(sessionId, msgs);
   }
 
   /**
-   * If a temp message (id starts with "temp-") with the same role exists,
-   * replace it with the incoming message; otherwise append normally.
+   * Idempotently inserts a server-confirmed message:
+   * 1. If the same message ID already exists, update it in place (re-delivery guard).
+   * 2. If a temp-* message with the same role exists, replace it.
+   * 3. Otherwise append.
+   * Content is always normalised to ContentBlock[].
    */
   function replaceOrAppendMessage(sessionId: string, message: Message) {
+    const msg = normalizeMessage(message);
     const msgs = messagesBySession.value.get(sessionId) ?? [];
+
+    // Guard: same ID already in list → update in place, do not duplicate
+    const existingIdx = msgs.findIndex((m) => m.id === msg.id);
+    if (existingIdx !== -1) {
+      msgs.splice(existingIdx, 1, msg);
+      messagesBySession.value.set(sessionId, msgs);
+      return;
+    }
+
+    // Replace the first optimistic temp message with matching role
     const tempIdx = msgs.findIndex(
-      (m) => m.id.startsWith("temp-") && m.role === message.role,
+      (m) => m.id.startsWith("temp-") && m.role === msg.role,
     );
     if (tempIdx !== -1) {
-      msgs.splice(tempIdx, 1, message);
+      msgs.splice(tempIdx, 1, msg);
       messagesBySession.value.set(sessionId, msgs);
     } else {
-      appendMessage(sessionId, message);
+      msgs.push(msg);
+      messagesBySession.value.set(sessionId, msgs);
     }
   }
 

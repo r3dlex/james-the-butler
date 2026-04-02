@@ -151,4 +151,72 @@ describe("chat deduplication", () => {
     const store = useMessageStore();
     expect(typeof store.replaceOrAppendMessage).toBe("function");
   });
+
+  it("appendMessage normalises string content to ContentBlock[]", async () => {
+    const { useMessageStore } = await import("../stores/messages");
+    const store = useMessageStore();
+
+    const msgWithStringContent = {
+      id: "str-content-1",
+      sessionId: "sess-1",
+      role: "user" as const,
+      content:
+        "hello from server" as unknown as import("../types/message").ContentBlock[],
+      attachments: [],
+      tokenCount: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    store.appendMessage("sess-1", msgWithStringContent);
+
+    const msgs = store.getMessages("sess-1");
+    expect(msgs).toHaveLength(1);
+    // content should be normalised to ContentBlock[]
+    expect(Array.isArray(msgs[0].content)).toBe(true);
+    expect(msgs[0].content[0]).toMatchObject({
+      type: "text",
+      text: "hello from server",
+    });
+  });
+
+  it("replaceOrAppendMessage normalises string content and replaces temp", async () => {
+    const { useMessageStore } = await import("../stores/messages");
+    const store = useMessageStore();
+
+    store.appendMessage("sess-1", makeMsg("temp-999", "user", "hello"));
+
+    const serverMsgStringContent = {
+      id: "server-str",
+      sessionId: "sess-1",
+      role: "user" as const,
+      content: "hello" as unknown as import("../types/message").ContentBlock[],
+      attachments: [],
+      tokenCount: 0,
+      createdAt: new Date().toISOString(),
+    };
+
+    store.replaceOrAppendMessage("sess-1", serverMsgStringContent);
+
+    const msgs = store.getMessages("sess-1");
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].id).toBe("server-str");
+    expect(Array.isArray(msgs[0].content)).toBe(true);
+    expect(msgs[0].content[0]).toMatchObject({ type: "text", text: "hello" });
+  });
+
+  it("replaceOrAppendMessage deduplicates by message ID (idempotent on re-delivery)", async () => {
+    const { useMessageStore } = await import("../stores/messages");
+    const store = useMessageStore();
+
+    const msg = makeMsg("real-id-dup", "assistant", "response text");
+    store.appendMessage("sess-1", msg);
+
+    // Re-deliver the same message ID
+    store.replaceOrAppendMessage("sess-1", msg);
+
+    const msgs = store.getMessages("sess-1");
+    // Should not duplicate — still only 1 message
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].id).toBe("real-id-dup");
+  });
 });

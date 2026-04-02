@@ -297,14 +297,17 @@ describe("useSessionStore — initial state", () => {
     expect(session.id.length).toBeGreaterThan(0);
   });
 
-  it("createLocalSession uses default name 'New Session' when no name given", async () => {
+  it("createLocalSession generates a funky two-word name when no name given", async () => {
     const { useSessionStore } = await import("../stores/sessions");
     const store = useSessionStore();
     const session = store.createLocalSession({
       agentType: "chat",
       hostId: "host-1",
     });
-    expect(session.name).toBe("New Session");
+    // Name should be two capitalised words (e.g. "Amber Falcon"), not blank
+    expect(session.name).toBeTruthy();
+    expect(session.name.split(" ")).toHaveLength(2);
+    expect(session.nameSetByUser).toBe(false);
   });
 
   it("createLocalSession respects a provided name", async () => {

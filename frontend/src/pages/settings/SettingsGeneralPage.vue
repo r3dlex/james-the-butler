@@ -160,7 +160,7 @@
 
           <div class="flex flex-col gap-1.5">
             <a
-              href="https://github.com/andresilvaburgstahler/james-the-butler"
+              href="https://github.com/r3dlex/james-the-butler"
               target="_blank"
               rel="noopener noreferrer"
               class="flex items-center gap-2 text-xs transition-colors hover:text-[var(--color-gold)]"
@@ -182,7 +182,7 @@
             </a>
 
             <a
-              href="https://github.com/andresilvaburgstahler/james-the-butler/issues"
+              href="https://github.com/r3dlex/james-the-butler/issues"
               target="_blank"
               rel="noopener noreferrer"
               class="flex items-center gap-2 text-xs transition-colors hover:text-[var(--color-gold)]"

@@ -79,35 +79,41 @@ describe("NewSessionModal", () => {
     wrapper.unmount();
   });
 
-  it("renders execution mode selector with direct and confirmed options", async () => {
+  it("renders execution mode selector as a <select> with User Default, Direct and Supervised options", async () => {
     const wrapper = await mountModal();
+    // Should render a <select> for execution mode
+    const select = wrapper.find("select");
+    expect(select.exists()).toBe(true);
+
     const text = wrapper.text();
+    expect(text).toMatch(/user default/i);
     expect(text).toMatch(/direct/i);
-    expect(text).toMatch(/confirmed/i);
+    expect(text).toMatch(/supervised/i);
     wrapper.unmount();
   });
 
-  it("has a '+ Add folder' button that adds another workspace input", async () => {
+  it("execution mode select defaults to 'User Default'", async () => {
+    const wrapper = await mountModal();
+    const select = wrapper.find("select");
+    expect(select.exists()).toBe(true);
+    expect((select.element as HTMLSelectElement).value).toBe("user_default");
+    wrapper.unmount();
+  });
+
+  it("has a '+ Add folder' button that opens a file picker (not another text input)", async () => {
     const wrapper = await mountModal();
     const text = wrapper.text();
     expect(text).toMatch(/add folder/i);
 
-    const initialInputCount = wrapper.findAll(
-      "input[type='text'], input:not([type])",
-    ).length;
-
-    // Click the add folder button
+    // Button should exist
     const addFolderBtn = wrapper
       .findAll("button")
       .find((b) => b.text().match(/add folder/i));
     expect(addFolderBtn).toBeDefined();
 
-    await addFolderBtn!.trigger("click");
-
-    const newInputCount = wrapper.findAll(
-      "input[type='text'], input:not([type])",
-    ).length;
-    expect(newInputCount).toBeGreaterThan(initialInputCount);
+    // There should be a hidden file input for the picker
+    const fileInput = wrapper.find("input[type='file']");
+    expect(fileInput.exists()).toBe(true);
     wrapper.unmount();
   });
 
@@ -137,6 +143,7 @@ describe("NewSessionModal", () => {
     };
     expect(payload).toHaveProperty("workingDirectories");
     expect(payload).toHaveProperty("executionMode");
+    // executionMode should be a resolved value (direct or confirmed), not "user_default"
     expect(["direct", "confirmed"]).toContain(payload.executionMode);
     wrapper.unmount();
   });
