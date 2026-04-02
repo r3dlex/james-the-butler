@@ -36,6 +36,7 @@
             @click.stop="
               showPlusMenu = !showPlusMenu;
               showModelMenu = false;
+              showProviderMenu = false;
             "
           >
             <svg
@@ -201,8 +202,99 @@
           </div>
         </div>
 
-        <!-- Right: model selector + send -->
+        <!-- Right: provider selector + model selector + send -->
         <div class="flex items-center gap-2">
+          <!-- Provider selector -->
+          <div ref="providerMenuWrapRef" class="relative">
+            <button
+              type="button"
+              class="flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition-colors hover:bg-[var(--color-navy)]"
+              style="color: var(--color-text-dim)"
+              @click.stop="
+                showProviderMenu = !showProviderMenu;
+                showModelMenu = false;
+                showPlusMenu = false;
+              "
+            >
+              <span
+                v-if="activeProvider"
+                class="mr-0.5 inline-block h-1.5 w-1.5 rounded-full"
+                :class="providerStatusDot"
+              />
+              {{ activeProvider?.displayName ?? "No provider" }}
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="12"
+                height="12"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+
+            <!-- Provider dropdown -->
+            <div
+              v-if="showProviderMenu"
+              class="absolute bottom-8 right-0 z-50 w-44 rounded-xl border py-2 shadow-xl"
+              style="
+                background: var(--color-navy);
+                border-color: var(--color-border);
+              "
+              @click.stop
+            >
+              <div
+                v-if="providerStore.providers.length === 0"
+                class="px-4 py-3 text-xs"
+                style="color: var(--color-text-dim)"
+              >
+                No providers.
+                <RouterLink
+                  to="/settings/models"
+                  class="underline"
+                  style="color: var(--color-gold)"
+                  @click="showProviderMenu = false"
+                >
+                  Add in Settings
+                </RouterLink>
+              </div>
+              <button
+                v-for="provider in providerStore.providers"
+                :key="provider.id"
+                class="flex w-full items-center justify-between px-4 py-1.5 text-sm transition-colors hover:bg-[var(--color-surface)]"
+                :style="{
+                  color:
+                    activeProviderId === provider.id
+                      ? 'var(--color-accent-blue)'
+                      : 'var(--color-text)',
+                }"
+                @click="selectProvider(provider.id)"
+              >
+                <span class="flex items-center gap-1.5">
+                  <span
+                    class="inline-block h-1.5 w-1.5 rounded-full"
+                    :class="dotForStatus(provider.status)"
+                  />
+                  {{ provider.displayName }}
+                </span>
+                <svg
+                  v-if="activeProviderId === provider.id"
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="14"
+                  height="14"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="3"
+                >
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </button>
+            </div>
+          </div>
+
           <!-- Model selector -->
           <div ref="modelMenuWrapRef" class="relative">
             <button
@@ -211,16 +303,11 @@
               style="color: var(--color-text-dim)"
               @click.stop="
                 showModelMenu = !showModelMenu;
+                showProviderMenu = false;
                 showPlusMenu = false;
               "
             >
-              <!-- Provider status dot -->
-              <span
-                v-if="activeProvider"
-                class="mr-0.5 inline-block h-1.5 w-1.5 rounded-full"
-                :class="providerStatusDot"
-              />
-              {{ activeModelLabel }}
+              {{ activeModelId || "Model" }}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="12"
@@ -237,110 +324,55 @@
             <!-- Model dropdown -->
             <div
               v-if="showModelMenu"
-              class="absolute bottom-8 right-0 z-50 w-56 rounded-xl border py-2 shadow-xl"
+              class="absolute bottom-8 right-0 z-50 w-52 rounded-xl border py-2 shadow-xl"
               style="
                 background: var(--color-navy);
                 border-color: var(--color-border);
               "
               @click.stop
             >
-              <!-- No providers configured -->
               <div
-                v-if="providerStore.providers.length === 0"
+                v-if="!activeProvider"
                 class="px-4 py-3 text-xs"
                 style="color: var(--color-text-dim)"
               >
-                No providers configured.
-                <RouterLink
-                  to="/settings/models"
-                  class="underline"
-                  style="color: var(--color-gold)"
-                  @click="showModelMenu = false"
-                >
-                  Add one in Settings
-                </RouterLink>
+                Select a provider first
               </div>
-
-              <!-- Provider + model list -->
-              <template v-else>
-                <div
-                  v-for="provider in providerStore.providers"
-                  :key="provider.id"
+              <template v-else-if="activeProvider.models?.length">
+                <button
+                  v-for="model in activeProvider.models"
+                  :key="model"
+                  class="flex w-full items-center justify-between px-4 py-1.5 text-sm transition-colors hover:bg-[var(--color-surface)]"
+                  :style="{
+                    color:
+                      activeModelId === model
+                        ? 'var(--color-accent-blue)'
+                        : 'var(--color-text)',
+                  }"
+                  @click="selectModelOnly(model)"
                 >
-                  <!-- Provider group header -->
-                  <div
-                    class="flex items-center gap-1.5 px-4 pt-2 pb-1 text-xs font-medium"
-                    style="color: var(--color-text-dim)"
+                  {{ model }}
+                  <svg
+                    v-if="activeModelId === model"
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="14"
+                    height="14"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="3"
                   >
-                    <span
-                      class="inline-block h-1.5 w-1.5 rounded-full"
-                      :class="dotForStatus(provider.status)"
-                    />
-                    {{ provider.displayName }}
-                  </div>
-
-                  <!-- Models for this provider -->
-                  <template v-if="provider.models && provider.models.length">
-                    <button
-                      v-for="model in provider.models"
-                      :key="`${provider.id}:${model}`"
-                      class="flex w-full items-center justify-between px-4 py-1.5 text-sm transition-colors hover:bg-[var(--color-surface)]"
-                      :style="{
-                        color:
-                          activeProviderId === provider.id &&
-                          activeModelId === model
-                            ? 'var(--color-accent-blue)'
-                            : 'var(--color-text)',
-                      }"
-                      @click="selectModel(provider.id, model)"
-                    >
-                      {{ model }}
-                      <svg
-                        v-if="
-                          activeProviderId === provider.id &&
-                          activeModelId === model
-                        "
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="14"
-                        height="14"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="3"
-                      >
-                        <polyline points="20 6 9 17 4 12" />
-                      </svg>
-                    </button>
-                  </template>
-
-                  <!-- Fallback: provider but no models yet -->
-                  <button
-                    v-else
-                    class="flex w-full items-center justify-between px-4 py-1.5 text-sm transition-colors hover:bg-[var(--color-surface)]"
-                    :style="{
-                      color:
-                        activeProviderId === provider.id
-                          ? 'var(--color-accent-blue)'
-                          : 'var(--color-text)',
-                    }"
-                    @click="selectModel(provider.id, '')"
-                  >
-                    {{ provider.displayName }}
-                    <svg
-                      v-if="activeProviderId === provider.id"
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="14"
-                      height="14"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      stroke-width="3"
-                    >
-                      <polyline points="20 6 9 17 4 12" />
-                    </svg>
-                  </button>
-                </div>
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                </button>
               </template>
+              <div
+                v-else
+                class="px-4 py-3 text-xs"
+                style="color: var(--color-text-dim)"
+              >
+                No models for this provider
+              </div>
             </div>
           </div>
 
@@ -389,8 +421,10 @@ const focused = ref(false);
 const inputRef = ref<HTMLTextAreaElement | null>(null);
 const plusMenuWrapRef = ref<HTMLElement | null>(null);
 const modelMenuWrapRef = ref<HTMLElement | null>(null);
+const providerMenuWrapRef = ref<HTMLElement | null>(null);
 const showPlusMenu = ref(false);
 const showModelMenu = ref(false);
+const showProviderMenu = ref(false);
 const webSearchEnabled = ref(false);
 const activeStyle = ref("normal");
 
@@ -413,14 +447,6 @@ watchEffect(() => {
     activeProviderId.value = activeProvider.value.id;
     activeModelId.value = activeProvider.value.models?.[0] ?? "";
   }
-});
-
-const activeModelLabel = computed(() => {
-  if (!activeProvider.value) return "No provider";
-  const model = activeModelId.value || activeProvider.value.models?.[0];
-  return model
-    ? `${activeProvider.value.displayName} · ${model}`
-    : activeProvider.value.displayName;
 });
 
 function dotForStatus(status: string): string {
@@ -483,6 +509,26 @@ function setStyle(id: string) {
   activeStyle.value = id;
 }
 
+function selectProvider(providerId: string) {
+  activeProviderId.value = providerId;
+  // Clear model if it's not in the new provider's model list
+  const provider = providerStore.providers.find((p) => p.id === providerId);
+  if (
+    provider &&
+    provider.models &&
+    !provider.models.includes(activeModelId.value)
+  ) {
+    activeModelId.value = provider.models[0] ?? "";
+  }
+  showProviderMenu.value = false;
+}
+
+function selectModelOnly(model: string) {
+  activeModelId.value = model;
+  showModelMenu.value = false;
+}
+
+/** Keep for backward compat — selects both provider and model at once. */
 function selectModel(providerId: string, model: string) {
   activeProviderId.value = providerId;
   activeModelId.value = model;
@@ -490,9 +536,6 @@ function selectModel(providerId: string, model: string) {
 }
 
 // ── Outside-click handler ────────────────────────────────────────────────────
-// Extracted to a named function so it can be removed in onUnmounted,
-// preventing the "UI lock" bug (stale listener after navigation).
-
 function handleOutsideClick(e: MouseEvent) {
   const target = e.target as Node;
   if (plusMenuWrapRef.value && !plusMenuWrapRef.value.contains(target)) {
@@ -500,6 +543,12 @@ function handleOutsideClick(e: MouseEvent) {
   }
   if (modelMenuWrapRef.value && !modelMenuWrapRef.value.contains(target)) {
     showModelMenu.value = false;
+  }
+  if (
+    providerMenuWrapRef.value &&
+    !providerMenuWrapRef.value.contains(target)
+  ) {
+    showProviderMenu.value = false;
   }
 }
 

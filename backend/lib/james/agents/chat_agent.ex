@@ -118,11 +118,20 @@ defmodule James.Agents.ChatAgent do
           error_message: inspect(reason)
         })
 
-        # Broadcast error as a system message
+        error_text = format_llm_error(reason)
+
+        # Save as a DB message so it persists and closes streaming on the frontend
+        {:ok, err_msg} =
+          Sessions.create_message(%{
+            session_id: session_id,
+            role: "assistant",
+            content: error_text
+          })
+
         Phoenix.PubSub.broadcast(
           James.PubSub,
           "session:#{session_id}",
-          {:assistant_chunk, "\n\n[Error: #{inspect(reason)}]"}
+          {:assistant_message, err_msg}
         )
 
         broadcast_task_status(session_id, state.task_id, "failed")
@@ -154,6 +163,12 @@ defmodule James.Agents.ChatAgent do
         )
     end
   end
+
+  defp format_llm_error("ANTHROPIC_API_KEY not configured"),
+    do: "No LLM provider is configured. Please add an API key in **Settings → Models**."
+
+  defp format_llm_error(reason) when is_binary(reason), do: "⚠️ #{reason}"
+  defp format_llm_error(reason), do: "⚠️ #{inspect(reason)}"
 
   defp record_tokens(state, usage) do
     input = Map.get(usage, :input_tokens, 0)
