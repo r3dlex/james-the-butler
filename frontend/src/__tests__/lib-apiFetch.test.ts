@@ -74,8 +74,10 @@ describe("apiFetch", () => {
   it("retries on 502 up to 3 times then throws ApiError", async () => {
     setupFetch(mockResponse(502), mockResponse(502), mockResponse(502));
     const p = apiFetch("/test", { retries: 3, backoffMs: 0 });
+    // Attach rejection handler BEFORE running timers to avoid unhandled-rejection warnings.
+    const assertion = expect(p).rejects.toBeInstanceOf(ApiError);
     await vi.runAllTimersAsync();
-    await expect(p).rejects.toBeInstanceOf(ApiError);
+    await assertion;
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(3);
   });
 
@@ -98,16 +100,18 @@ describe("apiFetch", () => {
   it("throws after all retries are exhausted on network error", async () => {
     setupFetchNetworkError(0);
     const p = apiFetch("/test", { retries: 3, backoffMs: 0 });
+    const assertion = expect(p).rejects.toBeInstanceOf(ApiError);
     await vi.runAllTimersAsync();
-    await expect(p).rejects.toBeInstanceOf(ApiError);
+    await assertion;
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(3);
   });
 
   it("does NOT retry 4xx client errors (except 429)", async () => {
     setupFetch(mockResponse(404));
     const p = apiFetch("/test", { backoffMs: 0 });
+    const assertion = expect(p).rejects.toBeInstanceOf(ApiError);
     await vi.runAllTimersAsync();
-    await expect(p).rejects.toBeInstanceOf(ApiError);
+    await assertion;
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1); // no retry
   });
 
@@ -132,11 +136,18 @@ describe("apiFetch", () => {
 
   // ── Human-readable error messages ─────────────────────────────────────────
 
+  // Helper: attach catch handler BEFORE running timers to avoid unhandled-rejection
+  // warnings.  This pattern ensures Node/Vitest never sees the rejection as unhandled
+  // even though it is intentional.
+  async function expectApiError(p: Promise<unknown>): Promise<ApiError> {
+    const caught = p.catch((e) => e as ApiError);
+    await vi.runAllTimersAsync();
+    return caught;
+  }
+
   it("maps 401 to a human-readable message including the code", async () => {
     setupFetch(mockResponse(401));
-    const p = apiFetch("/test", { backoffMs: 0 });
-    await vi.runAllTimersAsync();
-    const err = (await p.catch((e) => e)) as ApiError;
+    const err = await expectApiError(apiFetch("/test", { backoffMs: 0 }));
     expect(err).toBeInstanceOf(ApiError);
     expect(err.humanMessage).toContain("session has expired");
     expect(err.humanMessage).toContain("(401)");
@@ -145,90 +156,80 @@ describe("apiFetch", () => {
 
   it("maps 403 to a permission-denied message", async () => {
     setupFetch(mockResponse(403));
-    const p = apiFetch("/test", { backoffMs: 0 });
-    await vi.runAllTimersAsync();
-    const err = (await p.catch((e) => e)) as ApiError;
+    const err = await expectApiError(apiFetch("/test", { backoffMs: 0 }));
     expect(err.humanMessage).toContain("don't have permission");
     expect(err.humanMessage).toContain("(403)");
   });
 
   it("maps 404 to a not-found message", async () => {
     setupFetch(mockResponse(404));
-    const p = apiFetch("/test", { backoffMs: 0 });
-    await vi.runAllTimersAsync();
-    const err = (await p.catch((e) => e)) as ApiError;
+    const err = await expectApiError(apiFetch("/test", { backoffMs: 0 }));
     expect(err.humanMessage).toContain("not found");
     expect(err.humanMessage).toContain("(404)");
   });
 
   it("maps 422 to an invalid-request message", async () => {
     setupFetch(mockResponse(422));
-    const p = apiFetch("/test", { backoffMs: 0 });
-    await vi.runAllTimersAsync();
-    const err = (await p.catch((e) => e)) as ApiError;
+    const err = await expectApiError(apiFetch("/test", { backoffMs: 0 }));
     expect(err.humanMessage).toContain("invalid");
     expect(err.humanMessage).toContain("(422)");
   });
 
   it("maps 500 to a server-problem message", async () => {
     setupFetch(mockResponse(500, {}));
-    const p = apiFetch("/test", { retries: 1, backoffMs: 0 });
-    await vi.runAllTimersAsync();
-    const err = (await p.catch((e) => e)) as ApiError;
+    const err = await expectApiError(
+      apiFetch("/test", { retries: 1, backoffMs: 0 }),
+    );
     expect(err.humanMessage).toContain("server ran into a problem");
     expect(err.humanMessage).toContain("(500)");
   });
 
   it("maps 502 to an unavailable message", async () => {
     setupFetch(mockResponse(502, {}));
-    const p = apiFetch("/test", { retries: 1, backoffMs: 0 });
-    await vi.runAllTimersAsync();
-    const err = (await p.catch((e) => e)) as ApiError;
+    const err = await expectApiError(
+      apiFetch("/test", { retries: 1, backoffMs: 0 }),
+    );
     expect(err.humanMessage).toContain("temporarily unavailable");
     expect(err.humanMessage).toContain("(502)");
   });
 
   it("maps 503 to an unavailable message", async () => {
     setupFetch(mockResponse(503, {}));
-    const p = apiFetch("/test", { retries: 1, backoffMs: 0 });
-    await vi.runAllTimersAsync();
-    const err = (await p.catch((e) => e)) as ApiError;
+    const err = await expectApiError(
+      apiFetch("/test", { retries: 1, backoffMs: 0 }),
+    );
     expect(err.humanMessage).toContain("temporarily unavailable");
     expect(err.humanMessage).toContain("(503)");
   });
 
   it("maps 504 to a timeout message", async () => {
     setupFetch(mockResponse(504, {}));
-    const p = apiFetch("/test", { retries: 1, backoffMs: 0 });
-    await vi.runAllTimersAsync();
-    const err = (await p.catch((e) => e)) as ApiError;
+    const err = await expectApiError(
+      apiFetch("/test", { retries: 1, backoffMs: 0 }),
+    );
     expect(err.humanMessage).toContain("took too long");
     expect(err.humanMessage).toContain("(504)");
   });
 
   it("appends server error message to the human message when present", async () => {
     setupFetch(mockResponse(422, { error: "email already taken" }));
-    const p = apiFetch("/test", { backoffMs: 0 });
-    await vi.runAllTimersAsync();
-    const err = (await p.catch((e) => e)) as ApiError;
+    const err = await expectApiError(apiFetch("/test", { backoffMs: 0 }));
     expect(err.humanMessage).toContain("email already taken");
     expect(err.humanMessage).toContain("(422)");
   });
 
   it("uses generic message for unknown status codes", async () => {
     setupFetch(mockResponse(418)); // I'm a teapot
-    const p = apiFetch("/test", { backoffMs: 0 });
-    await vi.runAllTimersAsync();
-    const err = (await p.catch((e) => e)) as ApiError;
+    const err = await expectApiError(apiFetch("/test", { backoffMs: 0 }));
     expect(err.humanMessage).toContain("unexpected error");
     expect(err.humanMessage).toContain("(418)");
   });
 
   it("maps network error to a connection message", async () => {
     setupFetchNetworkError();
-    const p = apiFetch("/test", { retries: 1, backoffMs: 0 });
-    await vi.runAllTimersAsync();
-    const err = (await p.catch((e) => e)) as ApiError;
+    const err = await expectApiError(
+      apiFetch("/test", { retries: 1, backoffMs: 0 }),
+    );
     expect(err).toBeInstanceOf(ApiError);
     expect(err.humanMessage).toContain("Could not reach the server");
     expect(err.code).toBe("network error");
@@ -239,8 +240,9 @@ describe("apiFetch", () => {
   it("respects retries: 1 — throws immediately without retrying", async () => {
     setupFetch(mockResponse(500));
     const p = apiFetch("/test", { retries: 1, backoffMs: 0 });
+    const assertion = expect(p).rejects.toBeInstanceOf(ApiError);
     await vi.runAllTimersAsync();
-    await expect(p).rejects.toBeInstanceOf(ApiError);
+    await assertion;
     expect(vi.mocked(fetch)).toHaveBeenCalledTimes(1);
   });
 
