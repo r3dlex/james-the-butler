@@ -437,4 +437,63 @@ describe("useProviderStore", () => {
     expect(store.error).toBe("Network error");
     expect(store.providers).toHaveLength(0);
   });
+
+  it("fetchProviders() correctly populates all fields from API (id, displayName, providerType, status, baseUrl, models)", async () => {
+    const { api } = await import("../services/api");
+    const { useProviderStore } = await import("../stores/providers");
+
+    const fullProvider = {
+      id: "p-full",
+      providerType: "anthropic" as const,
+      displayName: "My Anthropic Provider",
+      authMethod: "api_key" as const,
+      status: "connected" as const,
+      baseUrl: "https://api.anthropic.com",
+      apiKeyMasked: "sk-ant-****",
+      lastTestedAt: "2026-04-01T00:00:00Z",
+      models: ["claude-opus-4", "claude-sonnet-4-5"],
+    };
+    vi.mocked(api.get).mockResolvedValueOnce({ providers: [fullProvider] });
+
+    const store = useProviderStore();
+    await store.fetchProviders();
+
+    expect(store.providers).toHaveLength(1);
+    const p = store.providers[0];
+    expect(p.id).toBe("p-full");
+    expect(p.displayName).toBe("My Anthropic Provider");
+    expect(p.providerType).toBe("anthropic");
+    expect(p.status).toBe("connected");
+    expect(p.baseUrl).toBe("https://api.anthropic.com");
+    expect(p.models).toEqual(["claude-opus-4", "claude-sonnet-4-5"]);
+  });
+
+  it("addProvider() then fetchProviders() — added provider persists in store", async () => {
+    const { api } = await import("../services/api");
+    const { useProviderStore } = await import("../stores/providers");
+
+    const created = makeProvider("p-persist");
+    vi.mocked(api.post).mockResolvedValueOnce({ provider: created });
+    // fetchProviders after add returns the persisted provider
+    vi.mocked(api.get)
+      .mockResolvedValueOnce({ models: [] }) // auto-fetch models after add
+      .mockResolvedValueOnce({ providers: [created] }); // subsequent fetchProviders
+
+    const store = useProviderStore();
+    await store.addProvider({
+      providerType: "anthropic",
+      displayName: "Provider p-persist",
+      authMethod: "api_key",
+      baseUrl: null,
+    });
+
+    // Wait for background auto-fetch
+    await new Promise((r) => setTimeout(r, 10));
+
+    // Now simulate fetching providers again (as happens on app mount)
+    await store.fetchProviders();
+
+    expect(store.providers).toHaveLength(1);
+    expect(store.providers[0].id).toBe("p-persist");
+  });
 });

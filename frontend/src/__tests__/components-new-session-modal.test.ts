@@ -100,19 +100,21 @@ describe("NewSessionModal", () => {
     wrapper.unmount();
   });
 
-  it("has a folder picker button that opens a file picker (not another text input)", async () => {
+  it("has a FolderPathInput with a text field and a Browse button (not a raw file upload)", async () => {
     const wrapper = await mountModal();
     const text = wrapper.text();
-    // Button says "Choose folder" when empty, "+ Add another" when dirs exist
-    expect(text).toMatch(/choose folder|add another/i);
 
-    // Button should exist
-    const folderBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text().match(/choose folder|add another/i));
-    expect(folderBtn).toBeDefined();
+    // Primary UX is a text field for typing paths — not an "Upload" button
+    expect(text).not.toMatch(/upload/i);
 
-    // There should be a hidden file input for the picker
+    // Should have a "Browse" button (secondary action via FolderPathInput)
+    expect(text).toMatch(/browse/i);
+
+    // Should have a text input for typing the path
+    const textInput = wrapper.find("input[type='text']");
+    expect(textInput.exists()).toBe(true);
+
+    // Should also have a hidden file input for the native Browse action
     const fileInput = wrapper.find("input[type='file']");
     expect(fileInput.exists()).toBe(true);
     wrapper.unmount();
