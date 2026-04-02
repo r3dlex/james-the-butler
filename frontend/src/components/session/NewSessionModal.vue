@@ -126,28 +126,16 @@
             </div>
           </div>
 
-          <!-- Hidden folder picker — webkitdirectory makes the OS dialog
-               show only directories, not individual files. -->
-          <input
-            ref="folderPickerRef"
-            type="file"
-            webkitdirectory
-            style="display: none"
-            @change="onFolderSelected"
-          />
-
-          <button
-            type="button"
-            class="mt-1 text-xs transition-colors hover:text-[var(--color-gold)]"
-            style="color: var(--color-text-dim)"
-            @click="openFolderPicker"
-          >
-            {{
+          <!-- Folder path input with Browse button -->
+          <FolderPathInput
+            :show-label="false"
+            :placeholder="
               workingDirectories.length === 0
-                ? "Choose folder"
-                : "+ Add another"
-            }}
-          </button>
+                ? 'Type or browse for a folder path'
+                : '+ Add another folder path'
+            "
+            @select="addFolderByPath"
+          />
         </div>
 
         <!-- Actions -->
@@ -178,6 +166,7 @@
 import { ref, watch } from "vue";
 import { api } from "@/services/api";
 import type { ExecutionMode } from "@/types/session";
+import FolderPathInput from "@/components/common/FolderPathInput.vue";
 
 const SETTINGS_KEY = "james_general_settings";
 
@@ -205,7 +194,6 @@ type WorkspaceDir = { path: string; isGit: boolean };
 const name = ref("");
 const executionModeChoice = ref<ExecutionModeChoice>("user_default");
 const workingDirectories = ref<WorkspaceDir[]>([]);
-const folderPickerRef = ref<HTMLInputElement | null>(null);
 
 // Reset state when modal opens
 watch(
@@ -219,43 +207,23 @@ watch(
   },
 );
 
-function openFolderPicker() {
-  folderPickerRef.value?.click();
-}
-
-async function onFolderSelected(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const files = input.files;
-  if (!files || files.length === 0) return;
-
-  // Extract folder path from the selected files.
-  // In Tauri/Electron contexts file.path is available (absolute path).
-  // In web browsers we get the webkitRelativePath (relative).
-  const firstFile = files[0];
-  const folderPath =
-    (firstFile as unknown as { path?: string }).path ||
-    (firstFile.webkitRelativePath
-      ? firstFile.webkitRelativePath.split("/")[0]
-      : firstFile.name);
-
+async function addFolderByPath(folderPath: string) {
   if (
-    folderPath &&
-    !workingDirectories.value.find((d) => d.path === folderPath)
+    !folderPath ||
+    workingDirectories.value.find((d) => d.path === folderPath)
   ) {
-    let isGit = false;
-    try {
-      const result = await api.get<{ is_git: boolean; path: string }>(
-        `/api/paths/git-check?path=${encodeURIComponent(folderPath)}`,
-      );
-      isGit = result.is_git ?? false;
-    } catch {
-      // ignore, treat as non-git
-    }
-    workingDirectories.value.push({ path: folderPath, isGit });
+    return;
   }
-
-  // Reset so the same folder can be re-selected if needed
-  input.value = "";
+  let isGit = false;
+  try {
+    const result = await api.get<{ is_git: boolean; path: string }>(
+      `/api/paths/git-check?path=${encodeURIComponent(folderPath)}`,
+    );
+    isGit = result.is_git ?? false;
+  } catch {
+    // ignore, treat as non-git
+  }
+  workingDirectories.value.push({ path: folderPath, isGit });
 }
 
 function removeFolder(idx: number) {

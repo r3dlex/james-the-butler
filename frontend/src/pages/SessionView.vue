@@ -107,127 +107,54 @@
         @mousedown.prevent="startChatResize"
       />
 
-      <!-- Input + workspace panel -->
+      <!-- Resizable chat input area -->
       <div
         class="shrink-0"
         :style="{ height: chatInputHeight + 'px', overflow: 'auto' }"
       >
         <!-- Chat input — always enabled; messages queue when James is busy -->
         <ChatInput @send="handleSend" />
+      </div>
 
-        <!-- Workspace & mode panel (Claude Desktop style) -->
+      <!-- Workspace & mode panel (Claude Desktop style) — fixed below input, not resizable -->
+      <div
+        class="shrink-0 flex items-center gap-3 border-t px-4 py-2"
+        style="border-color: var(--color-border)"
+      >
+        <!-- Working directories (clickable to open editor) -->
         <div
-          class="flex items-center gap-3 border-t px-4 py-2"
-          style="border-color: var(--color-border)"
+          class="flex min-w-0 flex-1 cursor-pointer flex-wrap items-center gap-1.5"
+          style="position: relative"
+          @click="showWorkspaceEditor = !showWorkspaceEditor"
         >
-          <!-- Working directories (clickable to open editor) -->
+          <!-- Workspace editor popup -->
           <div
-            class="flex min-w-0 flex-1 cursor-pointer flex-wrap items-center gap-1.5"
-            style="position: relative"
-            @click="showWorkspaceEditor = !showWorkspaceEditor"
+            v-if="showWorkspaceEditor"
+            class="absolute bottom-full left-0 z-50 mb-1 w-72 rounded-xl border p-3 shadow-xl"
+            style="
+              background: var(--color-navy);
+              border-color: var(--color-border);
+            "
+            @click.stop
           >
-            <!-- Workspace editor popup -->
-            <div
-              v-if="showWorkspaceEditor"
-              class="absolute bottom-full left-0 z-50 mb-1 w-72 rounded-xl border p-3 shadow-xl"
-              style="
-                background: var(--color-navy);
-                border-color: var(--color-border);
-              "
-              @click.stop
+            <p
+              class="mb-2 text-xs font-medium"
+              style="color: var(--color-text)"
             >
-              <p
-                class="mb-2 text-xs font-medium"
-                style="color: var(--color-text)"
-              >
-                Working Directories
-              </p>
-              <!-- List of dirs -->
-              <div
-                v-for="(dir, i) in editableWorkspaceDirs"
-                :key="dir.path"
-                class="mb-1 flex items-center gap-2"
-              >
-                <!-- git icon or folder icon -->
-                <svg
-                  v-if="dir.isGit"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="10"
-                  height="10"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  class="shrink-0"
-                  style="color: var(--color-gold)"
-                >
-                  <line x1="6" y1="3" x2="6" y2="15" />
-                  <circle cx="18" cy="6" r="3" />
-                  <circle cx="6" cy="18" r="3" />
-                  <path d="M18 9a9 9 0 0 1-9 9" />
-                </svg>
-                <svg
-                  v-else
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="10"
-                  height="10"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="2"
-                  class="shrink-0"
-                  style="color: var(--color-text-dim)"
-                >
-                  <path
-                    d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
-                  />
-                </svg>
-                <span
-                  class="flex-1 truncate text-xs"
-                  style="color: var(--color-text-dim)"
-                  :title="dir.path"
-                >
-                  {{ dir.path }}
-                </span>
-                <button
-                  class="text-xs"
-                  style="color: var(--color-text-dim)"
-                  @click="removeWorkspaceDir(i)"
-                >
-                  ✕
-                </button>
-              </div>
-              <p
-                v-if="editableWorkspaceDirs.length === 0"
-                class="mb-2 text-xs"
-                style="color: var(--color-text-dim)"
-              >
-                No directories added
-              </p>
-              <button
-                type="button"
-                class="mt-1 text-xs"
-                style="color: var(--color-gold)"
-                @click="openFolderPicker"
-              >
-                + Add directory
-              </button>
-              <input
-                ref="folderPickerRef"
-                type="file"
-                webkitdirectory
-                style="display: none"
-                @change="onFolderSelected"
-              />
-            </div>
-
-            <!-- Show icon per dir or fallback -->
-            <template v-if="editableWorkspaceDirs.length">
+              Working Directories
+            </p>
+            <!-- List of dirs -->
+            <div
+              v-for="(dir, i) in editableWorkspaceDirs"
+              :key="dir.path"
+              class="mb-1 flex items-center gap-2"
+            >
+              <!-- git icon or folder icon -->
               <svg
-                v-if="editableWorkspaceDirs[0].isGit"
+                v-if="dir.isGit"
                 xmlns="http://www.w3.org/2000/svg"
-                width="12"
-                height="12"
+                width="10"
+                height="10"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -243,8 +170,8 @@
               <svg
                 v-else
                 xmlns="http://www.w3.org/2000/svg"
-                width="12"
-                height="12"
+                width="10"
+                height="10"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -257,60 +184,123 @@
                 />
               </svg>
               <span
-                v-for="dir in editableWorkspaceDirs"
-                :key="dir.path"
-                class="max-w-32 truncate rounded px-1.5 py-0.5 text-xs"
-                style="
-                  background: var(--color-surface);
-                  color: var(--color-text-dim);
-                "
+                class="flex-1 truncate text-xs"
+                style="color: var(--color-text-dim)"
                 :title="dir.path"
               >
                 {{ dir.path }}
               </span>
-            </template>
-            <template v-else>
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="12"
-                height="12"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                class="shrink-0"
+              <button
+                class="text-xs"
                 style="color: var(--color-text-dim)"
+                @click="removeWorkspaceDir(i)"
               >
-                <path
-                  d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
-                />
-              </svg>
-              <span class="text-xs" style="color: var(--color-text-dim)">
-                No workspace
-              </span>
-            </template>
+                ✕
+              </button>
+            </div>
+            <p
+              v-if="editableWorkspaceDirs.length === 0"
+              class="mb-2 text-xs"
+              style="color: var(--color-text-dim)"
+            >
+              No directories added
+            </p>
+            <FolderPathInput
+              :show-label="false"
+              placeholder="+ Add directory path"
+              @select="addFolderByPath"
+            />
           </div>
 
-          <!-- Execution mode selector -->
-          <div class="flex shrink-0 items-center gap-1.5">
-            <span class="text-xs" style="color: var(--color-text-dim)">
-              Mode:
-            </span>
-            <select
-              :value="sessionModeChoice"
-              class="rounded border bg-transparent px-2 py-0.5 text-xs outline-none focus:border-[var(--color-gold)]"
-              style="
-                border-color: var(--color-border);
-                color: var(--color-text);
-                background: var(--color-navy-deep);
-              "
-              @change="onModeChange"
+          <!-- Show icon per dir or fallback -->
+          <template v-if="editableWorkspaceDirs.length">
+            <svg
+              v-if="editableWorkspaceDirs[0].isGit"
+              xmlns="http://www.w3.org/2000/svg"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="shrink-0"
+              style="color: var(--color-gold)"
             >
-              <option value="user_default">User Default</option>
-              <option value="direct">Direct</option>
-              <option value="confirmed">Supervised</option>
-            </select>
-          </div>
+              <line x1="6" y1="3" x2="6" y2="15" />
+              <circle cx="18" cy="6" r="3" />
+              <circle cx="6" cy="18" r="3" />
+              <path d="M18 9a9 9 0 0 1-9 9" />
+            </svg>
+            <svg
+              v-else
+              xmlns="http://www.w3.org/2000/svg"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="shrink-0"
+              style="color: var(--color-text-dim)"
+            >
+              <path
+                d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+              />
+            </svg>
+            <span
+              v-for="dir in editableWorkspaceDirs"
+              :key="dir.path"
+              class="max-w-32 truncate rounded px-1.5 py-0.5 text-xs"
+              style="
+                background: var(--color-surface);
+                color: var(--color-text-dim);
+              "
+              :title="dir.path"
+            >
+              {{ dir.path }}
+            </span>
+          </template>
+          <template v-else>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              class="shrink-0"
+              style="color: var(--color-text-dim)"
+            >
+              <path
+                d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"
+              />
+            </svg>
+            <span class="text-xs" style="color: var(--color-text-dim)">
+              No workspace
+            </span>
+          </template>
+        </div>
+
+        <!-- Execution mode selector -->
+        <div class="flex shrink-0 items-center gap-1.5">
+          <span class="text-xs" style="color: var(--color-text-dim)">
+            Mode:
+          </span>
+          <select
+            :value="sessionModeChoice"
+            class="rounded border bg-transparent px-2 py-0.5 text-xs outline-none focus:border-[var(--color-gold)]"
+            style="
+              border-color: var(--color-border);
+              color: var(--color-text);
+              background: var(--color-navy-deep);
+            "
+            @change="onModeChange"
+          >
+            <option value="user_default">User Default</option>
+            <option value="direct">Direct</option>
+            <option value="confirmed">Supervised</option>
+          </select>
         </div>
       </div>
     </div>
@@ -358,6 +348,7 @@ import type { ExecutionMode } from "@/types/session";
 import SessionActivityPanel from "@/components/session/SessionActivityPanel.vue";
 import ChatMessageStream from "@/components/session/ChatMessageStream.vue";
 import ChatInput from "@/components/session/ChatInput.vue";
+import FolderPathInput from "@/components/common/FolderPathInput.vue";
 
 const SETTINGS_KEY = "james_general_settings";
 
@@ -486,7 +477,6 @@ function startPanelResize(e: MouseEvent) {
 type WorkspaceDir = { path: string; isGit: boolean };
 
 const showWorkspaceEditor = ref(false);
-const folderPickerRef = ref<HTMLInputElement | null>(null);
 const editableWorkspaceDirs = ref<WorkspaceDir[]>([]);
 
 // Sync editable dirs from session when session loads
@@ -503,40 +493,23 @@ watch(
   { immediate: true },
 );
 
-function openFolderPicker() {
-  folderPickerRef.value?.click();
-}
-
-async function onFolderSelected(event: Event) {
-  const input = event.target as HTMLInputElement;
-  const files = input.files;
-  if (!files || files.length === 0) return;
-
-  const firstFile = files[0];
-  const folderPath =
-    (firstFile as unknown as { path?: string }).path ||
-    (firstFile.webkitRelativePath
-      ? firstFile.webkitRelativePath.split("/")[0]
-      : firstFile.name);
-
+async function addFolderByPath(folderPath: string) {
   if (
-    folderPath &&
-    !editableWorkspaceDirs.value.find((d) => d.path === folderPath)
+    !folderPath ||
+    editableWorkspaceDirs.value.find((d) => d.path === folderPath)
   ) {
-    let isGit = false;
-    try {
-      const result = await api.get<{ is_git: boolean; path: string }>(
-        `/api/paths/git-check?path=${encodeURIComponent(folderPath)}`,
-      );
-      isGit = result.is_git ?? false;
-    } catch {
-      // ignore, treat as non-git
-    }
-    editableWorkspaceDirs.value.push({ path: folderPath, isGit });
+    return;
   }
-
-  // Reset so the same folder can be re-selected if needed
-  input.value = "";
+  let isGit = false;
+  try {
+    const result = await api.get<{ is_git: boolean; path: string }>(
+      `/api/paths/git-check?path=${encodeURIComponent(folderPath)}`,
+    );
+    isGit = result.is_git ?? false;
+  } catch {
+    // ignore, treat as non-git
+  }
+  editableWorkspaceDirs.value.push({ path: folderPath, isGit });
 }
 
 function removeWorkspaceDir(i: number) {
