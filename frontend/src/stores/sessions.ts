@@ -20,11 +20,17 @@ export const useSessionStore = defineStore("sessions", () => {
     () => sessions.value.find((s) => s.id === activeSessionId.value) ?? null,
   );
 
+  // Return a sortable timestamp from any session, falling back gracefully when
+  // updatedAt / createdAt are missing, empty, or invalid (e.g. backend skew).
+  function sessionTimestamp(s: Session): number {
+    const raw = s.updatedAt || s.createdAt || "";
+    const t = raw ? new Date(raw).getTime() : NaN;
+    return isNaN(t) ? 0 : t; // push undated sessions to the bottom
+  }
+
   const sortedSessions = computed(() =>
     [...sessions.value].sort(
-      (a, b) =>
-        new Date(b.updatedAt ?? b.createdAt).getTime() -
-        new Date(a.updatedAt ?? a.createdAt).getTime(),
+      (a, b) => sessionTimestamp(b) - sessionTimestamp(a),
     ),
   );
 

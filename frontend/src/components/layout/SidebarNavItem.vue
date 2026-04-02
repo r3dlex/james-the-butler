@@ -3,7 +3,9 @@
     :to="path"
     class="flex items-center rounded-md py-2 text-sm transition-colors"
     :class="[
-      isActive ? 'bg-[var(--color-surface)]' : 'hover:bg-[var(--color-surface)]',
+      isActive
+        ? 'bg-[var(--color-surface)]'
+        : 'hover:bg-[var(--color-surface)]',
       collapsed ? 'justify-center px-2' : 'gap-2 px-3',
     ]"
     :style="{ color: isActive ? 'var(--color-gold)' : 'var(--color-text-dim)' }"

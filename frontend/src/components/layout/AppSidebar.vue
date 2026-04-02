@@ -53,24 +53,82 @@
     <div class="mx-3 h-px" style="background: var(--color-border)" />
 
     <!-- Main navigation -->
-    <nav class="flex-1 space-y-0.5 overflow-y-auto py-2" :class="collapsed ? 'px-1' : 'px-2'">
-      <SidebarNavItem label="Sessions" path="/sessions" icon="message-square" :collapsed="collapsed" />
-      <SidebarNavItem label="Projects" path="/projects" icon="folder" :collapsed="collapsed" />
-      <SidebarNavItem label="Task List" path="/tasks" icon="list-checks" :collapsed="collapsed" />
-      <SidebarNavItem label="Memory" path="/memory" icon="brain" :collapsed="collapsed" />
-      <SidebarNavItem label="Hosts" path="/hosts" icon="server" :collapsed="collapsed" />
-      <SidebarNavItem label="OpenClaw" path="/openclaw" icon="activity" :collapsed="collapsed" />
+    <nav
+      class="flex-1 space-y-0.5 overflow-y-auto py-2"
+      :class="collapsed ? 'px-1' : 'px-2'"
+    >
+      <SidebarNavItem
+        label="Sessions"
+        path="/sessions"
+        icon="message-square"
+        :collapsed="collapsed"
+      />
+      <SidebarNavItem
+        label="Projects"
+        path="/projects"
+        icon="folder"
+        :collapsed="collapsed"
+      />
+      <SidebarNavItem
+        label="Task List"
+        path="/tasks"
+        icon="list-checks"
+        :collapsed="collapsed"
+      />
+      <SidebarNavItem
+        label="Memory"
+        path="/memory"
+        icon="brain"
+        :collapsed="collapsed"
+      />
+      <SidebarNavItem
+        label="Hosts"
+        path="/hosts"
+        icon="server"
+        :collapsed="collapsed"
+      />
+      <SidebarNavItem
+        label="OpenClaw"
+        path="/openclaw"
+        icon="activity"
+        :collapsed="collapsed"
+      />
     </nav>
 
     <div class="mx-3 h-px" style="background: var(--color-border)" />
 
     <!-- Bottom navigation -->
     <nav class="space-y-0.5 py-2" :class="collapsed ? 'px-1' : 'px-2'">
-      <SidebarNavItem label="Settings" path="/settings" icon="settings" :collapsed="collapsed" />
-      <SidebarNavItem label="Plugins" path="/settings/plugins" icon="puzzle" :collapsed="collapsed" />
-      <SidebarNavItem label="Hooks" path="/settings/hooks" icon="zap" :collapsed="collapsed" />
-      <SidebarNavItem label="Channels" path="/settings/channels" icon="radio" :collapsed="collapsed" />
-      <SidebarNavItem label="Mobile Setup" path="/mobile-setup" icon="smartphone" :collapsed="collapsed" />
+      <SidebarNavItem
+        label="Settings"
+        path="/settings"
+        icon="settings"
+        :collapsed="collapsed"
+      />
+      <SidebarNavItem
+        label="Plugins"
+        path="/settings/plugins"
+        icon="puzzle"
+        :collapsed="collapsed"
+      />
+      <SidebarNavItem
+        label="Hooks"
+        path="/settings/hooks"
+        icon="zap"
+        :collapsed="collapsed"
+      />
+      <SidebarNavItem
+        label="Channels"
+        path="/settings/channels"
+        icon="radio"
+        :collapsed="collapsed"
+      />
+      <SidebarNavItem
+        label="Mobile Setup"
+        path="/mobile-setup"
+        icon="smartphone"
+        :collapsed="collapsed"
+      />
     </nav>
 
     <div class="mx-3 h-px" style="background: var(--color-border)" />

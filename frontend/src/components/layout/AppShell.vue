@@ -59,9 +59,7 @@ const showSearch = ref(false);
 // ── Dockable sidebar ──────────────────────────────────────────────────────────
 const STORAGE_KEY = "james_sidebar_collapsed";
 
-const sidebarCollapsed = ref(
-  localStorage.getItem(STORAGE_KEY) === "true",
-);
+const sidebarCollapsed = ref(localStorage.getItem(STORAGE_KEY) === "true");
 
 watch(sidebarCollapsed, (v) => {
   localStorage.setItem(STORAGE_KEY, String(v));
