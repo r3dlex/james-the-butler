@@ -241,8 +241,6 @@ defmodule James.Providers.ProviderOAuth do
   end
 
   defp persist_provider(provider_type, user_id, token_data) do
-    user = Accounts.get_user!(user_id)
-
     attrs = %{
       user_id: user_id,
       host_id: nil,
@@ -254,7 +252,7 @@ defmodule James.Providers.ProviderOAuth do
       last_tested_at: DateTime.utc_now()
     }
 
-    case ProviderSettings.create_provider_config(user, attrs) do
+    case ProviderSettings.create_provider_config(attrs) do
       {:ok, config} -> config
       {:error, _} -> nil
     end

@@ -35,9 +35,17 @@ defmodule James.Telemetry do
   are identified by a unique name and silently skip if already attached).
   """
   def setup do
-    :ok = OpentelemetryPhoenix.setup()
-    :ok = OpentelemetryEcto.setup([:james, :repo])
-    :ok = OpentelemetryOban.setup()
+    attach_or_skip(fn -> OpentelemetryPhoenix.setup() end)
+    attach_or_skip(fn -> OpentelemetryEcto.setup([:james, :repo]) end)
+    attach_or_skip(fn -> OpentelemetryOban.setup() end)
+    :ok
+  end
+
+  defp attach_or_skip(fun) do
+    case fun.() do
+      :ok -> :ok
+      {:error, :already_exists} -> :ok
+    end
   end
 
   # ---------------------------------------------------------------------------
