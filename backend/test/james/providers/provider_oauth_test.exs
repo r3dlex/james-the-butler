@@ -47,7 +47,8 @@ defmodule James.Providers.ProviderOAuthTest do
       Bypass.down(bypass)
     end)
 
-    {:ok, user} = James.Accounts.create_user(%{email: "oauth_#{System.unique_integer()}@example.com"})
+    {:ok, user} =
+      James.Accounts.create_user(%{email: "oauth_#{System.unique_integer()}@example.com"})
 
     {:ok, bypass: bypass, bypass_url: bypass_url, user: user}
   end
