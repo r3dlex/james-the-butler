@@ -54,7 +54,7 @@ defmodule James.Telemetry do
       end)
   """
   def with_span(name, attrs \\ %{}, fun) when is_binary(name) and is_function(fun, 0) do
-    Tracer.with_span(name, %{attributes: stringify_keys(attrs)}) do
+    Tracer.with_span name, %{attributes: stringify_keys(attrs)} do
       fun.()
     end
   end

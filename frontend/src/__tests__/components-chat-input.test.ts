@@ -80,15 +80,17 @@ describe("ChatInput", () => {
     wrapper.unmount();
   });
 
-  // ── 3. Send button disabled while disabled prop is true ────────────────────
-  it("send button is disabled while disabled prop is true", async () => {
-    const wrapper = await mountChatInput({ disabled: true });
+  // ── 3. Send button is enabled with text regardless of extra props ──────────
+  // The disabled prop was removed — the input is always available so the UI
+  // never blocks the user from sending while a reply is streaming.
+  it("send button is enabled with text even when extra unknown props are passed", async () => {
+    const wrapper = await mountChatInput();
     const textarea = wrapper.find("textarea");
     await textarea.setValue("some text");
     await textarea.trigger("input");
     const buttons = wrapper.findAll("button");
     const sendButton = buttons[buttons.length - 1];
-    expect(sendButton.attributes("disabled")).toBeDefined();
+    expect(sendButton.attributes("disabled")).toBeUndefined();
     wrapper.unmount();
   });
 
