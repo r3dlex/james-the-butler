@@ -2,11 +2,25 @@ defmodule James.TelemetryTest do
   @moduledoc """
   Unit tests for the James.Telemetry helper module.
   These tests verify the public API without requiring a live OTLP collector.
+  The OpenTelemetry SDK operates in no-op mode when no exporter is configured.
   """
 
   use ExUnit.Case, async: true
 
   alias James.Telemetry
+
+  describe "setup/0" do
+    test "attaches Phoenix, Ecto and Oban instrumentation handlers without raising" do
+      # OTel deps are installed; calling setup/0 should succeed regardless of
+      # whether a collector is reachable (SDK silently drops spans when not configured).
+      assert :ok = Telemetry.setup()
+    end
+
+    test "is safe to call multiple times (idempotent)" do
+      assert :ok = Telemetry.setup()
+      assert :ok = Telemetry.setup()
+    end
+  end
 
   describe "with_span/3" do
     test "executes the given function and returns its value" do
@@ -19,7 +33,7 @@ defmodule James.TelemetryTest do
       assert result == {:ok, 42}
     end
 
-    test "works with an empty attributes map" do
+    test "works with default (empty) attributes map" do
       assert :done = Telemetry.with_span("test.span", fn -> :done end)
     end
 
@@ -31,9 +45,12 @@ defmodule James.TelemetryTest do
   end
 
   describe "set_attributes/1" do
-    test "does not raise when called outside a span" do
-      # Outside a span the SDK is a no-op; this should not crash.
+    test "returns :ok when called outside a span" do
       assert :ok = Telemetry.set_attributes(%{foo: "bar", baz: 1})
+    end
+
+    test "accepts a map with atom keys" do
+      assert :ok = Telemetry.set_attributes(%{service: "james", env: "test"})
     end
   end
 

@@ -100,7 +100,7 @@ defmodule James.Providers.ProviderOAuth do
 
   @impl true
   def handle_call({:start_flow, provider_type, user_id}, _from, state) do
-    case Map.fetch(@provider_defs, provider_type) do
+    case Map.fetch(runtime_provider_defs(), provider_type) do
       {:ok, def} ->
         {verifier, challenge} = generate_pkce()
         state_key = generate_state_key()
@@ -202,8 +202,14 @@ defmodule James.Providers.ProviderOAuth do
     "#{base}/api/providers/oauth/callback"
   end
 
+  # Allows tests to inject custom provider definitions (e.g. Bypass URLs)
+  # without touching production code.
+  defp runtime_provider_defs do
+    Application.get_env(:james, :oauth_provider_defs_override, @provider_defs)
+  end
+
   defp exchange_code(provider_type, code, verifier, redirect_uri) do
-    pdef = Map.fetch!(@provider_defs, provider_type)
+    pdef = Map.fetch!(runtime_provider_defs(), provider_type)
     client_id = System.get_env(pdef.client_id_env, "")
     client_secret = System.get_env(pdef.client_secret_env, "")
 
