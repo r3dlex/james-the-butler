@@ -3,6 +3,7 @@
        frontend-setup frontend-dev frontend-test frontend-test-coverage frontend-lint \
        mobile-setup mobile-dev mobile-test mobile-test-coverage mobile-lint \
        pipeline-setup pipeline-test pipeline-test-coverage pipeline-lint \
+       cli-setup cli-build cli-test cli-test-coverage cli-lint \
        docs-setup docs-dev docs-build docs \
        up down logs build
 
@@ -24,16 +25,16 @@ build:
 
 # ── Aggregate targets ────────────────────────────────────────────────
 
-setup: backend-setup frontend-setup mobile-setup pipeline-setup
+setup: backend-setup frontend-setup mobile-setup pipeline-setup cli-setup
 
 dev: up
 	@echo "Services starting via docker-compose. Use 'make logs' to follow output."
 
-test: backend-test frontend-test mobile-test pipeline-test
+test: backend-test frontend-test mobile-test pipeline-test cli-test
 
-test-coverage: backend-test-coverage frontend-test-coverage mobile-test-coverage pipeline-test-coverage
+test-coverage: backend-test-coverage frontend-test-coverage mobile-test-coverage pipeline-test-coverage cli-test-coverage
 
-lint: backend-lint frontend-lint mobile-lint pipeline-lint
+lint: backend-lint frontend-lint mobile-lint pipeline-lint cli-lint
 
 archgate:
 	cd tools/pipeline_runner && poetry run pipeline-runner archgate
@@ -43,6 +44,7 @@ clean:
 	cd frontend && rm -rf node_modules || true
 	cd mobile && flutter clean || true
 	cd tools/pipeline_runner && poetry env remove --all || true
+	cd cli && mix deps.clean --all || true
 
 # ── Backend (Elixir) ────────────────────────────────────────────────
 
@@ -116,6 +118,23 @@ pipeline-test-coverage:
 
 pipeline-lint:
 	cd tools/pipeline_runner && poetry run ruff check . && poetry run ruff format --check .
+
+# ── CLI (Elixir escript) ────────────────────────────────────────────
+
+cli-setup:
+	cd cli && mix deps.get && mix compile
+
+cli-build:
+	cd cli && mix escript.build
+
+cli-test:
+	cd cli && mix test
+
+cli-test-coverage:
+	cd cli && mix test --cover
+
+cli-lint:
+	cd cli && mix format --check-formatted && mix credo --strict
 
 # ── Docs (VitePress) ────────────────────────────────────────────────
 
