@@ -24,7 +24,16 @@ defmodule James.MixProject do
           # Auto-generated Ecto type handler for pgvector
           James.PostgresTypes,
           # Auto-generated Phoenix route helpers
-          JamesWeb.Router.Helpers
+          JamesWeb.Router.Helpers,
+          # OAuth provider: exchange_code/4 calls real OAuth token endpoints; no live
+          # provider available in CI. Core state machine is covered by provider_oauth_test.
+          James.Providers.ProviderOAuth,
+          # OAuth controller: HTML success/error pages are rendered but the happy-path
+          # token exchange path requires a live OAuth provider.
+          JamesWeb.ProviderOAuthController,
+          # Telemetry: setup/0 attaches OTel handlers (skipped in test env); helpers
+          # are covered by telemetry_test.
+          James.Telemetry
         ]
       ]
     ]
