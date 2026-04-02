@@ -316,7 +316,7 @@ defmodule James.Providers.RegistryEnhancedTest do
       # fallback path returns no credentials (uses global config)
     end
 
-    test "resolve_provider/1 falls back when no model default configured for agent_type" do
+    test "resolve_provider/1 falls back to user's first provider config when no model default for agent_type" do
       user = create_user()
       host = create_host()
       config = create_provider_config(user.id)
@@ -331,14 +331,14 @@ defmodule James.Providers.RegistryEnhancedTest do
           model_name: "claude-sonnet-4-20250514"
         })
 
-      # Session with agent_type "chat" — no model default → falls back to global
+      # Session with agent_type "chat" — no model default for chat.
+      # The user still has a provider config, so credentials are injected.
       session = create_session(user, host, %{agent_type: "chat"})
 
-      # resolve_provider/1 always returns a usable tuple
       {mod, _model, opts} = Registry.resolve_provider(session)
       assert mod == LLMProvider.configured()
-      # no DB config for this agent_type — falls back to global, no credentials in opts
-      assert opts == []
+      # User has a provider config → api_key is injected even without a model default
+      assert Keyword.get(opts, :api_key) == "sk-test-key"
     end
   end
 end

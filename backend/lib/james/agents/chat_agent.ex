@@ -9,9 +9,10 @@ defmodule James.Agents.ChatAgent do
 
   alias James.{Embeddings, LLMProvider, Memories, Personality, Sessions, Tasks, Tokens}
   alias James.Hooks.Dispatcher
+  alias James.Providers.Registry
   alias James.Workers.MemoryExtractionWorker
 
-  defstruct [:session_id, :task_id, :messages, :system_prompt, :model, :provider]
+  defstruct [:session_id, :task_id, :messages, :system_prompt, :model, :provider, :provider_opts]
 
   # --- Client API ---
 
@@ -26,9 +27,19 @@ defmodule James.Agents.ChatAgent do
     session_id = Keyword.fetch!(opts, :session_id)
     task_id = Keyword.get(opts, :task_id)
     model = Keyword.get(opts, :model)
-    provider = Keyword.get(opts, :provider)
+    explicit_provider = Keyword.get(opts, :provider)
     session = Sessions.get_session(session_id)
     system_prompt = Keyword.get(opts, :system_prompt) || resolve_system_prompt(session)
+
+    # Resolve provider module and credentials from DB config.
+    # An explicit :provider opt overrides the module but the DB credentials
+    # (api_key, base_url) are still injected as opts so callers don't need
+    # to manage keys directly.
+    {resolved_provider, _resolved_model, resolved_opts} =
+      Registry.resolve_provider(session || %{})
+
+    provider = explicit_provider || resolved_provider
+    provider_opts = resolved_opts
 
     # Load conversation history
     messages =
@@ -53,7 +64,8 @@ defmodule James.Agents.ChatAgent do
       messages: messages,
       system_prompt: full_system,
       model: model,
-      provider: provider
+      provider: provider,
+      provider_opts: provider_opts
     }
 
     # Start processing immediately
@@ -68,16 +80,16 @@ defmodule James.Agents.ChatAgent do
     # Notify task started
     broadcast_task_status(session_id, state.task_id, "running")
 
-    opts = [
-      system: state.system_prompt,
-      on_chunk: fn text ->
+    opts =
+      (state.provider_opts || [])
+      |> Keyword.put(:system, state.system_prompt)
+      |> Keyword.put(:on_chunk, fn text ->
         Phoenix.PubSub.broadcast(
           James.PubSub,
           "session:#{session_id}",
           {:assistant_chunk, text}
         )
-      end
-    ]
+      end)
 
     opts = if state.model, do: Keyword.put(opts, :model, state.model), else: opts
 
@@ -164,10 +176,15 @@ defmodule James.Agents.ChatAgent do
     end
   end
 
-  defp format_llm_error("ANTHROPIC_API_KEY not configured"),
-    do: "No LLM provider is configured. Please add an API key in **Settings → Models**."
+  defp format_llm_error(reason) when is_binary(reason) do
+    if String.ends_with?(reason, "_API_KEY not configured") or
+         reason == "ANTHROPIC_API_KEY not configured" do
+      "No LLM provider is configured. Please add an API key in **Settings → Models**."
+    else
+      "⚠️ #{reason}"
+    end
+  end
 
-  defp format_llm_error(reason) when is_binary(reason), do: "⚠️ #{reason}"
   defp format_llm_error(reason), do: "⚠️ #{inspect(reason)}"
 
   defp record_tokens(state, usage) do

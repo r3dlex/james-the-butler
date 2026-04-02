@@ -207,11 +207,34 @@ defmodule James.Providers.Registry do
 
     case ProviderSettings.default_model_for(user_id, host_id, agent_type) do
       nil ->
-        # No DB config — fall back to global
-        {:ok, %{module: LLMProvider.configured(), model: nil, opts: []}}
+        # No model default — try the user's first available provider config.
+        resolve_from_user_config(user_id)
 
       %{model_name: model_name, provider_config_id: config_id} ->
         resolve_from_provider_config(config_id, model_name)
+    end
+  end
+
+  # Fall back to the user's first connected (or any) provider config.
+  # We use the globally configured provider module so that test environments
+  # continue to use the mock; the api_key (and optional base_url) are injected
+  # as opts so the caller authenticates with the user's DB credentials.
+  defp resolve_from_user_config(nil) do
+    {:ok, %{module: LLMProvider.configured(), model: nil, opts: []}}
+  end
+
+  defp resolve_from_user_config(user_id) do
+    case ProviderSettings.first_provider_config_for_user(user_id) do
+      nil ->
+        {:ok, %{module: LLMProvider.configured(), model: nil, opts: []}}
+
+      config ->
+        opts =
+          []
+          |> maybe_put(:api_key, config.decrypted_api_key)
+          |> maybe_put(:base_url, config.base_url)
+
+        {:ok, %{module: LLMProvider.configured(), model: nil, opts: opts}}
     end
   end
 
