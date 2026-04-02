@@ -19,3 +19,9 @@ artifacts/
 
 # Erlang crash dumps
 erl_crash.dump
+
+# Generated files
+backend/xref_graph.dot
+
+# Node modules (root-level, e.g. from npx)
+/node_modules/
