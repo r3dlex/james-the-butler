@@ -118,6 +118,94 @@ defmodule JamesWeb.ProviderControllerTest do
   end
 
   # ---------------------------------------------------------------------------
+  # POST /api/providers/:id/test — persists status to DB (Issue 5)
+  # ---------------------------------------------------------------------------
+
+  describe "POST /api/providers/:id/test — persists connected status" do
+    setup do
+      bypass = Bypass.open()
+      {:ok, bypass: bypass}
+    end
+
+    test "on success, provider status is updated to 'connected' in DB", %{
+      conn: conn,
+      bypass: bypass
+    } do
+      Bypass.expect_once(bypass, "POST", "/v1/messages", fn c ->
+        c
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "content" => [%{"type" => "text", "text" => "hi"}],
+            "usage" => %{"input_tokens" => 1, "output_tokens" => 1}
+          })
+        )
+      end)
+
+      user = create_user("persist_connected@example.com")
+
+      {:ok, config} =
+        ProviderSettings.create_provider_config(%{
+          user_id: user.id,
+          provider_type: "anthropic",
+          display_name: "Persist Test",
+          api_key: "sk-ant-test",
+          auth_method: "api_key",
+          base_url: "http://localhost:#{bypass.port}"
+        })
+
+      conn = authed_conn(conn, user)
+      conn = post(conn, "/api/providers/#{config.id}/test", %{})
+      assert json_response(conn, 200)["status"] == "connected"
+
+      # Verify DB was updated
+      refreshed = ProviderSettings.get_provider_config!(config.id)
+      assert refreshed.status == "connected"
+      assert refreshed.last_tested_at != nil
+    end
+  end
+
+  describe "POST /api/providers/:id/test — persists failed status" do
+    setup do
+      bypass = Bypass.open()
+      {:ok, bypass: bypass}
+    end
+
+    test "on failure, provider status is updated to 'failed' in DB", %{
+      conn: conn,
+      bypass: bypass
+    } do
+      Bypass.expect_once(bypass, "POST", "/v1/messages", fn c ->
+        c
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(401, Jason.encode!(%{"error" => "Unauthorized"}))
+      end)
+
+      user = create_user("persist_failed@example.com")
+
+      {:ok, config} =
+        ProviderSettings.create_provider_config(%{
+          user_id: user.id,
+          provider_type: "anthropic",
+          display_name: "Persist Fail Test",
+          api_key: "sk-bad-key",
+          auth_method: "api_key",
+          base_url: "http://localhost:#{bypass.port}"
+        })
+
+      conn = authed_conn(conn, user)
+      conn = post(conn, "/api/providers/#{config.id}/test", %{})
+      assert json_response(conn, 200)["status"] == "failed"
+
+      # Verify DB was updated
+      refreshed = ProviderSettings.get_provider_config!(config.id)
+      assert refreshed.status == "failed"
+      assert refreshed.last_tested_at != nil
+    end
+  end
+
+  # ---------------------------------------------------------------------------
   # POST /api/providers/:id/test — 404
   # ---------------------------------------------------------------------------
 

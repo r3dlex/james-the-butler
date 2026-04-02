@@ -203,14 +203,11 @@ import {
   Sliders,
   Cpu,
   Server,
-  Activity,
   Puzzle,
   Zap,
   Radio,
   Smartphone,
   Plug,
-  Shield,
-  Monitor,
 } from "lucide-vue-next";
 
 defineProps<{
@@ -234,7 +231,6 @@ const settingsItems = [
   { label: "General", path: "/settings/general", iconComponent: Sliders },
   { label: "Providers", path: "/settings/models", iconComponent: Cpu },
   { label: "Hosts", path: "/hosts", iconComponent: Server },
-  { label: "OpenClaw", path: "/openclaw", iconComponent: Activity },
   { label: "MCP Servers", path: "/settings/mcp", iconComponent: Plug },
   { label: "Plugins", path: "/settings/plugins", iconComponent: Puzzle },
   { label: "Hooks", path: "/settings/hooks", iconComponent: Zap },
@@ -244,15 +240,9 @@ const settingsItems = [
     path: "/mobile-setup",
     iconComponent: Smartphone,
   },
-  { label: "Security", path: "/settings/security", iconComponent: Shield },
-  {
-    label: "Desktop Control",
-    path: "/settings/desktop-control",
-    iconComponent: Monitor,
-  },
 ];
 
-const SETTINGS_PATHS = ["/settings", "/hosts", "/openclaw", "/mobile-setup"];
+const SETTINGS_PATHS = ["/settings", "/hosts", "/mobile-setup"];
 
 function isItemActive(path: string): boolean {
   return route.path === path || route.path.startsWith(path + "/");

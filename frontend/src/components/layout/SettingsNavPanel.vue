@@ -47,14 +47,11 @@ import {
   Sliders,
   Cpu,
   Server,
-  Activity,
   Puzzle,
   Zap,
   Radio,
   Smartphone,
   Plug,
-  Shield,
-  Monitor,
 } from "lucide-vue-next";
 
 const route = useRoute();
@@ -63,7 +60,6 @@ const settingsItems = [
   { label: "General", path: "/settings/general", iconComponent: Sliders },
   { label: "Providers", path: "/settings/models", iconComponent: Cpu },
   { label: "Hosts", path: "/hosts", iconComponent: Server },
-  { label: "OpenClaw", path: "/openclaw", iconComponent: Activity },
   { label: "MCP Servers", path: "/settings/mcp", iconComponent: Plug },
   { label: "Plugins", path: "/settings/plugins", iconComponent: Puzzle },
   { label: "Hooks", path: "/settings/hooks", iconComponent: Zap },
@@ -72,12 +68,6 @@ const settingsItems = [
     label: "Mobile Setup",
     path: "/mobile-setup",
     iconComponent: Smartphone,
-  },
-  { label: "Security", path: "/settings/security", iconComponent: Shield },
-  {
-    label: "Desktop Control",
-    path: "/settings/desktop-control",
-    iconComponent: Monitor,
   },
 ];
 

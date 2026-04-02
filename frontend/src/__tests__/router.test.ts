@@ -64,12 +64,6 @@ describe("Router configuration", () => {
     expect(paths).toContain("/settings/models");
   });
 
-  it("has a /settings/security route", async () => {
-    const routes = await getRoutes();
-    const paths = routes.map((r) => r.path);
-    expect(paths).toContain("/settings/security");
-  });
-
   it("has a /hosts route", async () => {
     const routes = await getRoutes();
     const paths = routes.map((r) => r.path);
@@ -119,10 +113,22 @@ describe("Router configuration", () => {
     expect(paths).toContain("/settings/general");
   });
 
-  it("has an /openclaw route", async () => {
+  it("does NOT have an /openclaw route", async () => {
     const routes = await getRoutes();
     const paths = routes.map((r) => r.path);
-    expect(paths).toContain("/openclaw");
+    expect(paths).not.toContain("/openclaw");
+  });
+
+  it("does NOT have a /settings/security route", async () => {
+    const routes = await getRoutes();
+    const paths = routes.map((r) => r.path);
+    expect(paths).not.toContain("/settings/security");
+  });
+
+  it("does NOT have a /settings/desktop-control route", async () => {
+    const routes = await getRoutes();
+    const paths = routes.map((r) => r.path);
+    expect(paths).not.toContain("/settings/desktop-control");
   });
 
   it("has a /mobile-setup route", async () => {
