@@ -123,7 +123,8 @@ describe("Unified sidebar search", () => {
       wrapper.unmount();
     });
 
-    it("shows the internal search input when query prop is NOT provided", async () => {
+    it("never has its own search input (search lives in AppSidebar)", async () => {
+      // The internal search was removed — search is now unified in AppSidebar.
       const { default: SidebarSessionsSection } =
         await import("../components/layout/SidebarSessionsSection.vue");
       const wrapper = mount(SidebarSessionsSection, {
@@ -131,7 +132,7 @@ describe("Unified sidebar search", () => {
       });
 
       const inputs = wrapper.findAll("input");
-      expect(inputs.length).toBeGreaterThan(0);
+      expect(inputs.length).toBe(0);
       wrapper.unmount();
     });
   });

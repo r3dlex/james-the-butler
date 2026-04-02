@@ -1,13 +1,13 @@
 <template>
   <div
     class="border-t py-3"
-    :class="collapsed ? 'px-1' : 'px-4'"
+    :class="collapsed ? 'px-1' : 'px-3'"
     style="border-color: var(--color-border)"
   >
     <div
       v-if="auth.user"
       class="flex items-center"
-      :class="collapsed ? 'justify-center' : 'gap-2'"
+      :class="collapsed ? 'flex-col gap-1' : 'gap-2'"
       :title="collapsed ? `${auth.user.name} · ${auth.user.email}` : undefined"
     >
       <!-- Avatar -->
@@ -17,6 +17,7 @@
       >
         {{ initials }}
       </div>
+
       <!-- Name + email — hidden when collapsed -->
       <div v-if="!collapsed" class="min-w-0 flex-1">
         <div
@@ -29,7 +30,35 @@
           {{ auth.user.email }}
         </div>
       </div>
+
+      <!-- Logout button -->
+      <button
+        type="button"
+        class="logout-btn shrink-0 rounded-md p-1.5 transition-colors"
+        style="color: var(--color-text-dim)"
+        :title="collapsed ? 'Logout' : undefined"
+        @click="auth.logout()"
+      >
+        <!-- Log-out icon -->
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+          <polyline points="16 17 21 12 16 7" />
+          <line x1="21" y1="12" x2="9" y2="12" />
+        </svg>
+      </button>
     </div>
+
+    <!-- Unauthenticated fallback -->
     <div
       v-else
       class="text-xs"
@@ -61,3 +90,10 @@ const initials = computed(() => {
     .slice(0, 2);
 });
 </script>
+
+<style scoped>
+.logout-btn:hover {
+  color: var(--color-risk-red) !important;
+  background: rgba(248, 113, 113, 0.1);
+}
+</style>

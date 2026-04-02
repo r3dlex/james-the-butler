@@ -17,42 +17,13 @@
       </RouterLink>
     </div>
 
-    <!-- Internal search input (only when query prop is NOT provided) -->
-    <div v-if="props.query === undefined" class="relative mb-1">
-      <svg
-        xmlns="http://www.w3.org/2000/svg"
-        width="12"
-        height="12"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="2"
-        class="absolute left-2.5 top-1/2 -translate-y-1/2"
-        style="color: var(--color-text-dim)"
-      >
-        <circle cx="11" cy="11" r="8" />
-        <path d="m21 21-4.3-4.3" />
-      </svg>
-      <input
-        v-model="internalQuery"
-        type="text"
-        placeholder="Search sessions…"
-        class="w-full rounded-md py-1 pl-7 pr-2 text-xs outline-none"
-        style="
-          background: var(--color-surface);
-          color: var(--color-text);
-          border: 1px solid var(--color-border);
-        "
-      />
-    </div>
-
     <!-- Session list -->
     <div class="space-y-0.5">
       <RouterLink
         v-for="session in displayedSessions"
         :key="session.id"
         :to="`/sessions/${session.id}`"
-        class="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm transition-colors hover:bg-[var(--color-surface)]"
+        class="flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-sm transition-colors hover:bg-[var(--color-surface)]"
         :style="{
           color:
             route.params.id === session.id
@@ -77,7 +48,7 @@
             d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
           />
         </svg>
-        <span class="truncate">{{ session.name }}</span>
+        <span class="min-w-0 truncate">{{ session.name }}</span>
       </RouterLink>
 
       <!-- Empty search state -->
@@ -139,13 +110,8 @@ const sessionStore = useSessionStore();
 
 const showModal = ref(false);
 
-// Internal query is used only when the `query` prop is not provided
-const internalQuery = ref("");
-
-// The active query: use prop when provided, otherwise use internal state
-const activeQuery = computed(() =>
-  props.query !== undefined ? props.query : internalQuery.value,
-);
+// Active query from parent (unified search in AppSidebar)
+const activeQuery = computed(() => (props.query ?? "").trim().toLowerCase());
 
 const recentSessions = computed(() =>
   [...sessionStore.sessions]
@@ -158,7 +124,7 @@ const recentSessions = computed(() =>
 );
 
 const displayedSessions = computed(() => {
-  const q = activeQuery.value.trim().toLowerCase();
+  const q = activeQuery.value;
   if (!q) return recentSessions.value;
   return sessionStore.sessions.filter((s) => s.name.toLowerCase().includes(q));
 });

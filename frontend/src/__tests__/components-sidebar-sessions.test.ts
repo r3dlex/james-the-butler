@@ -57,10 +57,11 @@ describe("SidebarSessionsSection", () => {
     vi.clearAllMocks();
   });
 
-  async function mountComponent() {
+  async function mountComponent(props: Record<string, unknown> = {}) {
     const { default: SidebarSessionsSection } =
       await import("../components/layout/SidebarSessionsSection.vue");
     return mount(SidebarSessionsSection, {
+      props,
       attachTo: document.body,
     });
   }
@@ -71,9 +72,9 @@ describe("SidebarSessionsSection", () => {
     wrapper.unmount();
   });
 
-  it("renders a search input", async () => {
+  it("renders a 'More →' link to /sessions", async () => {
     const wrapper = await mountComponent();
-    expect(wrapper.find("input[type='text'], input:not([type])")).toBeTruthy();
+    expect(wrapper.text()).toMatch(/more/i);
     wrapper.unmount();
   });
 
@@ -105,14 +106,13 @@ describe("SidebarSessionsSection", () => {
 
     const wrapper = await mountComponent();
     // Count session links (RouterLink stubs render as <a>)
+    // There are 5 session links + 1 "More →" link = max 6 <a> tags
     const links = wrapper.findAll("a");
-    // There may be links for sessions + search result links; just ensure
-    // not all 8 are shown — max 5 sessions in the list
-    expect(links.length).toBeLessThanOrEqual(7); // 5 sessions + possible extra links
+    expect(links.length).toBeLessThanOrEqual(7);
     wrapper.unmount();
   });
 
-  it("filters sessions by search query", async () => {
+  it("filters sessions by query prop", async () => {
     const { useSessionStore } = await import("../stores/sessions");
     const store = useSessionStore();
     store.sessions.push(
@@ -120,10 +120,7 @@ describe("SidebarSessionsSection", () => {
       makeSession("s2", "Beta Work"),
     );
 
-    const wrapper = await mountComponent();
-    const input = wrapper.find("input");
-    await input.setValue("Alpha");
-    await input.trigger("input");
+    const wrapper = await mountComponent({ query: "alpha" });
 
     expect(wrapper.text()).toContain("Alpha Chat");
     expect(wrapper.text()).not.toContain("Beta Work");
