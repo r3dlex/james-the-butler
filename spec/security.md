@@ -23,6 +23,25 @@ This document defines the authentication, authorization, and transport security 
 - **WebAuthn**: FIDO2 hardware keys and platform authenticators (Touch ID, Windows Hello).
 - **SMS**: Not supported. SMS-based MFA is explicitly excluded due to SIM-swap risk.
 
+### Provider OAuth PKCE (LLM Credentials)
+
+Used to connect third-party LLM provider accounts (e.g. OpenAI, OpenAI Codex) to James without exposing API keys in the browser.
+
+1. Frontend calls `POST /api/providers/oauth/start` with the provider type.
+2. Backend generates a PKCE verifier/challenge pair and a random state key; stores both in ETS with a 10-minute TTL.
+3. Backend returns `auth_url` (containing `code_challenge=…&state=…`) and `state_key`.
+4. Frontend opens `auth_url` in a popup window (`600×700px`).
+5. User authorises in the popup; the provider redirects to `/api/providers/oauth/callback?code=…&state=…`.
+6. Backend verifies the state key, exchanges the code for tokens using the PKCE verifier, and persists the resulting `ProviderConfig` (access token encrypted at rest). Marks the state as `:completed`.
+7. Popup auto-closes after displaying a success page.
+8. Frontend polls `GET /api/providers/oauth/status/:state_key` (every 3 s, up to 5 min) until it receives `{"status": "completed"}`, then adds the new provider to the UI.
+
+**Security properties**
+- PKCE prevents authorization code interception attacks (the verifier never leaves the server).
+- State key prevents CSRF on the callback endpoint.
+- Tokens are never exposed to the browser; only the resulting `ProviderConfig` (with masked key) is returned to the frontend.
+- State entries auto-expire after 10 minutes to prevent abandoned flow accumulation.
+
 ### Device Code Flow
 
 Used by Office add-ins ([office-addins.md](office-addins.md)) and Chrome extension ([chrome-extension.md](chrome-extension.md)) where browser-based OAuth redirects are impractical.

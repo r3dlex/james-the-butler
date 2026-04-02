@@ -23,6 +23,7 @@ defmodule JamesWeb.ProviderOAuthControllerTest do
   setup do
     {:ok, user} =
       Accounts.create_user(%{email: "oauth_ctrl_#{System.unique_integer()}@example.com"})
+
     {:ok, token} = Auth.generate_token(user)
 
     authed = fn conn ->

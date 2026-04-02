@@ -14,6 +14,7 @@ The backend (`james-server`) is the central platform server. It runs the meta-pl
 - **Background jobs**: Oban for durable task queuing
 - **Real-time**: Phoenix Channels (WebSocket)
 - **Auth**: OAuth 2.0 (Google, Microsoft, GitHub), JWT with refresh rotation, TOTP/WebAuthn MFA
+- **Observability**: OpenTelemetry (OTLP export to any collector — Jaeger, Tempo, Honeycomb)
 
 ## Core Subsystems
 
@@ -45,6 +46,23 @@ The backend (`james-server`) is the central platform server. It runs the meta-pl
 - Screenshot-per-action vision loop
 - WebRTC live stream feed for mobile viewing
 
+### Provider OAuth (GenServer)
+
+- Manages OAuth 2.0 PKCE flows for connecting LLM provider credentials (OpenAI, OpenAI Codex, etc.)
+- Stores in-flight state in ETS (`provider_oauth_states`); entries expire after 10 minutes
+- Generates a PKCE verifier/challenge pair and state key per flow
+- Exchanges the authorization code for tokens and persists the resulting `ProviderConfig`
+- Frontend polls `/api/providers/oauth/status/:state_key` until the callback completes
+- Exposed via `James.Providers.ProviderOAuth`; supervised in the production supervision tree
+
+### OpenTelemetry (`James.Telemetry`)
+
+- `James.Telemetry.setup/0` attaches Phoenix, Ecto, and Oban instrumentation on startup
+- Exports spans to an OTLP endpoint (default: `http://localhost:4318`; override via `OTEL_EXPORTER_OTLP_ENDPOINT`)
+- Service name: `james-the-butler`; version taken from `mix.exs`
+- Public helpers: `with_span/2,3` and `set_attributes/1` for custom instrumentation
+- Instrumentation is skipped in the test environment (no collector required)
+
 ### Memory System
 - Extraction: Oban jobs process conversation deltas with a fixed extraction prompt
 - Storage: pgvector embeddings in PostgreSQL (no separate vector store)
@@ -70,6 +88,7 @@ The backend (`james-server`) is the central platform server. It runs the meta-pl
 | `Accounts` | User registration, OAuth, MFA, JWT management |
 | `Sessions` | Session CRUD, persistence, host pinning |
 | `Planner` | Task decomposition, risk tagging, routing, reasoning streaming, task list lifecycle |
+| `Providers.ProviderOAuth` | PKCE OAuth flows for LLM provider credential connections |
 | `Agents` | Agent worker lifecycle, sub-session management |
 | `Memory` | Extraction, storage, retrieval, review |
 | `Hosts` | Host registry, health checks, mTLS |

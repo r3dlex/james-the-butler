@@ -34,6 +34,11 @@ The web frontend (`james-app`) provides the primary UI for James the Butler. The
 - View Mode panel (live WebRTC stream, multi-agent thumbnails, artifact preview)
 - Planner reasoning stream in center panel
 - Task list with strikethrough completion and 30-min auto-collapse
+- Full chat history loaded from the Phoenix channel join payload (no separate REST fetch)
+- Non-blocking FIFO message queue — users can send messages while James is streaming; queued messages drain automatically when the response completes
+- Workspace + execution mode panel below ChatInput (Claude Desktop style)
+- Folder-only picker (`webkitdirectory`) for working directory selection
+- Sidebar session search clears automatically when the user navigates to a result
 
 ## UI Structure
 
