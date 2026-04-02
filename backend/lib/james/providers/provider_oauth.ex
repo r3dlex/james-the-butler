@@ -16,8 +16,8 @@ defmodule James.Providers.ProviderOAuth do
 
   use GenServer
 
-  alias James.ProviderSettings
   alias James.Accounts
+  alias James.ProviderSettings
 
   @table :provider_oauth_states
   # 10 minutes
@@ -145,32 +145,13 @@ defmodule James.Providers.ProviderOAuth do
 
   @impl true
   def handle_call({:handle_callback, code, state_key}, _from, state) do
-    case :ets.lookup(@table, state_key) do
-      [] ->
-        {:reply, {:error, :state_not_found}, state}
+    reply =
+      case :ets.lookup(@table, state_key) do
+        [] -> {:error, :state_not_found}
+        [{^state_key, entry}] -> do_callback(entry, code, state_key)
+      end
 
-      [{^state_key, entry}] ->
-        if System.system_time(:second) > entry.expires_at do
-          :ets.delete(@table, state_key)
-          {:reply, {:error, :state_expired}, state}
-        else
-          result = exchange_code(entry.provider_type, code, entry.verifier, entry.redirect_uri)
-
-          case result do
-            {:ok, token_data} ->
-              # Persist the provider config for this user
-              provider_config = persist_provider(entry.provider_type, entry.user_id, token_data)
-
-              updated = Map.merge(entry, %{status: :completed, provider: provider_config})
-              :ets.insert(@table, {state_key, updated})
-
-              {:reply, {:ok, provider_config}, state}
-
-            {:error, reason} ->
-              {:reply, {:error, reason}, state}
-          end
-        end
-    end
+    {:reply, reply, state}
   end
 
   @impl true
@@ -187,6 +168,24 @@ defmodule James.Providers.ProviderOAuth do
   # ---------------------------------------------------------------------------
   # Private helpers
   # ---------------------------------------------------------------------------
+
+  defp do_callback(entry, code, state_key) do
+    if System.system_time(:second) > entry.expires_at do
+      :ets.delete(@table, state_key)
+      {:error, :state_expired}
+    else
+      case exchange_code(entry.provider_type, code, entry.verifier, entry.redirect_uri) do
+        {:ok, token_data} ->
+          provider_config = persist_provider(entry.provider_type, entry.user_id, token_data)
+          updated = Map.merge(entry, %{status: :completed, provider: provider_config})
+          :ets.insert(@table, {state_key, updated})
+          {:ok, provider_config}
+
+        {:error, reason} ->
+          {:error, reason}
+      end
+    end
+  end
 
   defp generate_pkce do
     verifier = :crypto.strong_rand_bytes(32) |> Base.url_encode64(padding: false)
