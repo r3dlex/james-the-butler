@@ -25,3 +25,4 @@ backend/xref_graph.dot
 
 # Node modules (root-level, e.g. from npx)
 /node_modules/
+.claude/worktrees/

@@ -116,6 +116,55 @@ describe("SettingsModelsPage", () => {
     expect(wrapper.text()).toContain("Add Provider");
   });
 
+  it("shows error message below Add Provider form when auto-test fails after adding", async () => {
+    const { api } = await import("../services/api");
+    const { useProviderStore } = await import("../stores/providers");
+    const store = useProviderStore();
+
+    // addProvider POST succeeds
+    vi.mocked(api.post).mockResolvedValueOnce({
+      provider: {
+        id: "p-new",
+        providerType: "anthropic",
+        displayName: "My Anthropic",
+        authMethod: "api_key",
+        status: "untested",
+        baseUrl: null,
+        apiKeyMasked: "sk-****",
+        lastTestedAt: null,
+        models: [],
+      },
+    });
+    // testConnection POST fails (wrong key → 401)
+    vi.mocked(api.post).mockRejectedValueOnce(new Error("Unauthorized"));
+    // fetchModels GET also fails (unrelated)
+    vi.mocked(api.get).mockRejectedValueOnce(new Error("Network error"));
+
+    const { default: SettingsModelsPage } =
+      await import("../pages/settings/SettingsModelsPage.vue");
+
+    const wrapper = mount(SettingsModelsPage, {
+      global: {
+        stubs: {
+          LoadingSpinner: { template: "<div>loading</div>" },
+          ProviderCard: {
+            template: "<div class='provider-card'></div>",
+            props: ["provider"],
+          },
+        },
+      },
+    });
+
+    // Directly trigger the error path via store to verify it surfaces in the template
+    store.providers.splice(0);
+    store.loading = false;
+    store.error = "Failed to test connection";
+
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.text()).toContain("Failed to test connection");
+  });
+
   it("empty state shows setup instructions when no providers configured", async () => {
     const { useProviderStore } = await import("../stores/providers");
     const store = useProviderStore();

@@ -14,7 +14,7 @@ export const useSessionStore = defineStore("sessions", () => {
 
   const canCreateSession = computed(() => {
     const providerStore = useProviderStore();
-    return providerStore.hasVerifiedProvider;
+    return providerStore.providers.length > 0;
   });
 
   const activeSession = computed(
@@ -78,7 +78,7 @@ export const useSessionStore = defineStore("sessions", () => {
     createError.value = null;
 
     const providerStore = useProviderStore();
-    if (!providerStore.hasVerifiedProvider) {
+    if (providerStore.providers.length === 0) {
       createError.value =
         "No connected provider found. Please go to Settings > Models to configure and test a provider.";
       return null;
