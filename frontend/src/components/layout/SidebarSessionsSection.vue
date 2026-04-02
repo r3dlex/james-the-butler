@@ -1,7 +1,24 @@
 <template>
   <div class="px-2 py-1">
-    <!-- Search input -->
-    <div class="relative mb-1">
+    <!-- Section header -->
+    <div class="mb-1 flex items-center justify-between px-1">
+      <span
+        class="text-xs font-semibold uppercase tracking-wide"
+        style="color: var(--color-text-dim)"
+      >
+        Sessions
+      </span>
+      <RouterLink
+        to="/sessions"
+        class="text-xs transition-colors hover:text-[var(--color-gold)]"
+        style="color: var(--color-text-dim)"
+      >
+        More →
+      </RouterLink>
+    </div>
+
+    <!-- Internal search input (only when query prop is NOT provided) -->
+    <div v-if="props.query === undefined" class="relative mb-1">
       <svg
         xmlns="http://www.w3.org/2000/svg"
         width="12"
@@ -17,7 +34,7 @@
         <path d="m21 21-4.3-4.3" />
       </svg>
       <input
-        v-model="query"
+        v-model="internalQuery"
         type="text"
         placeholder="Search sessions…"
         class="w-full rounded-md py-1 pl-7 pr-2 text-xs outline-none"
@@ -26,7 +43,6 @@
           color: var(--color-text);
           border: 1px solid var(--color-border);
         "
-        @input="onInput"
       />
     </div>
 
@@ -66,11 +82,11 @@
 
       <!-- Empty search state -->
       <p
-        v-if="query && !displayedSessions.length"
+        v-if="activeQuery && !displayedSessions.length"
         class="px-2 py-1 text-xs"
         style="color: var(--color-text-dim)"
       >
-        No sessions match "{{ query }}"
+        No sessions match "{{ activeQuery }}"
       </p>
     </div>
 
@@ -79,7 +95,7 @@
       type="button"
       class="new-session-btn mt-1 flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors"
       style="color: var(--color-text-dim)"
-      @click="newSession"
+      @click="showModal = true"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -96,6 +112,13 @@
       </svg>
       New Session
     </button>
+
+    <!-- New session modal -->
+    <NewSessionModal
+      :open="showModal"
+      @create="onCreateSession"
+      @cancel="showModal = false"
+    />
   </div>
 </template>
 
@@ -103,16 +126,26 @@
 import { ref, computed } from "vue";
 import { useRoute, useRouter, RouterLink } from "vue-router";
 import { useSessionStore } from "@/stores/sessions";
+import type { ExecutionMode } from "@/types/session";
+import NewSessionModal from "@/components/session/NewSessionModal.vue";
+
+const props = defineProps<{
+  query?: string;
+}>();
 
 const route = useRoute();
 const router = useRouter();
 const sessionStore = useSessionStore();
 
-const query = ref("");
+const showModal = ref(false);
 
-function onInput() {
-  // reactive — handled by computed below
-}
+// Internal query is used only when the `query` prop is not provided
+const internalQuery = ref("");
+
+// The active query: use prop when provided, otherwise use internal state
+const activeQuery = computed(() =>
+  props.query !== undefined ? props.query : internalQuery.value,
+);
 
 const recentSessions = computed(() =>
   [...sessionStore.sessions]
@@ -125,15 +158,25 @@ const recentSessions = computed(() =>
 );
 
 const displayedSessions = computed(() => {
-  const q = query.value.trim().toLowerCase();
+  const q = activeQuery.value.trim().toLowerCase();
   if (!q) return recentSessions.value;
   return sessionStore.sessions.filter((s) => s.name.toLowerCase().includes(q));
 });
 
-async function newSession() {
+interface NewSessionPayload {
+  name?: string;
+  executionMode: ExecutionMode;
+  workingDirectories: string[];
+}
+
+async function onCreateSession(payload: NewSessionPayload) {
+  showModal.value = false;
   const session = await sessionStore.createSession({
     agentType: "chat",
     hostId: "primary",
+    name: payload.name,
+    executionMode: payload.executionMode,
+    workingDirectories: payload.workingDirectories,
   });
   if (session) {
     router.push(`/sessions/${session.id}`);

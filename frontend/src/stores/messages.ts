@@ -53,9 +53,8 @@ export const useMessageStore = defineStore("messages", () => {
         `/api/sessions/${sessionId}/messages`,
         { content },
       );
-      const msgs = messagesBySession.value.get(sessionId) ?? [];
-      msgs.push(data.message);
-      messagesBySession.value.set(sessionId, msgs);
+      // Do NOT push to the list here — the caller already added an optimistic
+      // temp message. Return the server message for reference only.
       return data.message;
     } catch {
       return null;
@@ -66,6 +65,23 @@ export const useMessageStore = defineStore("messages", () => {
     const msgs = messagesBySession.value.get(sessionId) ?? [];
     msgs.push(message);
     messagesBySession.value.set(sessionId, msgs);
+  }
+
+  /**
+   * If a temp message (id starts with "temp-") with the same role exists,
+   * replace it with the incoming message; otherwise append normally.
+   */
+  function replaceOrAppendMessage(sessionId: string, message: Message) {
+    const msgs = messagesBySession.value.get(sessionId) ?? [];
+    const tempIdx = msgs.findIndex(
+      (m) => m.id.startsWith("temp-") && m.role === message.role,
+    );
+    if (tempIdx !== -1) {
+      msgs.splice(tempIdx, 1, message);
+      messagesBySession.value.set(sessionId, msgs);
+    } else {
+      appendMessage(sessionId, message);
+    }
   }
 
   function startStreaming(sessionId: string) {
@@ -113,6 +129,7 @@ export const useMessageStore = defineStore("messages", () => {
     setMessages,
     sendMessage,
     appendMessage,
+    replaceOrAppendMessage,
     startStreaming,
     appendStreamChunk,
     stopStreaming,

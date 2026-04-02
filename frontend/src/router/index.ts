@@ -35,6 +35,11 @@ const router = createRouter({
       component: () => import("@/pages/ProjectListPage.vue"),
     },
     {
+      path: "/projects/new",
+      component: () => import("@/pages/ProjectListPage.vue"),
+      props: { autoCreate: true },
+    },
+    {
       path: "/projects/:id",
       component: () => import("@/pages/ProjectView.vue"),
     },

@@ -18,8 +18,8 @@
     </div>
 
     <!-- Project list -->
-    <div v-if="recentProjects.length" class="space-y-0.5">
-      <div v-for="project in recentProjects" :key="project.id">
+    <div v-if="displayedProjects.length" class="space-y-0.5">
+      <div v-for="project in displayedProjects" :key="project.id">
         <!-- Project row -->
         <RouterLink
           :to="`/projects/${project.id}`"
@@ -114,15 +114,27 @@
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
 import { useRoute, useRouter, RouterLink } from "vue-router";
 import { useProjectStore } from "@/stores/projects";
+
+const props = defineProps<{
+  query?: string;
+}>();
 
 const route = useRoute();
 const router = useRouter();
 const projectStore = useProjectStore();
 
-const recentProjects = projectStore.recentProjects;
 const recentSessionsForProject = projectStore.recentSessionsForProject;
+
+const displayedProjects = computed(() => {
+  const q = (props.query ?? "").trim().toLowerCase();
+  if (!q) return projectStore.recentProjects;
+  return projectStore.recentProjects.filter((p) =>
+    p.name.toLowerCase().includes(q),
+  );
+});
 
 function newProject() {
   router.push("/projects/new");

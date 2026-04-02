@@ -19,14 +19,30 @@
             {{ projectStore.currentProject.description }}
           </p>
         </div>
-        <router-link
-          :to="`/projects/${projectStore.currentProject.id}/settings`"
-          class="rounded border px-3 py-1.5 text-sm transition-colors hover:bg-[var(--color-surface)]"
-          style="border-color: var(--color-border); color: var(--color-text)"
-        >
-          Settings
-        </router-link>
+        <div class="flex items-center gap-2">
+          <button
+            class="rounded px-3 py-1.5 text-sm font-medium"
+            style="background: var(--color-gold); color: var(--color-navy-deep)"
+            @click="showNewSession = true"
+          >
+            New Session
+          </button>
+          <router-link
+            :to="`/projects/${projectStore.currentProject.id}/settings`"
+            class="rounded border px-3 py-1.5 text-sm transition-colors hover:bg-[var(--color-surface)]"
+            style="border-color: var(--color-border); color: var(--color-text)"
+          >
+            Settings
+          </router-link>
+        </div>
       </div>
+
+      <NewSessionModal
+        :open="showNewSession"
+        :project-id="projectStore.currentProject.id"
+        @create="onCreateSession"
+        @cancel="showNewSession = false"
+      />
 
       <!-- Repository health indicators -->
       <div
@@ -113,14 +129,21 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from "vue";
-import { useRoute } from "vue-router";
+import { ref, onMounted } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useProjectStore } from "@/stores/projects";
+import { useSessionStore } from "@/stores/sessions";
+import type { ExecutionMode } from "@/types/session";
 import LoadingSpinner from "@/components/common/LoadingSpinner.vue";
 import EmptyState from "@/components/common/EmptyState.vue";
+import NewSessionModal from "@/components/session/NewSessionModal.vue";
 
 const route = useRoute();
+const router = useRouter();
 const projectStore = useProjectStore();
+const sessionStore = useSessionStore();
+
+const showNewSession = ref(false);
 
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "";
@@ -128,6 +151,29 @@ function formatDate(dateStr: string | null): string {
     month: "short",
     day: "numeric",
   });
+}
+
+interface NewSessionPayload {
+  name?: string;
+  executionMode: ExecutionMode;
+  workingDirectories: string[];
+}
+
+async function onCreateSession(payload: NewSessionPayload) {
+  showNewSession.value = false;
+  const id = route.params.id as string;
+  const session = await sessionStore.createSession({
+    agentType: "chat",
+    hostId: "primary",
+    projectId: id,
+    name: payload.name,
+    executionMode: payload.executionMode,
+    workingDirectories: payload.workingDirectories,
+  });
+  if (session) {
+    await projectStore.fetchProjectSessions(id);
+    router.push(`/sessions/${session.id}`);
+  }
 }
 
 onMounted(async () => {

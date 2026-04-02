@@ -24,32 +24,6 @@
       </span>
     </div>
 
-    <!-- New session button -->
-    <div class="pb-2" :class="collapsed ? 'px-1' : 'px-2'">
-      <button
-        class="flex w-full items-center gap-2 rounded-lg py-2 text-sm font-medium transition-colors hover:opacity-90"
-        :class="collapsed ? 'justify-center px-2' : 'px-3'"
-        style="background: var(--color-gold); color: var(--color-navy)"
-        :title="collapsed ? 'New session' : undefined"
-        @click="newSession"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          width="16"
-          height="16"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          class="shrink-0"
-        >
-          <path d="M5 12h14" />
-          <path d="M12 5v14" />
-        </svg>
-        <span v-if="!collapsed">New session</span>
-      </button>
-    </div>
-
     <div class="mx-3 h-px" style="background: var(--color-border)" />
 
     <!-- Main navigation -->
@@ -87,11 +61,39 @@
 
       <!-- Expanded: rich sidebar sections -->
       <template v-else>
+        <!-- Unified search -->
+        <div class="relative mb-1 px-2">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            class="absolute left-4.5 top-1/2 -translate-y-1/2"
+            style="color: var(--color-text-dim)"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search…"
+            class="w-full rounded-md py-1 pl-7 pr-2 text-xs outline-none"
+            style="
+              background: var(--color-surface);
+              color: var(--color-text);
+              border: 1px solid var(--color-border);
+            "
+          />
+        </div>
         <!-- Sessions section with search -->
-        <SidebarSessionsSection />
+        <SidebarSessionsSection :query="searchQuery" />
         <div class="mx-3 h-px my-1" style="background: var(--color-border)" />
         <!-- Projects section -->
-        <SidebarProjectsSection />
+        <SidebarProjectsSection :query="searchQuery" />
         <div class="mx-3 h-px my-1" style="background: var(--color-border)" />
         <!-- Other nav items -->
         <SidebarNavItem
@@ -190,8 +192,7 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
-import { useRoute, useRouter, RouterLink } from "vue-router";
-import { useSessionStore } from "@/stores/sessions";
+import { useRoute, RouterLink } from "vue-router";
 import SidebarNavItem from "./SidebarNavItem.vue";
 import SidebarFooter from "./SidebarFooter.vue";
 import SidebarSessionsSection from "./SidebarSessionsSection.vue";
@@ -215,9 +216,8 @@ defineProps<{
   collapsed?: boolean;
 }>();
 
-const router = useRouter();
 const route = useRoute();
-const sessionStore = useSessionStore();
+const searchQuery = ref("");
 
 // ── Settings items ────────────────────────────────────────────────────────────
 const settingsItems = [
@@ -275,16 +275,5 @@ watch(
 
 function toggleSettings() {
   settingsOpen.value = !settingsOpen.value;
-}
-
-// ── New session ───────────────────────────────────────────────────────────────
-async function newSession() {
-  const session = await sessionStore.createSession({
-    agentType: "chat",
-    hostId: "primary",
-  });
-  if (session) {
-    router.push(`/sessions/${session.id}`);
-  }
 }
 </script>

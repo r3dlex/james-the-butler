@@ -188,11 +188,28 @@ function cancelEditTitle() {
 
 const plannerStatus = ref("");
 const hasSentFirstMessage = ref(false);
+const streamingError = ref<string | null>(null);
+let streamingTimeoutInterval: ReturnType<typeof setInterval> | null = null;
+const streamingStartedAt = ref<number | null>(null);
 
 onMounted(() => {
   sessionStore.setActive(sessionId.value);
   messageStore.fetchMessages(sessionId.value);
   taskStore.fetchTasks(sessionId.value);
+
+  // Streaming timeout: check every 5s if streaming has been active >45s
+  streamingTimeoutInterval = setInterval(() => {
+    if (
+      messageStore.streamingSessionId === sessionId.value &&
+      streamingStartedAt.value !== null &&
+      Date.now() - streamingStartedAt.value > 45_000
+    ) {
+      messageStore.stopStreaming();
+      streamingError.value =
+        "Streaming timed out. The server may be unresponsive.";
+      streamingStartedAt.value = null;
+    }
+  }, 5_000);
 
   // joinChannel already calls .join() internally — do NOT call .join() again
   // or the Phoenix channel enters a broken state (double-join bug).
@@ -206,13 +223,20 @@ onMounted(() => {
       messageStore.streamingSessionId === sessionId.value
     ) {
       messageStore.stopStreaming();
+      streamingStartedAt.value = null;
     }
-    messageStore.appendMessage(sessionId.value, msg);
+    if (msg.role === "user") {
+      // Replace the optimistic temp message with the server-confirmed one
+      messageStore.replaceOrAppendMessage(sessionId.value, msg);
+    } else {
+      messageStore.appendMessage(sessionId.value, msg);
+    }
   });
   channel.on("message:chunk", (payload: unknown) => {
     const { content } = payload as { content: string };
     if (messageStore.streamingSessionId !== sessionId.value) {
       messageStore.startStreaming(sessionId.value);
+      streamingStartedAt.value = Date.now();
     }
     messageStore.appendStreamChunk(content);
   });
@@ -240,6 +264,10 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+  if (streamingTimeoutInterval !== null) {
+    clearInterval(streamingTimeoutInterval);
+    streamingTimeoutInterval = null;
+  }
   socketStore.leaveChannel(`session:${sessionId.value}`);
   socketStore.leaveChannel(`planner:${sessionId.value}`);
   sessionStore.setActive(null);
@@ -273,6 +301,7 @@ async function handleSend(text: string) {
 
   // Start streaming state — chunks will arrive via channel
   messageStore.startStreaming(sessionId.value);
+  streamingStartedAt.value = Date.now();
 
   // Send via REST — backend saves the message, dispatches to planner,
   // agent response streams back via the WebSocket channel

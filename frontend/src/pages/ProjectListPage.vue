@@ -28,37 +28,59 @@
       class="mb-4 rounded-md border p-4"
       style="border-color: var(--color-border)"
     >
-      <div class="flex items-end gap-3">
-        <div class="flex-1">
+      <div class="flex flex-col gap-3">
+        <div class="flex items-end gap-3">
+          <div class="flex-1">
+            <label
+              class="mb-1 block text-xs"
+              style="color: var(--color-text-dim)"
+              >Project name</label
+            >
+            <input
+              v-model="newName"
+              type="text"
+              class="w-full rounded border bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]"
+              style="
+                border-color: var(--color-border);
+                color: var(--color-text);
+              "
+              placeholder="My Project"
+              @keydown.enter="createProject"
+            />
+          </div>
+        </div>
+        <div>
           <label class="mb-1 block text-xs" style="color: var(--color-text-dim)"
-            >Project name</label
+            >Workspace folder (optional)</label
           >
           <input
-            v-model="newName"
+            v-model="newWorkspace"
             type="text"
             class="w-full rounded border bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]"
             style="border-color: var(--color-border); color: var(--color-text)"
-            placeholder="My Project"
-            @keydown.enter="createProject"
+            placeholder="/home/user/my-project"
           />
         </div>
-        <button
-          class="rounded px-3 py-1.5 text-sm font-medium"
-          style="background: var(--color-gold); color: var(--color-navy-deep)"
-          @click="createProject"
-        >
-          Create
-        </button>
-        <button
-          class="text-sm"
-          style="color: var(--color-text-dim)"
-          @click="
-            showCreate = false;
-            newName = '';
-          "
-        >
-          Cancel
-        </button>
+        <div class="flex items-center gap-3">
+          <button
+            class="rounded px-3 py-1.5 text-sm font-medium"
+            style="background: var(--color-gold); color: var(--color-navy-deep)"
+            @click="createProject"
+          >
+            Create
+          </button>
+          <button
+            class="text-sm"
+            style="color: var(--color-text-dim)"
+            @click="
+              showCreate = false;
+              newName = '';
+              newWorkspace = '';
+            "
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
 
@@ -113,6 +135,13 @@ import { api } from "@/services/api";
 import LoadingSpinner from "@/components/common/LoadingSpinner.vue";
 import EmptyState from "@/components/common/EmptyState.vue";
 
+const props = withDefaults(
+  defineProps<{
+    autoCreate?: boolean;
+  }>(),
+  { autoCreate: false },
+);
+
 interface Project {
   id: string;
   name: string;
@@ -125,6 +154,7 @@ const loading = ref(false);
 const searchQuery = ref("");
 const showCreate = ref(false);
 const newName = ref("");
+const newWorkspace = ref("");
 
 const filteredProjects = computed(() => {
   const q = searchQuery.value.toLowerCase();
@@ -150,14 +180,23 @@ async function createProject() {
   try {
     const data = await api.post<{ project: Project }>("/api/projects", {
       name,
+      working_directories: newWorkspace.value
+        ? [newWorkspace.value.trim()]
+        : [],
     });
     projects.value.unshift(data.project);
     newName.value = "";
+    newWorkspace.value = "";
     showCreate.value = false;
   } catch {
     // handle error
   }
 }
 
-onMounted(fetchProjects);
+onMounted(() => {
+  fetchProjects();
+  if (props.autoCreate) {
+    showCreate.value = true;
+  }
+});
 </script>
