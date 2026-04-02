@@ -49,6 +49,66 @@ defmodule James.Providers.AnthropicTest do
     end
   end
 
+  describe "send_message/2 — api_key and base_url from opts (per-user config)" do
+    test "uses :api_key opt instead of env var" do
+      bypass = Bypass.open()
+
+      Bypass.expect_once(bypass, "POST", "/v1/messages", fn conn ->
+        headers = Map.new(conn.req_headers)
+        assert headers["x-api-key"] == "opts-key"
+
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "content" => [%{"type" => "text", "text" => "ok"}],
+            "usage" => %{"input_tokens" => 1, "output_tokens" => 1}
+          })
+        )
+      end)
+
+      url = "http://localhost:#{bypass.port}"
+
+      assert {:ok, %{content: "ok"}} =
+               Anthropic.send_message([%{role: "user", content: "hi"}],
+                 api_key: "opts-key",
+                 base_url: url
+               )
+    end
+
+    test "uses :base_url opt to route to a custom endpoint" do
+      bypass = Bypass.open()
+
+      Bypass.expect_once(bypass, "POST", "/v1/messages", fn conn ->
+        conn
+        |> Plug.Conn.put_resp_content_type("application/json")
+        |> Plug.Conn.send_resp(
+          200,
+          Jason.encode!(%{
+            "content" => [%{"type" => "text", "text" => "minimax-ok"}],
+            "usage" => %{"input_tokens" => 1, "output_tokens" => 1}
+          })
+        )
+      end)
+
+      url = "http://localhost:#{bypass.port}"
+
+      assert {:ok, %{content: "minimax-ok"}} =
+               Anthropic.send_message([%{role: "user", content: "hi"}],
+                 api_key: "test-key",
+                 base_url: url
+               )
+    end
+
+    test "still returns error when no api_key in opts and none in env" do
+      assert {:error, reason} =
+               Anthropic.send_message([%{role: "user", content: "hi"}], base_url: "http://x")
+
+      assert reason =~ "not configured"
+    end
+  end
+
   describe "send_message/2 — with Bypass" do
     setup do
       bypass = Bypass.open()

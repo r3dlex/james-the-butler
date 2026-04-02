@@ -28,6 +28,19 @@ defmodule James.ProviderSettings do
   end
 
   @doc """
+  Gets a single provider config by ID, returning `nil` if not found.
+
+  The `decrypted_api_key` virtual field is populated on the returned struct.
+  """
+  @spec get_provider_config(Ecto.UUID.t()) :: ProviderConfig.t() | nil
+  def get_provider_config(id) do
+    case Repo.get(ProviderConfig, id) do
+      nil -> nil
+      config -> decrypt_fields(config)
+    end
+  end
+
+  @doc """
   Gets a single provider config by ID, raising `Ecto.NoResultsError` if not found.
 
   The `decrypted_api_key` virtual field is populated on the returned struct.

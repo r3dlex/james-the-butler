@@ -21,7 +21,8 @@ defmodule James.Providers.ProviderConfig do
     openai_compatible
   )
 
-  @providers_requiring_base_url ~w(ollama lm_studio openai_compatible minimax)
+  @providers_requiring_base_url ~w(ollama lm_studio openai_compatible)
+  @minimax_default_url "https://api.minimax.io/anthropic"
 
   @valid_auth_methods ~w(api_key oauth none)
   @valid_statuses ~w(untested connected failed)
@@ -79,10 +80,19 @@ defmodule James.Providers.ProviderConfig do
   defp validate_base_url_for_local_providers(changeset) do
     provider_type = get_field(changeset, :provider_type)
 
-    if provider_type in @providers_requiring_base_url do
-      validate_required(changeset, [:base_url])
-    else
-      changeset
+    cond do
+      provider_type == "minimax" ->
+        if get_field(changeset, :base_url) do
+          changeset
+        else
+          put_change(changeset, :base_url, @minimax_default_url)
+        end
+
+      provider_type in @providers_requiring_base_url ->
+        validate_required(changeset, [:base_url])
+
+      true ->
+        changeset
     end
   end
 end

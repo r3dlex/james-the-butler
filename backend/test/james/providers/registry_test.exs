@@ -31,6 +31,17 @@ defmodule James.Providers.RegistryTest do
     end
   end
 
+  describe "provider_for_model/1 — MiniMax models" do
+    test "MiniMax-M2.7 resolves to Anthropic (Anthropic-compatible API)" do
+      assert Registry.provider_for_model("MiniMax-M2.7") == {:ok, James.Providers.Anthropic}
+    end
+
+    test "MiniMax-M2.5-highspeed resolves to Anthropic" do
+      assert Registry.provider_for_model("MiniMax-M2.5-highspeed") ==
+               {:ok, James.Providers.Anthropic}
+    end
+  end
+
   describe "provider_for_model/1 — unknown models" do
     test "returns error for unknown model" do
       assert Registry.provider_for_model("unknown-model") == {:error, :unknown_provider}

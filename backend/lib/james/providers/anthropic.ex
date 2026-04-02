@@ -25,8 +25,8 @@ defmodule James.Providers.Anthropic do
   (text and tool_use maps) and `stop_reason` is `"tool_use"`.
   """
   def stream_message(messages, opts \\ []) do
-    api_key = api_key()
-    api_url = api_url()
+    api_key = Keyword.get(opts, :api_key) || api_key()
+    api_url = Keyword.get(opts, :base_url) || api_url()
 
     if is_nil(api_key) do
       {:error, "ANTHROPIC_API_KEY not configured"}
@@ -50,8 +50,8 @@ defmodule James.Providers.Anthropic do
   Non-streaming message request. Returns the full response.
   """
   def send_message(messages, opts \\ []) do
-    api_key = api_key()
-    api_url = api_url()
+    api_key = Keyword.get(opts, :api_key) || api_key()
+    api_url = Keyword.get(opts, :base_url) || api_url()
 
     if is_nil(api_key) do
       {:error, "ANTHROPIC_API_KEY not configured"}

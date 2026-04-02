@@ -151,5 +151,36 @@ defmodule James.Providers.ProviderConfigTest do
       changeset = ProviderConfig.changeset(%ProviderConfig{}, attrs)
       assert changeset.valid?
     end
+
+    test "minimax is valid without explicit base_url and defaults to MiniMax Anthropic endpoint" do
+      user = create_user("minimax_no_url@example.com")
+
+      attrs = %{
+        user_id: user.id,
+        provider_type: "minimax",
+        display_name: "MiniMax",
+        auth_method: "api_key"
+      }
+
+      changeset = ProviderConfig.changeset(%ProviderConfig{}, attrs)
+      assert changeset.valid?
+      assert get_change(changeset, :base_url) == "https://api.minimax.io/anthropic"
+    end
+
+    test "minimax accepts an explicit base_url override" do
+      user = create_user("minimax_custom_url@example.com")
+
+      attrs = %{
+        user_id: user.id,
+        provider_type: "minimax",
+        display_name: "MiniMax Custom",
+        base_url: "https://custom.minimax.example.com",
+        auth_method: "api_key"
+      }
+
+      changeset = ProviderConfig.changeset(%ProviderConfig{}, attrs)
+      assert changeset.valid?
+      assert get_field(changeset, :base_url) == "https://custom.minimax.example.com"
+    end
   end
 end
