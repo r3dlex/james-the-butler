@@ -4,21 +4,26 @@ defmodule JamesWeb.PathControllerTest do
   alias James.Accounts
 
   defp create_user do
-    {:ok, user} = Accounts.create_user(%{email: "path_ctrl_#{System.unique_integer()}@example.com"})
+    {:ok, user} =
+      Accounts.create_user(%{email: "path_ctrl_#{System.unique_integer()}@example.com"})
+
     user
   end
 
   describe "GET /api/paths/git-check" do
     test "returns is_git: true for a directory with .git folder", %{conn: conn} do
       user = create_user()
-      # Use the project root which is a git repo
-      path = File.cwd!()
+      # Create a temp dir with a .git subfolder to simulate a git repo
+      path = Path.join(System.tmp_dir!(), "james-git-test-#{System.unique_integer()}")
+      File.mkdir_p!(Path.join(path, ".git"))
 
       conn = authed_conn(conn, user)
       conn = get(conn, "/api/paths/git-check?path=#{URI.encode(path)}")
 
       assert json_response(conn, 200)["is_git"] == true
       assert json_response(conn, 200)["path"] == path
+
+      File.rm_rf!(path)
     end
 
     test "returns is_git: false for a directory without .git folder", %{conn: conn} do
