@@ -131,7 +131,7 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from "vue";
-import { api } from "@/services/api";
+import { useProjectStore } from "@/stores/projects";
 import LoadingSpinner from "@/components/common/LoadingSpinner.vue";
 import EmptyState from "@/components/common/EmptyState.vue";
 
@@ -142,59 +142,37 @@ const props = withDefaults(
   { autoCreate: false },
 );
 
-interface Project {
-  id: string;
-  name: string;
-  executionMode: string | null;
-  sessionCount?: number;
-}
+const projectStore = useProjectStore();
 
-const projects = ref<Project[]>([]);
-const loading = ref(false);
 const searchQuery = ref("");
 const showCreate = ref(false);
 const newName = ref("");
 const newWorkspace = ref("");
 
+const loading = computed(() => projectStore.loading);
+
 const filteredProjects = computed(() => {
   const q = searchQuery.value.toLowerCase();
-  if (!q) return projects.value;
-  return projects.value.filter((p) => p.name.toLowerCase().includes(q));
+  if (!q) return projectStore.projects;
+  return projectStore.projects.filter((p) => p.name.toLowerCase().includes(q));
 });
-
-async function fetchProjects() {
-  loading.value = true;
-  try {
-    const data = await api.get<{ projects: Project[] }>("/api/projects");
-    projects.value = data.projects;
-  } catch {
-    projects.value = [];
-  } finally {
-    loading.value = false;
-  }
-}
 
 async function createProject() {
   const name = newName.value.trim();
   if (!name) return;
-  try {
-    const data = await api.post<{ project: Project }>("/api/projects", {
-      name,
-      working_directories: newWorkspace.value
-        ? [newWorkspace.value.trim()]
-        : [],
-    });
-    projects.value.unshift(data.project);
+  const project = await projectStore.createProject({
+    name,
+    workingDirectories: newWorkspace.value ? [newWorkspace.value.trim()] : [],
+  });
+  if (project) {
     newName.value = "";
     newWorkspace.value = "";
     showCreate.value = false;
-  } catch {
-    // handle error
   }
 }
 
 onMounted(() => {
-  fetchProjects();
+  projectStore.fetchProjects();
   if (props.autoCreate) {
     showCreate.value = true;
   }

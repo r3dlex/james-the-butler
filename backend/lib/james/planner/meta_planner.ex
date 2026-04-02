@@ -16,8 +16,8 @@ defmodule James.Planner.MetaPlanner do
 
   alias James.{ExecutionMode, Sessions, Tasks}
   alias James.Hooks.Dispatcher
-  alias James.LLMProvider
   alias James.OpenClaw.Orchestrator
+  alias James.Providers.Registry
 
   # --- Client API ---
 
@@ -203,7 +203,9 @@ defmodule James.Planner.MetaPlanner do
     user_content = if is_struct(message), do: to_string(message.content), else: to_string(message)
     messages = [%{role: "user", content: @decomposition_prompt <> user_content}]
 
-    case LLMProvider.configured().send_message(messages, []) do
+    {provider, _model, provider_opts} = Registry.resolve_provider(session)
+
+    case provider.send_message(messages, provider_opts) do
       {:ok, %{content: content}} when is_binary(content) and content != "" ->
         parse_task_specs(content, session)
 

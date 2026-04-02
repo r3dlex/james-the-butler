@@ -61,6 +61,26 @@ export const useProjectStore = defineStore("projects", () => {
     }
   }
 
+  async function createProject(payload: {
+    name: string;
+    workingDirectories?: string[];
+    description?: string;
+    repoUrl?: string;
+  }): Promise<Project | null> {
+    try {
+      const data = await api.post<{ project: Project }>("/api/projects", {
+        name: payload.name,
+        working_directories: payload.workingDirectories ?? [],
+        description: payload.description,
+        repo_url: payload.repoUrl,
+      });
+      projects.value.unshift(data.project);
+      return data.project;
+    } catch {
+      return null;
+    }
+  }
+
   async function fetchProjectSessions(projectId: string) {
     loading.value = true;
     error.value = null;
@@ -112,5 +132,6 @@ export const useProjectStore = defineStore("projects", () => {
     fetchProjects,
     fetchProject,
     fetchProjectSessions,
+    createProject,
   };
 });

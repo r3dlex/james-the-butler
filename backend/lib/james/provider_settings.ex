@@ -28,6 +28,35 @@ defmodule James.ProviderSettings do
   end
 
   @doc """
+  Returns all provider configs for the given `user_id` (UUID string).
+
+  API keys are decrypted and placed in the `decrypted_api_key` virtual field.
+  Returns the first connected config, or the first config if none are connected,
+  or an empty list when no configs exist.
+  """
+  @spec list_provider_configs_for_user(Ecto.UUID.t()) :: [ProviderConfig.t()]
+  def list_provider_configs_for_user(user_id) when is_binary(user_id) do
+    ProviderConfig
+    |> where([c], c.user_id == ^user_id)
+    |> Repo.all()
+    |> Enum.map(&decrypt_fields/1)
+  end
+
+  @doc """
+  Returns the first connected `ProviderConfig` for the given `user_id`, or
+  the first config regardless of status if none are connected, or `nil` when
+  the user has no configs at all.
+  """
+  @spec first_provider_config_for_user(Ecto.UUID.t()) :: ProviderConfig.t() | nil
+  def first_provider_config_for_user(nil), do: nil
+
+  def first_provider_config_for_user(user_id) when is_binary(user_id) do
+    configs = list_provider_configs_for_user(user_id)
+
+    Enum.find(configs, &(&1.status == "connected")) || List.first(configs)
+  end
+
+  @doc """
   Gets a single provider config by ID, returning `nil` if not found.
 
   The `decrypted_api_key` virtual field is populated on the returned struct.
