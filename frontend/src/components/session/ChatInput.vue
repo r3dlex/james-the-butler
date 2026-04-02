@@ -1,22 +1,26 @@
 <template>
-  <div class="border-t px-4 py-3" style="border-color: var(--color-border)">
-    <!-- Input container — rounded card style like Claude -->
+  <div
+    class="flex flex-col flex-1 border-t px-4 py-3"
+    style="border-color: var(--color-border); min-height: 0"
+  >
+    <!-- Input container — rounded card style like Claude, fills available space -->
     <div
-      class="relative rounded-2xl border transition-colors"
+      class="relative flex flex-col flex-1 rounded-2xl border transition-colors"
       :class="focused ? 'border-[var(--color-gold)]' : ''"
       style="
         background: var(--color-surface);
         border-color: var(--color-border);
+        min-height: 0;
       "
     >
-      <!-- Textarea — always enabled; parent queues messages while James responds -->
+      <!-- Textarea — fills container height -->
       <textarea
         ref="inputRef"
         v-model="text"
         placeholder="How can James help you today?"
         rows="3"
-        class="block w-full resize-none bg-transparent px-4 pt-3 pb-10 text-sm outline-none"
-        style="color: var(--color-text); min-height: 120px"
+        class="block w-full flex-1 resize-none bg-transparent px-4 pt-3 pb-10 text-sm outline-none"
+        style="color: var(--color-text); min-height: 0"
         @focus="focused = true"
         @blur="focused = false"
         @input="autoResize"
