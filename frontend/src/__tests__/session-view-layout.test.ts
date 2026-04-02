@@ -94,6 +94,47 @@ describe("SessionView layout", () => {
     setActivePinia(createPinia());
   });
 
+  it("chat input container does not have overflow hidden or auto", async () => {
+    const { default: SessionView } = await import("../pages/SessionView.vue");
+    const wrapper = mount(SessionView, { attachTo: document.body });
+
+    // The resizable chat input container has BOTH a height and overflow style.
+    // The resize handle has only height (4px), so we filter by overflow presence.
+    const allDivs = wrapper.findAll("div");
+    const resizableDiv = allDivs.find((div) => {
+      const s = div.attributes("style") ?? "";
+      return s.includes("height") && s.includes("overflow");
+    });
+    expect(resizableDiv).toBeDefined();
+
+    const style = resizableDiv!.attributes("style") ?? "";
+    expect(style).not.toMatch(/overflow\s*:\s*auto/);
+    expect(style).not.toMatch(/overflow\s*:\s*hidden/);
+
+    wrapper.unmount();
+  });
+
+  it("chat input default height is at least 300px", async () => {
+    const { default: SessionView } = await import("../pages/SessionView.vue");
+    const wrapper = mount(SessionView, { attachTo: document.body });
+
+    // The resizable chat input container has BOTH a height and overflow style.
+    const allDivs = wrapper.findAll("div");
+    const resizableDiv = allDivs.find((div) => {
+      const s = div.attributes("style") ?? "";
+      return s.includes("height") && s.includes("overflow");
+    });
+    expect(resizableDiv).toBeDefined();
+
+    const style = resizableDiv!.attributes("style") ?? "";
+    const match = style.match(/height\s*:\s*(\d+(?:\.\d+)?)px/);
+    expect(match).not.toBeNull();
+    const height = parseFloat(match![1]);
+    expect(height).toBeGreaterThanOrEqual(300);
+
+    wrapper.unmount();
+  });
+
   it("ChatInput is inside the resizable container (the div with dynamic height binding)", async () => {
     const { default: SessionView } = await import("../pages/SessionView.vue");
     const wrapper = mount(SessionView, { attachTo: document.body });

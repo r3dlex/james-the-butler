@@ -64,10 +64,6 @@ const router = createRouter({
       component: () => import("@/pages/HostDetailPage.vue"),
     },
     {
-      path: "/openclaw",
-      component: () => import("@/pages/OpenClawActivityPage.vue"),
-    },
-    {
       path: "/mobile-setup",
       component: () => import("@/pages/MobileSetupPage.vue"),
     },
@@ -112,17 +108,8 @@ const router = createRouter({
       component: () => import("@/pages/settings/SettingsMemoryPage.vue"),
     },
     {
-      path: "/settings/security",
-      component: () => import("@/pages/settings/SettingsSecurityPage.vue"),
-    },
-    {
       path: "/settings/telegram",
       component: () => import("@/pages/settings/SettingsTelegramPage.vue"),
-    },
-    {
-      path: "/settings/desktop-control",
-      component: () =>
-        import("@/pages/settings/SettingsDesktopControlPage.vue"),
     },
     {
       path: "/settings/billing",

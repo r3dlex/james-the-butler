@@ -231,11 +231,16 @@ defmodule James.OpenClaw.Orchestrator do
     {task_entry, active_tasks} = Map.pop(state.active_tasks, ref)
 
     if task_entry do
+      exit_status = if reason == :normal, do: :done, else: :error
+
       Dispatcher.fire(:subagent_stop, %{
         parent_session_id: task_entry.session_id,
         sub_session_id: task_entry.task_id,
-        status: if(reason == :normal, do: :done, else: :error)
+        status: exit_status
       })
+
+      task_db_status = if reason == :normal, do: "completed", else: "failed"
+      maybe_update_task_status(task_entry.task_id, task_db_status)
     end
 
     # Check active_sessions for a matching ref
@@ -357,6 +362,14 @@ defmodule James.OpenClaw.Orchestrator do
 
       {:error, reason} ->
         {:reply, {:error, reason}, state}
+    end
+  end
+
+  defp maybe_update_task_status(task_id, status) do
+    case James.Tasks.get_task(task_id) do
+      nil -> :ok
+      t when t.status in ["completed", "failed"] -> :ok
+      t -> James.Tasks.update_task_status(t, status)
     end
   end
 

@@ -110,7 +110,7 @@
       <!-- Resizable chat input area -->
       <div
         class="shrink-0"
-        :style="{ height: chatInputHeight + 'px', overflow: 'auto' }"
+        :style="{ height: chatInputHeight + 'px', overflow: 'visible' }"
       >
         <!-- Chat input — always enabled; messages queue when James is busy -->
         <ChatInput @send="handleSend" />
@@ -430,7 +430,7 @@ function cancelEditTitle() {
 }
 
 // ── Resizable chat input area ────────────────────────────────────────────────
-const chatInputHeight = ref(200);
+const chatInputHeight = ref(400);
 const MIN_CHAT_INPUT_HEIGHT = 120;
 
 function startChatResize(e: MouseEvent) {

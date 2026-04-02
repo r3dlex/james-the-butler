@@ -134,9 +134,11 @@ defmodule JamesWeb.ProviderController do
     else
       case ConnectionTester.test_connection(config) do
         {:ok, %{status: :connected, latency_ms: ms}} ->
+          ProviderSettings.update_status(config, "connected")
           json(conn, %{status: "connected", latency_ms: ms})
 
         {:error, %{status: :failed, reason: reason}} ->
+          ProviderSettings.update_status(config, "failed")
           json(conn, %{status: "failed", reason: reason})
       end
     end
