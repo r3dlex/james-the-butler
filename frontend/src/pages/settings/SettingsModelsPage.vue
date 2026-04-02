@@ -354,7 +354,11 @@ async function startOAuthFlow() {
       // Open in a new tab — the backend will handle the callback and
       // store the tokens; a polling mechanism or WebSocket event will
       // notify us when the flow is complete.
-      window.open(data.authUrl, "_blank", "noopener,noreferrer");
+      window.open(
+        data.authUrl,
+        "james_oauth",
+        "width=600,height=700,scrollbars=yes,resizable=yes,noopener,noreferrer",
+      );
       // Poll for completion (simple approach: check every 3 s for up to 5 min)
       await waitForOAuthCompletion(data.stateKey);
     }

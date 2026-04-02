@@ -42,8 +42,11 @@ export const useSocketStore = defineStore("socket", () => {
   function joinChannel(
     topic: string,
     params: Record<string, unknown> = {},
+    onJoin?: (response: Record<string, unknown>) => void,
   ): Channel {
     if (channels.value.has(topic)) {
+      // Already joined — fire callback with empty payload (can't replay join)
+      onJoin?.({});
       return channels.value.get(topic)!;
     }
 
@@ -52,8 +55,9 @@ export const useSocketStore = defineStore("socket", () => {
 
     channel
       .join()
-      .receive("ok", () => {
+      .receive("ok", (response: Record<string, unknown>) => {
         channels.value.set(topic, channel);
+        onJoin?.(response);
       })
       .receive("error", () => {
         channels.value.delete(topic);

@@ -199,7 +199,9 @@ defmodule James.Planner.MetaPlanner do
   @decomposition_prompt @decomposition_prompt_base <> @synthesis_rules
 
   defp decompose_message(session, message) do
-    messages = [%{role: "user", content: @decomposition_prompt <> message}]
+    # `message` may be a %Sessions.Message{} struct or a plain binary string.
+    user_content = if is_struct(message), do: to_string(message.content), else: to_string(message)
+    messages = [%{role: "user", content: @decomposition_prompt <> user_content}]
 
     case LLMProvider.configured().send_message(messages, []) do
       {:ok, %{content: content}} when is_binary(content) and content != "" ->

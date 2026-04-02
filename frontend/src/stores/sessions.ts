@@ -127,12 +127,34 @@ export const useSessionStore = defineStore("sessions", () => {
     session.updatedAt = new Date().toISOString();
   }
 
-  function renameSession(sessionId: string, newName: string) {
+  async function renameSession(sessionId: string, newName: string) {
     const session = sessions.value.find((s) => s.id === sessionId);
     if (!session) return;
-    session.name = newName.trim();
+    const trimmed = newName.trim();
+    session.name = trimmed;
     session.nameSetByUser = true;
     session.updatedAt = new Date().toISOString();
+    // Persist to backend
+    try {
+      await api.put(`/api/sessions/${sessionId}`, { name: trimmed });
+    } catch {
+      // ignore when backend is unavailable (dev mode)
+    }
+  }
+
+  async function updateExecutionMode(
+    sessionId: string,
+    mode: import("@/types/session").ExecutionMode,
+  ) {
+    const session = sessions.value.find((s) => s.id === sessionId);
+    if (!session) return;
+    session.executionMode = mode;
+    session.updatedAt = new Date().toISOString();
+    try {
+      await api.put(`/api/sessions/${sessionId}`, { executionMode: mode });
+    } catch {
+      // ignore when backend is unavailable
+    }
   }
 
   async function deleteSession(id: string) {
@@ -192,6 +214,7 @@ export const useSessionStore = defineStore("sessions", () => {
     updateSession,
     autoNameSession,
     renameSession,
+    updateExecutionMode,
     suspendSession,
     resumeSession,
     terminateSession,

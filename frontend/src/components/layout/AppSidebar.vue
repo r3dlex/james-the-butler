@@ -219,6 +219,14 @@ defineProps<{
 const route = useRoute();
 const searchQuery = ref("");
 
+// Clear search automatically when the user navigates to any page
+watch(
+  () => route.fullPath,
+  () => {
+    searchQuery.value = "";
+  },
+);
+
 // ── Settings items ────────────────────────────────────────────────────────────
 const settingsItems = [
   { label: "General", path: "/settings/general", iconComponent: Sliders },

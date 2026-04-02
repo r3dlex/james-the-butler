@@ -5,6 +5,10 @@ defmodule James.Application do
 
   @impl true
   def start(_type, _args) do
+    # Attach OpenTelemetry instrumentation before starting any supervised
+    # processes so that events emitted during startup are captured.
+    if Mix.env() != :test, do: James.Telemetry.setup()
+
     children = children_for_env()
 
     opts = [strategy: :one_for_one, name: James.Supervisor]
@@ -28,6 +32,7 @@ defmodule James.Application do
           James.OpenClaw.Supervisor,
           James.OpenClaw.Orchestrator,
           James.Planner.MetaPlanner,
+          James.Providers.ProviderOAuth,
           James.Plugins.Registry,
           JamesWeb.Endpoint
         ]

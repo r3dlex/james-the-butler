@@ -28,6 +28,21 @@ config :james, Oban,
 # Configures the Phoenix JSON library
 config :phoenix, :json_library, Jason
 
+# OpenTelemetry — configure service name and OTLP exporter.
+# The OTLP endpoint can be overridden at runtime via OTEL_EXPORTER_OTLP_ENDPOINT.
+# In development the SDK is disabled by default (no collector running).
+config :opentelemetry,
+  resource: [
+    service: [
+      name: "james-the-butler",
+      version: Mix.Project.config()[:version]
+    ]
+  ]
+
+config :opentelemetry_exporter,
+  otlp_protocol: :http_protobuf,
+  otlp_endpoint: System.get_env("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4318")
+
 # Configures Elixir's Logger
 config :logger, :console,
   format: "$time $metadata[$level] $message\n",

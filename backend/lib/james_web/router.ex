@@ -116,5 +116,17 @@ defmodule JamesWeb.Router do
     resources "/providers", ProviderController, except: [:new, :edit]
     post "/providers/:id/test", ProviderController, :test_connection
     get "/providers/:id/models", ProviderController, :list_models
+
+    # Provider OAuth PKCE flow
+    post "/providers/oauth/start", ProviderOAuthController, :start
+    get "/providers/oauth/status/:state_key", ProviderOAuthController, :status
+  end
+
+  # OAuth callback is unauthenticated — the browser redirects here after the
+  # provider approves; it carries no user session token.
+  scope "/api", JamesWeb do
+    pipe_through :api
+
+    get "/providers/oauth/callback", ProviderOAuthController, :callback
   end
 end

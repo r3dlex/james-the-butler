@@ -9,17 +9,14 @@
         border-color: var(--color-border);
       "
     >
-      <!-- Textarea -->
+      <!-- Textarea — always enabled; parent queues messages while James responds -->
       <textarea
         ref="inputRef"
         v-model="text"
-        :placeholder="
-          disabled ? 'Waiting for response...' : 'How can James help you today?'
-        "
-        :disabled="disabled"
-        rows="1"
+        placeholder="How can James help you today?"
+        rows="3"
         class="block w-full resize-none bg-transparent px-4 pt-3 pb-10 text-sm outline-none"
-        style="color: var(--color-text); min-height: 44px"
+        style="color: var(--color-text); min-height: 120px"
         @focus="focused = true"
         @blur="focused = false"
         @input="autoResize"
@@ -350,7 +347,7 @@
           <!-- Send button -->
           <button
             type="button"
-            :disabled="disabled || !text.trim()"
+            :disabled="!text.trim()"
             class="flex h-8 w-8 items-center justify-center rounded-full transition-opacity disabled:cursor-not-allowed disabled:opacity-30"
             style="background: var(--color-gold); color: var(--color-navy-deep)"
             @click="submit"
@@ -382,7 +379,7 @@ import { RouterLink } from "vue-router";
 import MenuItemWithSubmenu from "./MenuItemWithSubmenu.vue";
 import { useProviderStore } from "@/stores/providers";
 
-defineProps<{ disabled?: boolean }>();
+// No `disabled` prop — SessionView queues messages while James is responding.
 const emit = defineEmits<{ send: [text: string] }>();
 
 const providerStore = useProviderStore();
@@ -450,7 +447,7 @@ function submit() {
   emit("send", t);
   text.value = "";
   if (inputRef.value) {
-    inputRef.value.style.height = "44px";
+    inputRef.value.style.height = "120px";
     inputRef.value.style.overflowY = "hidden";
   }
 }
@@ -458,8 +455,8 @@ function submit() {
 function autoResize() {
   const el = inputRef.value;
   if (!el) return;
-  // Reset first so scrollHeight reports the natural content height
-  el.style.height = "44px";
+  // Reset to min-height first so scrollHeight reports natural content height
+  el.style.height = "120px";
   el.style.overflowY = "hidden";
   const maxH = Math.floor(window.innerHeight * 0.5);
   if (el.scrollHeight > maxH) {

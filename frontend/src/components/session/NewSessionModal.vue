@@ -107,10 +107,12 @@
             </div>
           </div>
 
-          <!-- Hidden file input for native folder picker -->
+          <!-- Hidden folder picker — webkitdirectory makes the OS dialog
+               show only directories, not individual files. -->
           <input
             ref="folderPickerRef"
             type="file"
+            webkitdirectory
             style="display: none"
             @change="onFolderSelected"
           />

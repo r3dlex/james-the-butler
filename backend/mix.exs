@@ -56,7 +56,14 @@ defmodule James.MixProject do
       {:joken, "~> 2.6"},
       {:oban, "~> 2.17"},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      {:bypass, "~> 2.1", only: :test}
+      {:bypass, "~> 2.1", only: :test},
+      # OpenTelemetry observability
+      {:opentelemetry_api, "~> 1.3"},
+      {:opentelemetry, "~> 1.3"},
+      {:opentelemetry_exporter, "~> 1.6"},
+      {:opentelemetry_phoenix, "~> 1.1"},
+      {:opentelemetry_ecto, "~> 1.2"},
+      {:opentelemetry_oban, "~> 1.0"}
     ]
   end
 
