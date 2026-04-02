@@ -9,8 +9,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { mount, flushPromises } from "@vue/test-utils";
 import { createPinia, setActivePinia } from "pinia";
-import type { Task } from "../stores/tasks";
-import type { Message } from "../stores/messages";
+import type { Task } from "../../types/task";
+import type { Message, ContentBlock } from "../../types/message";
 
 // ---------------------------------------------------------------------------
 // Service mocks
@@ -268,7 +268,8 @@ describe("SessionView — session view mount and message send", () => {
     const messages = messageStore.getMessages(SESSION_ID);
     const userMsg = messages.find(
       (m: Message) =>
-        m.role === "user" && m.content.some((b) => b.text === "Hello there!"),
+        m.role === "user" &&
+        m.content.some((b: ContentBlock) => b.text === "Hello there!"),
     );
 
     expect(userMsg).toBeDefined();
@@ -303,7 +304,9 @@ describe("SessionView — session view mount and message send", () => {
     const errMsg = messages.find(
       (m: Message) =>
         m.role === "assistant" &&
-        m.content.some((b) => b.text?.includes("Failed to reach the server")),
+        m.content.some((b: ContentBlock) =>
+          b.text?.includes("Failed to reach the server"),
+        ),
     );
 
     expect(errMsg).toBeDefined();

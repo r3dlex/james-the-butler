@@ -39,13 +39,12 @@ vi.mock("../services/phoenix", () => ({
 const makeHost = (id: string, name = "Test Host") => ({
   id,
   name,
-  endpoint: "http://localhost:7000",
   status: "online" as const,
+  sessionCount: 0,
   isPrimary: false,
-  mtlsCertFingerprint: null,
-  lastSeenAt: new Date().toISOString(),
   models: [],
-  resourceUsage: { cpuPercent: 0, memoryPercent: 0 },
+  workingDirectories: [],
+  resourceUsage: { cpuPercent: 0, memoryPercent: 0, diskPercent: 0 },
 });
 
 describe("useHostStore", () => {

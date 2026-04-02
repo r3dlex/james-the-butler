@@ -48,10 +48,10 @@ const makeTask = (id: string, overrides = {}) => ({
   riskLevel: "read_only" as const,
   status: "pending" as const,
   hostId: "host-1",
-  agentType: "chat",
-  insertedAt: new Date().toISOString(),
+  agentId: null,
+  createdAt: new Date().toISOString(),
+  startedAt: null,
   completedAt: null,
-  parentTaskId: null,
   ...overrides,
 });
 

@@ -160,16 +160,30 @@ describe("TokenDisplay", () => {
 // ---------------------------------------------------------------------------
 // MessageBubble
 // ---------------------------------------------------------------------------
+// Minimal valid Message fixture for component tests.
+// Import ContentBlockType so we can keep the fixture fully typed.
+import type { ContentBlockType } from "../types/message";
+
+const makeTestMessage = (
+  id: string,
+  role: "user" | "assistant",
+  type: ContentBlockType,
+  text: string,
+) => ({
+  id,
+  sessionId: "sess-test",
+  role,
+  content: [{ type, text }],
+  attachments: [],
+  tokenCount: 0,
+  createdAt: new Date().toISOString(),
+});
+
 describe("MessageBubble", () => {
   it("renders user message", async () => {
     const { default: MessageBubble } =
       await import("../components/session/MessageBubble.vue");
-    const message = {
-      id: "m1",
-      role: "user",
-      content: [{ type: "text", text: "Hello there" }],
-      insertedAt: new Date().toISOString(),
-    };
+    const message = makeTestMessage("m1", "user", "text", "Hello there");
     const wrapper = mount(MessageBubble, { props: { message } });
     expect(wrapper.text()).toContain("You");
   });
@@ -177,12 +191,12 @@ describe("MessageBubble", () => {
   it("renders assistant message", async () => {
     const { default: MessageBubble } =
       await import("../components/session/MessageBubble.vue");
-    const message = {
-      id: "m2",
-      role: "assistant",
-      content: [{ type: "text", text: "I can help with that." }],
-      insertedAt: new Date().toISOString(),
-    };
+    const message = makeTestMessage(
+      "m2",
+      "assistant",
+      "text",
+      "I can help with that.",
+    );
     const wrapper = mount(MessageBubble, { props: { message } });
     expect(wrapper.text()).toContain("James");
   });
@@ -190,12 +204,12 @@ describe("MessageBubble", () => {
   it("renders command_log content block", async () => {
     const { default: MessageBubble } =
       await import("../components/session/MessageBubble.vue");
-    const message = {
-      id: "m3",
-      role: "assistant",
-      content: [{ type: "command_log", text: "$ ls -la" }],
-      insertedAt: new Date().toISOString(),
-    };
+    const message = makeTestMessage(
+      "m3",
+      "assistant",
+      "command_log",
+      "$ ls -la",
+    );
     const wrapper = mount(MessageBubble, { props: { message } });
     expect(wrapper.exists()).toBe(true);
   });
@@ -203,12 +217,12 @@ describe("MessageBubble", () => {
   it("renders thinking content block", async () => {
     const { default: MessageBubble } =
       await import("../components/session/MessageBubble.vue");
-    const message = {
-      id: "m4",
-      role: "assistant",
-      content: [{ type: "thinking", text: "Let me think..." }],
-      insertedAt: new Date().toISOString(),
-    };
+    const message = makeTestMessage(
+      "m4",
+      "assistant",
+      "thinking",
+      "Let me think...",
+    );
     const wrapper = mount(MessageBubble, { props: { message } });
     expect(wrapper.exists()).toBe(true);
   });

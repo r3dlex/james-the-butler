@@ -47,6 +47,22 @@ vi.mock("../services/phoenix", () => ({
 }));
 
 describe("useMessageStore", () => {
+  // Helper that produces a valid Message fixture for the current Message type.
+  const makeMsg = (
+    id: string,
+    role: "user" | "assistant" = "user",
+    text = id,
+    sessionId = "sess-1",
+  ) => ({
+    id,
+    sessionId,
+    role,
+    content: [{ type: "text" as const, text }],
+    attachments: [],
+    tokenCount: 0,
+    createdAt: new Date().toISOString(),
+  });
+
   beforeEach(() => {
     localStorageMock.clear();
     setActivePinia(createPinia());
@@ -71,39 +87,15 @@ describe("useMessageStore", () => {
   it("setMessages stores messages for a session", async () => {
     const { useMessageStore } = await import("../stores/messages");
     const store = useMessageStore();
-    const msgs = [
-      {
-        id: "m1",
-        role: "user" as const,
-        content: [{ type: "text" as const, text: "Hello" }],
-        insertedAt: new Date().toISOString(),
-      },
-    ];
-    store.setMessages("sess-1", msgs);
+    store.setMessages("sess-1", [makeMsg("m1")]);
     expect(store.getMessages("sess-1")).toHaveLength(1);
   });
 
   it("setMessages overwrites previous messages for the same session", async () => {
     const { useMessageStore } = await import("../stores/messages");
     const store = useMessageStore();
-    const first = [
-      {
-        id: "m1",
-        role: "user" as const,
-        content: [{ type: "text" as const, text: "First" }],
-        insertedAt: new Date().toISOString(),
-      },
-    ];
-    const second = [
-      {
-        id: "m2",
-        role: "assistant" as const,
-        content: [{ type: "text" as const, text: "Second" }],
-        insertedAt: new Date().toISOString(),
-      },
-    ];
-    store.setMessages("sess-1", first);
-    store.setMessages("sess-1", second);
+    store.setMessages("sess-1", [makeMsg("m1")]);
+    store.setMessages("sess-1", [makeMsg("m2", "assistant")]);
     expect(store.getMessages("sess-1")).toHaveLength(1);
     expect(store.getMessages("sess-1")[0].id).toBe("m2");
   });
@@ -111,40 +103,22 @@ describe("useMessageStore", () => {
   it("appendMessage adds to existing messages", async () => {
     const { useMessageStore } = await import("../stores/messages");
     const store = useMessageStore();
-    const msg = {
-      id: "m3",
-      role: "user" as const,
-      content: [{ type: "text" as const, text: "Appended" }],
-      insertedAt: new Date().toISOString(),
-    };
-    store.appendMessage("sess-2", msg);
+    store.appendMessage("sess-2", makeMsg("m3", "user", "Appended", "sess-2"));
     expect(store.getMessages("sess-2")).toHaveLength(1);
   });
 
   it("appendMessage accumulates messages", async () => {
     const { useMessageStore } = await import("../stores/messages");
     const store = useMessageStore();
-    const make = (id: string) => ({
-      id,
-      role: "user" as const,
-      content: [{ type: "text" as const, text: id }],
-      insertedAt: new Date().toISOString(),
-    });
-    store.appendMessage("sess-3", make("a"));
-    store.appendMessage("sess-3", make("b"));
+    store.appendMessage("sess-3", makeMsg("a", "user", "a", "sess-3"));
+    store.appendMessage("sess-3", makeMsg("b", "user", "b", "sess-3"));
     expect(store.getMessages("sess-3")).toHaveLength(2);
   });
 
   it("clearSession removes messages for a session", async () => {
     const { useMessageStore } = await import("../stores/messages");
     const store = useMessageStore();
-    const msg = {
-      id: "m4",
-      role: "user" as const,
-      content: [{ type: "text" as const, text: "Delete me" }],
-      insertedAt: new Date().toISOString(),
-    };
-    store.setMessages("sess-4", [msg]);
+    store.setMessages("sess-4", [makeMsg("m4", "user", "Delete me", "sess-4")]);
     store.clearSession("sess-4");
     expect(store.getMessages("sess-4")).toEqual([]);
   });
@@ -199,11 +173,17 @@ describe("useMessageStore", () => {
     const { useMessageStore } = await import("../stores/messages");
     const store = useMessageStore();
     const steps = [
-      { type: "decomposing", description: "Analyzing...", taskId: undefined },
+      {
+        id: "step-1",
+        description: "Analyzing...",
+        riskLevel: "read_only" as const,
+        targetHost: "primary",
+        status: "pending" as const,
+      },
     ];
     store.setPlannerSteps(steps);
     expect(store.plannerSteps).toHaveLength(1);
-    expect(store.plannerSteps[0].type).toBe("decomposing");
+    expect(store.plannerSteps[0].description).toBe("Analyzing...");
   });
 
   it("loading starts as false", async () => {

@@ -92,7 +92,7 @@
         <input
           v-model="editForm.apiKey"
           type="password"
-          :placeholder="provider.apiKeyMasked || provider.apiKey || 'sk-...'"
+          :placeholder="provider.apiKeyMasked || 'sk-...'"
           class="w-full rounded border bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]"
           style="
             border-color: var(--color-border);

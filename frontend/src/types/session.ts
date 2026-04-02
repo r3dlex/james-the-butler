@@ -4,7 +4,13 @@ export type AgentType =
   | "research"
   | "desktop_control"
   | "browser_control";
-export type SessionStatus = "active" | "idle" | "completed" | "error";
+export type SessionStatus =
+  | "active"
+  | "idle"
+  | "completed"
+  | "error"
+  | "suspended"
+  | "terminated";
 export type ExecutionMode = "direct" | "confirmed";
 
 export interface Session {

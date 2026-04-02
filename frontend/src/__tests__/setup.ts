@@ -12,14 +12,14 @@
 
 if (typeof window !== "undefined") {
   if (typeof globalThis.localStorage === "undefined" && window.localStorage) {
-    // @ts-expect-error — intentional global assignment for test environment
-    globalThis.localStorage = window.localStorage;
+    (globalThis as unknown as Record<string, unknown>).localStorage =
+      window.localStorage;
   }
   if (
     typeof globalThis.sessionStorage === "undefined" &&
     window.sessionStorage
   ) {
-    // @ts-expect-error — intentional global assignment for test environment
-    globalThis.sessionStorage = window.sessionStorage;
+    (globalThis as unknown as Record<string, unknown>).sessionStorage =
+      window.sessionStorage;
   }
 }
