@@ -183,6 +183,24 @@ describe("SessionView layout", () => {
     wrapper.unmount();
   });
 
+  it("resizable chat container uses flex column so ChatInput fills it", async () => {
+    const { default: SessionView } = await import("../pages/SessionView.vue");
+    const wrapper = mount(SessionView, { attachTo: document.body });
+
+    // The resizable container should use flex + flex-col so its child fills the height
+    const allDivs = wrapper.findAll("div");
+    const resizableDiv = allDivs.find((div) => {
+      const s = div.attributes("style") ?? "";
+      return s.includes("height") && s.includes("overflow");
+    });
+    expect(resizableDiv).toBeDefined();
+    const classes = resizableDiv!.classes();
+    expect(classes).toContain("flex");
+    expect(classes).toContain("flex-col");
+
+    wrapper.unmount();
+  });
+
   it("workspace bar has shrink-0 class and is not dynamically sized", async () => {
     const { default: SessionView } = await import("../pages/SessionView.vue");
     const wrapper = mount(SessionView, { attachTo: document.body });

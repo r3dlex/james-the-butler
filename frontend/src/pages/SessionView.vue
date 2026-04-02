@@ -109,7 +109,7 @@
 
       <!-- Resizable chat input area -->
       <div
-        class="shrink-0"
+        class="shrink-0 flex flex-col"
         :style="{ height: chatInputHeight + 'px', overflow: 'visible' }"
       >
         <!-- Chat input — always enabled; messages queue when James is busy -->
