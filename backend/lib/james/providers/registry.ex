@@ -24,12 +24,8 @@ defmodule James.Providers.Registry do
   `{provider_module, model_name, opts}`.
   """
 
-  import Ecto.Query
-
   alias James.LLMProvider
-  alias James.Providers.ProviderConfig
   alias James.ProviderSettings
-  alias James.Repo
 
   @table :james_provider_registry
 
@@ -48,7 +44,7 @@ defmodule James.Providers.Registry do
     "ollama" => James.Providers.OpenAICompatible,
     "lm_studio" => James.Providers.OpenAICompatible,
     "openai_compatible" => James.Providers.OpenAICompatible,
-    "minimax" => James.Providers.OpenAI
+    "minimax" => James.Providers.Anthropic
   }
 
   @doc """
@@ -174,6 +170,7 @@ defmodule James.Providers.Registry do
     agent_type = Map.get(session, :agent_type, "chat")
 
     case provider_for_session(session, agent_type) do
+      {:ok, %{module: mod, model: model, opts: opts}} -> {mod, model, opts}
       {:ok, %{module: mod, model: model}} -> {mod, model, []}
       {:error, _} -> {LLMProvider.configured(), nil, []}
     end
@@ -194,8 +191,11 @@ defmodule James.Providers.Registry do
   # Resolve provider from a model name string using prefix matching.
   defp resolve_from_model_name(model_name) do
     case provider_for_model(model_name) do
-      {:ok, mod} -> {:ok, %{module: mod, model: model_name}}
-      {:error, :unknown_provider} -> {:ok, %{module: LLMProvider.configured(), model: model_name}}
+      {:ok, mod} ->
+        {:ok, %{module: mod, model: model_name, opts: []}}
+
+      {:error, :unknown_provider} ->
+        {:ok, %{module: LLMProvider.configured(), model: model_name, opts: []}}
     end
   end
 
@@ -207,22 +207,31 @@ defmodule James.Providers.Registry do
     case ProviderSettings.default_model_for(user_id, host_id, agent_type) do
       nil ->
         # No DB config — fall back to global
-        {:ok, %{module: LLMProvider.configured(), model: nil}}
+        {:ok, %{module: LLMProvider.configured(), model: nil, opts: []}}
 
       %{model_name: model_name, provider_config_id: config_id} ->
         resolve_from_provider_config(config_id, model_name)
     end
   end
 
-  # Fetch ProviderConfig and map provider_type → module.
+  # Fetch ProviderConfig and map provider_type → module, returning credentials as opts.
   defp resolve_from_provider_config(config_id, model_name) do
-    case Repo.one(from c in ProviderConfig, where: c.id == ^config_id, select: c.provider_type) do
+    case ProviderSettings.get_provider_config(config_id) do
       nil ->
         {:error, :provider_config_not_found}
 
-      provider_type ->
-        mod = Map.get(@provider_type_map, provider_type, LLMProvider.configured())
-        {:ok, %{module: mod, model: model_name}}
+      config ->
+        mod = Map.get(@provider_type_map, config.provider_type, LLMProvider.configured())
+
+        opts =
+          []
+          |> maybe_put(:api_key, config.decrypted_api_key)
+          |> maybe_put(:base_url, config.base_url)
+
+        {:ok, %{module: mod, model: model_name, opts: opts}}
     end
   end
+
+  defp maybe_put(opts, _key, nil), do: opts
+  defp maybe_put(opts, key, value), do: Keyword.put(opts, key, value)
 end
