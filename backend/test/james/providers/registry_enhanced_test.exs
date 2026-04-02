@@ -301,7 +301,7 @@ defmodule James.Providers.RegistryEnhancedTest do
       {mod, model, opts} = Registry.resolve_provider(session)
       assert mod == James.Providers.Anthropic
       assert model == "claude-opus-4-5"
-      assert opts == []
+      assert Keyword.get(opts, :api_key) == "sk-test-key"
     end
 
     test "resolve_provider/1 falls back to global config when no DB entry" do
@@ -313,6 +313,7 @@ defmodule James.Providers.RegistryEnhancedTest do
       assert mod == LLMProvider.configured()
       assert is_nil(model)
       assert opts == []
+      # fallback path returns no credentials (uses global config)
     end
 
     test "resolve_provider/1 falls back when no model default configured for agent_type" do
@@ -336,6 +337,7 @@ defmodule James.Providers.RegistryEnhancedTest do
       # resolve_provider/1 always returns a usable tuple
       {mod, _model, opts} = Registry.resolve_provider(session)
       assert mod == LLMProvider.configured()
+      # no DB config for this agent_type — falls back to global, no credentials in opts
       assert opts == []
     end
   end

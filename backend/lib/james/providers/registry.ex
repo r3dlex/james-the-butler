@@ -32,7 +32,8 @@ defmodule James.Providers.Registry do
   @built_in_prefixes %{
     "claude" => James.Providers.Anthropic,
     "gpt" => James.Providers.OpenAI,
-    "gemini" => James.Providers.Gemini
+    "gemini" => James.Providers.Gemini,
+    "MiniMax" => James.Providers.Anthropic
   }
 
   # Maps provider_type string → provider module atom

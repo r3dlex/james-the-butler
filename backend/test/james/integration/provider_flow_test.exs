@@ -193,7 +193,7 @@ defmodule James.Integration.ProviderFlowTest do
       {mod, model, opts} = Registry.resolve_provider(session)
       assert mod == Anthropic
       assert model == "claude-sonnet-4-20250514"
-      assert opts == []
+      assert Keyword.get(opts, :api_key) == "sk-ant-test-key"
     end
   end
 
