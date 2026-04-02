@@ -140,7 +140,7 @@ describe("apiFetch", () => {
   // warnings.  This pattern ensures Node/Vitest never sees the rejection as unhandled
   // even though it is intentional.
   async function expectApiError(p: Promise<unknown>): Promise<ApiError> {
-    const caught = p.catch((e) => e as ApiError);
+    const caught = p.catch((e) => e as ApiError) as Promise<ApiError>;
     await vi.runAllTimersAsync();
     return caught;
   }

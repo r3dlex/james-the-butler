@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import { api } from "@/services/api";
+import { useSessionStore } from "@/stores/sessions";
 
 export interface Project {
   id: string;
@@ -79,12 +80,35 @@ export const useProjectStore = defineStore("projects", () => {
     }
   }
 
+  const recentProjects = computed(() =>
+    [...projects.value]
+      .sort(
+        (a, b) =>
+          new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+      )
+      .slice(0, 5),
+  );
+
+  function recentSessionsForProject(projectId: string) {
+    const sessionStore = useSessionStore();
+    return sessionStore.sessions
+      .filter((s) => s.projectId === projectId)
+      .sort((a, b) => {
+        const tA = new Date(a.updatedAt || a.createdAt || "").getTime() || 0;
+        const tB = new Date(b.updatedAt || b.createdAt || "").getTime() || 0;
+        return tB - tA;
+      })
+      .slice(0, 3);
+  }
+
   return {
     projects,
     currentProject,
     currentProjectSessions,
     loading,
     error,
+    recentProjects,
+    recentSessionsForProject,
     fetchProjects,
     fetchProject,
     fetchProjectSessions,

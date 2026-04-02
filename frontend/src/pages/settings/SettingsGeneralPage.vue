@@ -34,7 +34,7 @@
                 color: var(--color-text);
                 background: var(--color-navy-deep);
               "
-              @change="save"
+              @change="onThemeChange"
             >
               <option value="dark">Dark</option>
               <option value="light">Light</option>
@@ -127,9 +127,88 @@
         >
           About
         </h2>
-        <p class="text-xs" style="color: var(--color-text-dim)">
-          James the Butler — v0.1.0
-        </p>
+        <div class="space-y-3">
+          <div class="flex items-center gap-3">
+            <img
+              src="/logo-light.svg"
+              alt="James the Butler"
+              width="36"
+              height="36"
+            />
+            <div>
+              <p
+                class="text-sm font-semibold"
+                style="color: var(--color-text); font-family: Georgia, serif"
+              >
+                James the Butler
+              </p>
+              <p class="text-xs" style="color: var(--color-text-dim)">
+                v0.1.0 — AI-native agent platform
+              </p>
+            </div>
+          </div>
+
+          <p
+            class="text-xs leading-relaxed"
+            style="color: var(--color-text-dim)"
+          >
+            An open-source platform for orchestrating AI agents. Built with
+            Elixir/Phoenix on the backend and Vue 3 on the frontend. Features a
+            meta-planner, multi-session management, MCP server support, and a
+            desktop app powered by Tauri.
+          </p>
+
+          <div class="flex flex-col gap-1.5">
+            <a
+              href="https://github.com/andresilvaburgstahler/james-the-butler"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-center gap-2 text-xs transition-colors hover:text-[var(--color-gold)]"
+              style="color: var(--color-accent-blue)"
+            >
+              <!-- GitHub icon -->
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+              >
+                <path
+                  d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"
+                />
+              </svg>
+              GitHub Repository
+            </a>
+
+            <a
+              href="https://github.com/andresilvaburgstahler/james-the-butler/issues"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="flex items-center gap-2 text-xs transition-colors hover:text-[var(--color-gold)]"
+              style="color: var(--color-text-dim)"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="14"
+                height="14"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <line x1="12" y1="8" x2="12" y2="12" />
+                <line x1="12" y1="16" x2="12.01" y2="16" />
+              </svg>
+              Report an Issue
+            </a>
+          </div>
+
+          <p class="text-xs" style="color: var(--color-text-dim)">
+            Licensed under MIT.
+          </p>
+        </div>
       </section>
     </div>
   </div>
@@ -137,11 +216,13 @@
 
 <script setup lang="ts">
 import { reactive, onMounted } from "vue";
+import { applyTheme } from "@/utils/theme";
+import type { ThemeMode } from "@/utils/theme";
 
 const STORAGE_KEY = "james_general_settings";
 
 interface GeneralSettings {
-  theme: "dark" | "light" | "system";
+  theme: ThemeMode;
   defaultExecutionMode: "direct" | "supervised";
   keepIntermediates: boolean;
 }
@@ -156,6 +237,11 @@ const settings = reactive<GeneralSettings>({ ...defaults });
 
 function save() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+}
+
+function onThemeChange() {
+  applyTheme(settings.theme);
+  save();
 }
 
 onMounted(() => {

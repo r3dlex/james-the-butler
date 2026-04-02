@@ -8,7 +8,7 @@ export type ProviderType =
   | "lm_studio"
   | "openai_compatible";
 
-export type AuthMethod = "api_key" | "oauth" | "none";
+export type AuthMethod = "api_key" | "oauth";
 export type ProviderStatus = "untested" | "connected" | "failed";
 
 export interface ProviderConfig {

@@ -54,33 +54,59 @@
 
     <!-- Main navigation -->
     <nav
-      class="flex-1 space-y-0.5 overflow-y-auto py-2"
-      :class="collapsed ? 'px-1' : 'px-2'"
+      class="flex-1 overflow-y-auto py-2"
+      :class="collapsed ? 'px-1' : 'space-y-0.5'"
     >
-      <SidebarNavItem
-        label="Sessions"
-        path="/sessions"
-        icon="message-square"
-        :collapsed="collapsed"
-      />
-      <SidebarNavItem
-        label="Projects"
-        path="/projects"
-        icon="folder"
-        :collapsed="collapsed"
-      />
-      <SidebarNavItem
-        label="Task List"
-        path="/tasks"
-        icon="list-checks"
-        :collapsed="collapsed"
-      />
-      <SidebarNavItem
-        label="Memory"
-        path="/memory"
-        icon="brain"
-        :collapsed="collapsed"
-      />
+      <!-- Collapsed: icon-only nav items -->
+      <template v-if="collapsed">
+        <SidebarNavItem
+          label="Sessions"
+          path="/sessions"
+          icon="message-square"
+          :collapsed="collapsed"
+        />
+        <SidebarNavItem
+          label="Projects"
+          path="/projects"
+          icon="folder"
+          :collapsed="collapsed"
+        />
+        <SidebarNavItem
+          label="Task List"
+          path="/tasks"
+          icon="list-checks"
+          :collapsed="collapsed"
+        />
+        <SidebarNavItem
+          label="Memory"
+          path="/memory"
+          icon="brain"
+          :collapsed="collapsed"
+        />
+      </template>
+
+      <!-- Expanded: rich sidebar sections -->
+      <template v-else>
+        <!-- Sessions section with search -->
+        <SidebarSessionsSection />
+        <div class="mx-3 h-px my-1" style="background: var(--color-border)" />
+        <!-- Projects section -->
+        <SidebarProjectsSection />
+        <div class="mx-3 h-px my-1" style="background: var(--color-border)" />
+        <!-- Other nav items -->
+        <SidebarNavItem
+          label="Task List"
+          path="/tasks"
+          icon="list-checks"
+          :collapsed="collapsed"
+        />
+        <SidebarNavItem
+          label="Memory"
+          path="/memory"
+          icon="brain"
+          :collapsed="collapsed"
+        />
+      </template>
     </nav>
 
     <div class="mx-3 h-px" style="background: var(--color-border)" />
@@ -168,6 +194,8 @@ import { useRoute, useRouter, RouterLink } from "vue-router";
 import { useSessionStore } from "@/stores/sessions";
 import SidebarNavItem from "./SidebarNavItem.vue";
 import SidebarFooter from "./SidebarFooter.vue";
+import SidebarSessionsSection from "./SidebarSessionsSection.vue";
+import SidebarProjectsSection from "./SidebarProjectsSection.vue";
 import {
   Settings as SettingsIcon,
   Sliders,

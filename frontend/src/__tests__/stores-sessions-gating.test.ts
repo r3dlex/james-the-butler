@@ -71,13 +71,22 @@ describe("useSessionStore — provider gating", () => {
     expect(store.canCreateSession).toBe(false);
   });
 
-  it("canCreateSession returns true when at least one provider is configured (even untested)", async () => {
+  it("canCreateSession returns false when provider is present but untested (not connected)", async () => {
     const { useProviderStore } = await import("../stores/providers");
     const { useSessionStore } = await import("../stores/sessions");
 
     const providerStore = useProviderStore();
     providerStore.providers.push(makeProvider("p1", { status: "untested" }));
 
+    const store = useSessionStore();
+    expect(store.canCreateSession).toBe(false);
+  });
+
+  it("canCreateSession returns true when at least one provider has status connected", async () => {
+    const { useProviderStore } = await import("../stores/providers");
+    const { useSessionStore } = await import("../stores/sessions");
+    const providerStore = useProviderStore();
+    providerStore.providers.push(makeProvider("p1", { status: "connected" }));
     const store = useSessionStore();
     expect(store.canCreateSession).toBe(true);
   });

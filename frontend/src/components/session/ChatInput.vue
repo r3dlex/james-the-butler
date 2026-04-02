@@ -19,7 +19,7 @@
         :disabled="disabled"
         rows="1"
         class="block w-full resize-none bg-transparent px-4 pt-3 pb-10 text-sm outline-none"
-        style="color: var(--color-text); min-height: 44px; max-height: 200px"
+        style="color: var(--color-text); min-height: 44px"
         @focus="focused = true"
         @blur="focused = false"
         @input="autoResize"
@@ -449,14 +449,25 @@ function submit() {
   if (!t) return;
   emit("send", t);
   text.value = "";
-  if (inputRef.value) inputRef.value.style.height = "44px";
+  if (inputRef.value) {
+    inputRef.value.style.height = "44px";
+    inputRef.value.style.overflowY = "hidden";
+  }
 }
 
 function autoResize() {
   const el = inputRef.value;
   if (!el) return;
+  // Reset first so scrollHeight reports the natural content height
   el.style.height = "44px";
-  el.style.height = Math.min(el.scrollHeight, 200) + "px";
+  el.style.overflowY = "hidden";
+  const maxH = Math.floor(window.innerHeight * 0.5);
+  if (el.scrollHeight > maxH) {
+    el.style.height = maxH + "px";
+    el.style.overflowY = "auto";
+  } else {
+    el.style.height = el.scrollHeight + "px";
+  }
 }
 
 function handleMenuAction(action: string) {

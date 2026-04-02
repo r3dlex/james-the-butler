@@ -13,7 +13,7 @@ export const useSessionStore = defineStore("sessions", () => {
 
   const canCreateSession = computed(() => {
     const providerStore = useProviderStore();
-    return providerStore.providers.length > 0;
+    return providerStore.hasVerifiedProvider;
   });
 
   const activeSession = computed(

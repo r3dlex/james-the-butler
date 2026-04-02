@@ -194,12 +194,10 @@ onMounted(() => {
   messageStore.fetchMessages(sessionId.value);
   taskStore.fetchTasks(sessionId.value);
 
+  // joinChannel already calls .join() internally — do NOT call .join() again
+  // or the Phoenix channel enters a broken state (double-join bug).
+  // Initial message history is loaded above via messageStore.fetchMessages().
   const channel = socketStore.joinChannel(`session:${sessionId.value}`);
-  // Load message history from channel join reply
-  channel.join().receive("ok", (resp: unknown) => {
-    const data = resp as { messages?: Message[] };
-    if (data.messages) messageStore.setMessages(sessionId.value, data.messages);
-  });
   channel.on("message:new", (payload: unknown) => {
     const msg = payload as Message;
     // When assistant message completes, stop streaming and add the final message
@@ -223,9 +221,8 @@ onMounted(() => {
   });
   channel.on("artifact:created", () => {});
 
-  // Join planner channel for live task decomposition
+  // Join planner channel — joinChannel handles .join() internally
   const plannerChannel = socketStore.joinChannel(`planner:${sessionId.value}`);
-  plannerChannel.join();
   plannerChannel.on("planner:step", (payload: unknown) => {
     const step = (payload as { step: { type: string; description?: string } })
       .step;

@@ -123,6 +123,41 @@ export const useProviderStore = defineStore("providers", () => {
     }
   }
 
+  async function startOAuthFlow(
+    providerType: string,
+  ): Promise<{ authUrl: string; stateKey: string } | null> {
+    error.value = null;
+    try {
+      const result = await api.post<{ auth_url: string; state_key: string }>(
+        "/api/providers/oauth/start",
+        { provider_type: providerType },
+      );
+      return { authUrl: result.auth_url, stateKey: result.state_key };
+    } catch (e: unknown) {
+      error.value = toHumanError(e, "Failed to start OAuth flow");
+      return null;
+    }
+  }
+
+  async function pollOAuthCompletion(stateKey: string): Promise<boolean> {
+    try {
+      const result = await api.get<{
+        status: string;
+        provider?: ProviderConfig;
+      }>(`/api/providers/oauth/status/${stateKey}`);
+      if (result.status === "completed" && result.provider) {
+        providers.value.push({
+          ...result.provider,
+          models: result.provider.models || [],
+        });
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  }
+
   async function fetchModels(id: string) {
     // No global loading — this runs in background
     try {
@@ -151,5 +186,7 @@ export const useProviderStore = defineStore("providers", () => {
     removeProvider,
     testConnection,
     fetchModels,
+    startOAuthFlow,
+    pollOAuthCompletion,
   };
 });
