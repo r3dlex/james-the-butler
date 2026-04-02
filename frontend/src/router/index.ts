@@ -100,8 +100,7 @@ const router = createRouter({
     },
     {
       path: "/settings/execution-mode",
-      component: () =>
-        import("@/pages/settings/SettingsExecutionModePage.vue"),
+      component: () => import("@/pages/settings/SettingsExecutionModePage.vue"),
     },
     {
       path: "/settings/memory",

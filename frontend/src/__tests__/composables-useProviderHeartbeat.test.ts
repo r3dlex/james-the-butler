@@ -66,15 +66,17 @@ describe("useProviderHeartbeat", () => {
   it("tick() calls testConnection for stale connected providers", async () => {
     const { api } = await import("../services/api");
     const { useProviderStore } = await import("../stores/providers");
-    const { useProviderHeartbeat } = await import(
-      "../composables/useProviderHeartbeat"
-    );
+    const { useProviderHeartbeat } =
+      await import("../composables/useProviderHeartbeat");
 
     const store = useProviderStore();
     // Seed store with a stale connected provider (no backend call needed)
     store.providers.push(makeProvider("p1", "connected", STALE_AT));
 
-    vi.mocked(api.post).mockResolvedValue({ status: "connected", latencyMs: 50 });
+    vi.mocked(api.post).mockResolvedValue({
+      status: "connected",
+      latencyMs: 50,
+    });
 
     const { tick } = useProviderHeartbeat();
     tick();
@@ -87,9 +89,8 @@ describe("useProviderHeartbeat", () => {
   it("tick() does NOT call testConnection for fresh (recently-tested) providers", async () => {
     const { api } = await import("../services/api");
     const { useProviderStore } = await import("../stores/providers");
-    const { useProviderHeartbeat } = await import(
-      "../composables/useProviderHeartbeat"
-    );
+    const { useProviderHeartbeat } =
+      await import("../composables/useProviderHeartbeat");
 
     const store = useProviderStore();
     store.providers.push(makeProvider("p1", "connected", FRESH_AT));
@@ -104,9 +105,8 @@ describe("useProviderHeartbeat", () => {
   it("tick() does NOT call testConnection for failed providers", async () => {
     const { api } = await import("../services/api");
     const { useProviderStore } = await import("../stores/providers");
-    const { useProviderHeartbeat } = await import(
-      "../composables/useProviderHeartbeat"
-    );
+    const { useProviderHeartbeat } =
+      await import("../composables/useProviderHeartbeat");
 
     const store = useProviderStore();
     store.providers.push(makeProvider("p1", "failed", STALE_AT));
@@ -121,9 +121,8 @@ describe("useProviderHeartbeat", () => {
   it("tick() does NOT call testConnection for untested providers", async () => {
     const { api } = await import("../services/api");
     const { useProviderStore } = await import("../stores/providers");
-    const { useProviderHeartbeat } = await import(
-      "../composables/useProviderHeartbeat"
-    );
+    const { useProviderHeartbeat } =
+      await import("../composables/useProviderHeartbeat");
 
     const store = useProviderStore();
     store.providers.push(makeProvider("p1", "untested", null));
@@ -138,13 +137,15 @@ describe("useProviderHeartbeat", () => {
   it("start() fires tick automatically every 2 minutes", async () => {
     const { api } = await import("../services/api");
     const { useProviderStore } = await import("../stores/providers");
-    const { useProviderHeartbeat } = await import(
-      "../composables/useProviderHeartbeat"
-    );
+    const { useProviderHeartbeat } =
+      await import("../composables/useProviderHeartbeat");
 
     const store = useProviderStore();
     store.providers.push(makeProvider("p1", "connected", STALE_AT));
-    vi.mocked(api.post).mockResolvedValue({ status: "connected", latencyMs: 50 });
+    vi.mocked(api.post).mockResolvedValue({
+      status: "connected",
+      latencyMs: 50,
+    });
 
     const { start, stop } = useProviderHeartbeat();
     start();
@@ -165,13 +166,15 @@ describe("useProviderHeartbeat", () => {
   it("stop() cancels the interval so no more ticks fire", async () => {
     const { api } = await import("../services/api");
     const { useProviderStore } = await import("../stores/providers");
-    const { useProviderHeartbeat } = await import(
-      "../composables/useProviderHeartbeat"
-    );
+    const { useProviderHeartbeat } =
+      await import("../composables/useProviderHeartbeat");
 
     const store = useProviderStore();
     store.providers.push(makeProvider("p1", "connected", STALE_AT));
-    vi.mocked(api.post).mockResolvedValue({ status: "connected", latencyMs: 50 });
+    vi.mocked(api.post).mockResolvedValue({
+      status: "connected",
+      latencyMs: 50,
+    });
 
     const { start, stop } = useProviderHeartbeat();
     start();
@@ -185,13 +188,15 @@ describe("useProviderHeartbeat", () => {
   it("start() is idempotent — calling it twice does not create two timers", async () => {
     const { api } = await import("../services/api");
     const { useProviderStore } = await import("../stores/providers");
-    const { useProviderHeartbeat } = await import(
-      "../composables/useProviderHeartbeat"
-    );
+    const { useProviderHeartbeat } =
+      await import("../composables/useProviderHeartbeat");
 
     const store = useProviderStore();
     store.providers.push(makeProvider("p1", "connected", STALE_AT));
-    vi.mocked(api.post).mockResolvedValue({ status: "connected", latencyMs: 50 });
+    vi.mocked(api.post).mockResolvedValue({
+      status: "connected",
+      latencyMs: 50,
+    });
 
     const { start, stop } = useProviderHeartbeat();
     start();
@@ -208,14 +213,16 @@ describe("useProviderHeartbeat", () => {
   it("tick() treats a provider with no lastTestedAt as stale", async () => {
     const { api } = await import("../services/api");
     const { useProviderStore } = await import("../stores/providers");
-    const { useProviderHeartbeat } = await import(
-      "../composables/useProviderHeartbeat"
-    );
+    const { useProviderHeartbeat } =
+      await import("../composables/useProviderHeartbeat");
 
     const store = useProviderStore();
     // null lastTestedAt = never tested → stale
     store.providers.push(makeProvider("p1", "connected", null));
-    vi.mocked(api.post).mockResolvedValue({ status: "connected", latencyMs: 50 });
+    vi.mocked(api.post).mockResolvedValue({
+      status: "connected",
+      latencyMs: 50,
+    });
 
     const { tick } = useProviderHeartbeat();
     tick();

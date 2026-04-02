@@ -36,7 +36,10 @@
             type="button"
             class="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[var(--color-navy)]"
             style="color: var(--color-text-dim)"
-            @click.stop="showPlusMenu = !showPlusMenu; showModelMenu = false"
+            @click.stop="
+              showPlusMenu = !showPlusMenu;
+              showModelMenu = false;
+            "
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -209,7 +212,10 @@
               type="button"
               class="flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition-colors hover:bg-[var(--color-navy)]"
               style="color: var(--color-text-dim)"
-              @click.stop="showModelMenu = !showModelMenu; showPlusMenu = false"
+              @click.stop="
+                showModelMenu = !showModelMenu;
+                showPlusMenu = false;
+              "
             >
               <!-- Provider status dot -->
               <span
@@ -371,7 +377,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from "vue";
+import { ref, computed, watchEffect, onMounted, onUnmounted } from "vue";
 import { RouterLink } from "vue-router";
 import MenuItemWithSubmenu from "./MenuItemWithSubmenu.vue";
 import { useProviderStore } from "@/stores/providers";
@@ -403,8 +409,9 @@ const activeProvider = computed(
     null,
 );
 
-// Keep activeProviderId in sync when providers load / change
-computed(() => {
+// Keep activeProviderId in sync when providers load / change.
+// watchEffect (not computed) because this intentionally writes reactive state.
+watchEffect(() => {
   if (!activeProviderId.value && activeProvider.value) {
     activeProviderId.value = activeProvider.value.id;
     activeModelId.value = activeProvider.value.models?.[0] ?? "";

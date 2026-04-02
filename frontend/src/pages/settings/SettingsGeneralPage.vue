@@ -100,12 +100,17 @@
                   ? 'var(--color-gold)'
                   : 'var(--color-border)',
               }"
-              @click="settings.keepIntermediates = !settings.keepIntermediates; save()"
+              @click="
+                settings.keepIntermediates = !settings.keepIntermediates;
+                save();
+              "
             >
               <span
                 class="pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-sm transition-transform"
                 style="background: var(--color-navy-deep)"
-                :class="settings.keepIntermediates ? 'translate-x-4' : 'translate-x-0'"
+                :class="
+                  settings.keepIntermediates ? 'translate-x-4' : 'translate-x-0'
+                "
               />
             </button>
           </div>

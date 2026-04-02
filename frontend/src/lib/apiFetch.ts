@@ -24,8 +24,7 @@ const STATUS_MESSAGES: Record<number, string> = {
 };
 
 function humanise(status: number, serverMessage?: string): string {
-  const base =
-    STATUS_MESSAGES[status] ?? "An unexpected error occurred.";
+  const base = STATUS_MESSAGES[status] ?? "An unexpected error occurred.";
   const suffix = serverMessage ? ` — ${serverMessage}` : "";
   return `${base} (${status})${suffix}`;
 }

@@ -72,11 +72,7 @@ describe("apiFetch", () => {
   });
 
   it("retries on 502 up to 3 times then throws ApiError", async () => {
-    setupFetch(
-      mockResponse(502),
-      mockResponse(502),
-      mockResponse(502),
-    );
+    setupFetch(mockResponse(502), mockResponse(502), mockResponse(502));
     const p = apiFetch("/test", { retries: 3, backoffMs: 0 });
     await vi.runAllTimersAsync();
     await expect(p).rejects.toBeInstanceOf(ApiError);
@@ -88,7 +84,8 @@ describe("apiFetch", () => {
     vi.stubGlobal(
       "fetch",
       vi.fn().mockImplementation(() => {
-        if (call++ === 0) return Promise.reject(new TypeError("Failed to fetch"));
+        if (call++ === 0)
+          return Promise.reject(new TypeError("Failed to fetch"));
         return Promise.resolve(mockResponse(200, { recovered: true }));
       }),
     );
@@ -139,7 +136,7 @@ describe("apiFetch", () => {
     setupFetch(mockResponse(401));
     const p = apiFetch("/test", { backoffMs: 0 });
     await vi.runAllTimersAsync();
-    const err = await p.catch((e) => e) as ApiError;
+    const err = (await p.catch((e) => e)) as ApiError;
     expect(err).toBeInstanceOf(ApiError);
     expect(err.humanMessage).toContain("session has expired");
     expect(err.humanMessage).toContain("(401)");
@@ -150,7 +147,7 @@ describe("apiFetch", () => {
     setupFetch(mockResponse(403));
     const p = apiFetch("/test", { backoffMs: 0 });
     await vi.runAllTimersAsync();
-    const err = await p.catch((e) => e) as ApiError;
+    const err = (await p.catch((e) => e)) as ApiError;
     expect(err.humanMessage).toContain("don't have permission");
     expect(err.humanMessage).toContain("(403)");
   });
@@ -159,7 +156,7 @@ describe("apiFetch", () => {
     setupFetch(mockResponse(404));
     const p = apiFetch("/test", { backoffMs: 0 });
     await vi.runAllTimersAsync();
-    const err = await p.catch((e) => e) as ApiError;
+    const err = (await p.catch((e) => e)) as ApiError;
     expect(err.humanMessage).toContain("not found");
     expect(err.humanMessage).toContain("(404)");
   });
@@ -168,7 +165,7 @@ describe("apiFetch", () => {
     setupFetch(mockResponse(422));
     const p = apiFetch("/test", { backoffMs: 0 });
     await vi.runAllTimersAsync();
-    const err = await p.catch((e) => e) as ApiError;
+    const err = (await p.catch((e) => e)) as ApiError;
     expect(err.humanMessage).toContain("invalid");
     expect(err.humanMessage).toContain("(422)");
   });
@@ -177,7 +174,7 @@ describe("apiFetch", () => {
     setupFetch(mockResponse(500, {}));
     const p = apiFetch("/test", { retries: 1, backoffMs: 0 });
     await vi.runAllTimersAsync();
-    const err = await p.catch((e) => e) as ApiError;
+    const err = (await p.catch((e) => e)) as ApiError;
     expect(err.humanMessage).toContain("server ran into a problem");
     expect(err.humanMessage).toContain("(500)");
   });
@@ -186,7 +183,7 @@ describe("apiFetch", () => {
     setupFetch(mockResponse(502, {}));
     const p = apiFetch("/test", { retries: 1, backoffMs: 0 });
     await vi.runAllTimersAsync();
-    const err = await p.catch((e) => e) as ApiError;
+    const err = (await p.catch((e) => e)) as ApiError;
     expect(err.humanMessage).toContain("temporarily unavailable");
     expect(err.humanMessage).toContain("(502)");
   });
@@ -195,7 +192,7 @@ describe("apiFetch", () => {
     setupFetch(mockResponse(503, {}));
     const p = apiFetch("/test", { retries: 1, backoffMs: 0 });
     await vi.runAllTimersAsync();
-    const err = await p.catch((e) => e) as ApiError;
+    const err = (await p.catch((e) => e)) as ApiError;
     expect(err.humanMessage).toContain("temporarily unavailable");
     expect(err.humanMessage).toContain("(503)");
   });
@@ -204,7 +201,7 @@ describe("apiFetch", () => {
     setupFetch(mockResponse(504, {}));
     const p = apiFetch("/test", { retries: 1, backoffMs: 0 });
     await vi.runAllTimersAsync();
-    const err = await p.catch((e) => e) as ApiError;
+    const err = (await p.catch((e) => e)) as ApiError;
     expect(err.humanMessage).toContain("took too long");
     expect(err.humanMessage).toContain("(504)");
   });
@@ -213,7 +210,7 @@ describe("apiFetch", () => {
     setupFetch(mockResponse(422, { error: "email already taken" }));
     const p = apiFetch("/test", { backoffMs: 0 });
     await vi.runAllTimersAsync();
-    const err = await p.catch((e) => e) as ApiError;
+    const err = (await p.catch((e) => e)) as ApiError;
     expect(err.humanMessage).toContain("email already taken");
     expect(err.humanMessage).toContain("(422)");
   });
@@ -222,7 +219,7 @@ describe("apiFetch", () => {
     setupFetch(mockResponse(418)); // I'm a teapot
     const p = apiFetch("/test", { backoffMs: 0 });
     await vi.runAllTimersAsync();
-    const err = await p.catch((e) => e) as ApiError;
+    const err = (await p.catch((e) => e)) as ApiError;
     expect(err.humanMessage).toContain("unexpected error");
     expect(err.humanMessage).toContain("(418)");
   });
@@ -231,7 +228,7 @@ describe("apiFetch", () => {
     setupFetchNetworkError();
     const p = apiFetch("/test", { retries: 1, backoffMs: 0 });
     await vi.runAllTimersAsync();
-    const err = await p.catch((e) => e) as ApiError;
+    const err = (await p.catch((e) => e)) as ApiError;
     expect(err).toBeInstanceOf(ApiError);
     expect(err.humanMessage).toContain("Could not reach the server");
     expect(err.code).toBe("network error");
@@ -248,7 +245,11 @@ describe("apiFetch", () => {
   });
 
   it("succeeds on 3rd attempt when retries: 3", async () => {
-    setupFetch(mockResponse(503), mockResponse(503), mockResponse(200, { done: true }));
+    setupFetch(
+      mockResponse(503),
+      mockResponse(503),
+      mockResponse(200, { done: true }),
+    );
     const p = apiFetch("/test", { retries: 3, backoffMs: 0 });
     await vi.runAllTimersAsync();
     const result = await p;
