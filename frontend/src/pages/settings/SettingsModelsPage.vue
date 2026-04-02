@@ -185,11 +185,7 @@ import { ref, computed, onMounted, watch } from "vue";
 import { useProviderStore } from "@/stores/providers";
 import LoadingSpinner from "@/components/common/LoadingSpinner.vue";
 import ProviderCard from "@/components/settings/ProviderCard.vue";
-import type {
-  ProviderConfig,
-  ProviderType,
-  AuthMethod,
-} from "@/types/provider";
+import type { ProviderType, AuthMethod } from "@/types/provider";
 
 const providerStore = useProviderStore();
 
