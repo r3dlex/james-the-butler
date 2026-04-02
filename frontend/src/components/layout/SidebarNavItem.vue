@@ -31,6 +31,10 @@ import {
   Puzzle,
   Zap,
   Radio,
+  Cpu,
+  Sliders,
+  Plug,
+  Home,
 } from "lucide-vue-next";
 
 const props = defineProps<{
@@ -55,6 +59,10 @@ const iconMap: Record<string, unknown> = {
   puzzle: Puzzle,
   zap: Zap,
   radio: Radio,
+  cpu: Cpu,
+  sliders: Sliders,
+  plug: Plug,
+  home: Home,
 };
 
 const iconComponent = computed(() => iconMap[props.icon] ?? MessageSquare);

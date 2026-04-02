@@ -21,15 +21,18 @@
     />
 
     <div v-else class="space-y-2">
-      <RouterLink
+      <div
         v-for="session in sessionStore.sortedSessions"
         :key="session.id"
-        :to="`/sessions/${session.id}`"
-        class="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-[var(--color-surface)]"
+        class="group flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-[var(--color-surface)]"
         style="border-color: var(--color-border)"
       >
-        <div class="flex items-center gap-3">
-          <div class="flex flex-col">
+        <!-- Clickable area navigates to session -->
+        <RouterLink
+          :to="`/sessions/${session.id}`"
+          class="flex min-w-0 flex-1 items-center gap-3"
+        >
+          <div class="flex min-w-0 flex-col">
             <span class="text-sm font-medium" style="color: var(--color-text)">
               {{ session.name }}
             </span>
@@ -40,7 +43,8 @@
               {{ agentTypeLabel(session.agentType) }}
             </span>
           </div>
-        </div>
+        </RouterLink>
+
         <div class="flex items-center gap-3">
           <StatusBadge :status="session.status" />
           <span
@@ -49,28 +53,80 @@
           >
             {{ formatDate(session.updatedAt) }}
           </span>
+
+          <!-- Delete button — visible on hover -->
+          <button
+            class="rounded-md px-2.5 py-1 text-xs font-medium opacity-0 transition-opacity group-hover:opacity-100"
+            style="
+              background: rgba(239, 68, 68, 0.12);
+              color: var(--color-risk-red);
+              border: 1px solid rgba(239, 68, 68, 0.3);
+            "
+            :title="`Delete session '${session.name}'`"
+            @click.prevent="requestDelete(session.id, session.name)"
+          >
+            Delete
+          </button>
         </div>
-      </RouterLink>
+      </div>
     </div>
+
+    <!-- Delete confirmation dialog -->
+    <ConfirmDialog
+      :open="confirmOpen"
+      title="Delete session?"
+      :description="`'${confirmSessionName}' and all its messages will be permanently deleted from the database. This cannot be undone.`"
+      confirm-label="Delete"
+      cancel-label="Cancel"
+      variant="danger"
+      @confirm="confirmDelete"
+      @cancel="cancelDelete"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted } from "vue";
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import { useSessionStore } from "@/stores/sessions";
 import type { AgentType } from "@/types/session";
 import StatusBadge from "@/components/common/StatusBadge.vue";
 import LoadingSpinner from "@/components/common/LoadingSpinner.vue";
 import EmptyState from "@/components/common/EmptyState.vue";
+import ConfirmDialog from "@/components/ui/ConfirmDialog.vue";
 
 const sessionStore = useSessionStore();
 const router = useRouter();
 
+// ── Delete confirmation state ────────────────────────────────────────────────
+const confirmOpen = ref(false);
+const confirmSessionId = ref<string | null>(null);
+const confirmSessionName = ref("");
+
+function requestDelete(id: string, name: string) {
+  confirmSessionId.value = id;
+  confirmSessionName.value = name;
+  confirmOpen.value = true;
+}
+
+async function confirmDelete() {
+  if (!confirmSessionId.value) return;
+  await sessionStore.deleteSession(confirmSessionId.value);
+  confirmOpen.value = false;
+  confirmSessionId.value = null;
+}
+
+function cancelDelete() {
+  confirmOpen.value = false;
+  confirmSessionId.value = null;
+}
+
+// ── Lifecycle ────────────────────────────────────────────────────────────────
 onMounted(() => {
   sessionStore.fetchSessions();
 });
 
+// ── Actions ──────────────────────────────────────────────────────────────────
 async function quickCreate() {
   const session = await sessionStore.createSession({
     agentType: "chat",
@@ -81,6 +137,7 @@ async function quickCreate() {
   }
 }
 
+// ── Helpers ──────────────────────────────────────────────────────────────────
 const agentTypeLabels: Record<AgentType, string> = {
   chat: "Chat",
   code: "Code",
@@ -93,13 +150,16 @@ function agentTypeLabel(type: AgentType): string {
   return agentTypeLabels[type] ?? type;
 }
 
-function formatDate(iso: string): string {
+function formatDate(iso: string | null | undefined): string {
+  if (!iso) return "—";
   const d = new Date(iso);
+  if (isNaN(d.getTime())) return "—";
   const now = new Date();
   const diff = now.getTime() - d.getTime();
-  if (diff < 60000) return "just now";
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  if (diff < 0) return "just now"; // future timestamps (clock skew)
+  if (diff < 60_000) return "just now";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
   return d.toLocaleDateString();
 }
 </script>

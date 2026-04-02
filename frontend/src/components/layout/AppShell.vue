@@ -39,9 +39,28 @@
     <!-- Main content -->
     <div class="flex flex-1 flex-col overflow-hidden">
       <AppHeader @search="showSearch = true" />
-      <main class="flex-1 overflow-auto">
-        <slot />
-      </main>
+
+      <!-- When sidebar is collapsed and we're on a settings route, show a
+           secondary settings nav panel to the left of the page content.
+           This fulfils the "dockable mode" requirement where settings sub-menus
+           appear in the main area with a divider. -->
+      <div class="flex flex-1 overflow-hidden">
+        <SettingsNavPanel
+          v-if="sidebarCollapsed && isSettingsRoute"
+          class="flex-shrink-0"
+        />
+
+        <!-- Divider between settings panel and page content -->
+        <div
+          v-if="sidebarCollapsed && isSettingsRoute"
+          class="h-full w-px flex-shrink-0"
+          style="background: var(--color-border)"
+        />
+
+        <main class="flex-1 overflow-auto">
+          <slot />
+        </main>
+      </div>
     </div>
 
     <SearchOverlay :visible="showSearch" @close="showSearch = false" />
@@ -49,12 +68,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted, onUnmounted } from "vue";
+import { ref, computed, watch, onMounted, onUnmounted } from "vue";
+import { useRoute } from "vue-router";
 import AppSidebar from "./AppSidebar.vue";
 import AppHeader from "./AppHeader.vue";
 import SearchOverlay from "./SearchOverlay.vue";
+import SettingsNavPanel from "./SettingsNavPanel.vue";
 
 const showSearch = ref(false);
+const route = useRoute();
 
 // ── Dockable sidebar ──────────────────────────────────────────────────────────
 const STORAGE_KEY = "james_sidebar_collapsed";
@@ -69,6 +91,18 @@ function toggleSidebar() {
   sidebarCollapsed.value = !sidebarCollapsed.value;
 }
 
+// ── Settings route detection ──────────────────────────────────────────────────
+// These are all paths that belong to the "Settings" group.  When the sidebar
+// is collapsed and the user is on one of these paths, the SettingsNavPanel is
+// rendered in the main content area instead of inside the sidebar.
+const SETTINGS_PATHS = ["/settings", "/hosts", "/openclaw", "/mobile-setup"];
+
+const isSettingsRoute = computed(() =>
+  SETTINGS_PATHS.some(
+    (p) => route.path === p || route.path.startsWith(p + "/"),
+  ),
+);
+
 // ── Global keyboard shortcuts ─────────────────────────────────────────────────
 function handleKeydown(e: KeyboardEvent) {
   const tag = (e.target as HTMLElement)?.tagName;
@@ -80,7 +114,7 @@ function handleKeydown(e: KeyboardEvent) {
     showSearch.value = true;
   }
 
-  // "[" → toggle sidebar (same as many dev tools)
+  // Cmd/Ctrl + "[" → toggle sidebar
   if (e.key === "[" && (e.metaKey || e.ctrlKey)) {
     e.preventDefault();
     toggleSidebar();
