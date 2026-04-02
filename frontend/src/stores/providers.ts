@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref, computed } from "vue";
 import { api } from "@/services/api";
+import { toHumanError } from "@/lib/apiFetch";
 import type { ProviderConfig } from "@/types/provider";
 
 export const useProviderStore = defineStore("providers", () => {
@@ -28,10 +29,7 @@ export const useProviderStore = defineStore("providers", () => {
         fetchModels(p.id).catch(() => {});
       }
     } catch (e: unknown) {
-      error.value =
-        e && typeof e === "object" && "error" in e
-          ? String((e as { error: unknown }).error)
-          : "Failed to fetch providers";
+      error.value = toHumanError(e, "Failed to fetch providers");
     } finally {
       loading.value = false;
     }
@@ -61,10 +59,7 @@ export const useProviderStore = defineStore("providers", () => {
       }
       fetchModels(added.id).catch(() => {});
     } catch (e: unknown) {
-      error.value =
-        e && typeof e === "object" && "error" in e
-          ? String((e as { error: unknown }).error)
-          : "Failed to add provider";
+      error.value = toHumanError(e, "Failed to add provider");
     } finally {
       loading.value = false;
     }
@@ -84,10 +79,7 @@ export const useProviderStore = defineStore("providers", () => {
           models: providers.value[idx].models || [],
         };
     } catch (e: unknown) {
-      error.value =
-        e && typeof e === "object" && "error" in e
-          ? String((e as { error: unknown }).error)
-          : "Failed to update provider";
+      error.value = toHumanError(e, "Failed to update provider");
     }
   }
 
@@ -97,10 +89,7 @@ export const useProviderStore = defineStore("providers", () => {
       await api.delete(`/api/providers/${id}`);
       providers.value = providers.value.filter((p) => p.id !== id);
     } catch (e: unknown) {
-      error.value =
-        e && typeof e === "object" && "error" in e
-          ? String((e as { error: unknown }).error)
-          : "Failed to remove provider";
+      error.value = toHumanError(e, "Failed to remove provider");
     }
   }
 
@@ -126,10 +115,7 @@ export const useProviderStore = defineStore("providers", () => {
       }
       return { status: result.status, reason: result.reason };
     } catch (e: unknown) {
-      const reason =
-        e && typeof e === "object" && "error" in e
-          ? String((e as { error: unknown }).error)
-          : "Failed to test connection";
+      const reason = toHumanError(e, "Failed to test connection");
       const idx = providers.value.findIndex((p) => p.id === id);
       if (idx !== -1)
         providers.value[idx] = { ...providers.value[idx], status: "failed" };

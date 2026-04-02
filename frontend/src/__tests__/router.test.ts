@@ -104,13 +104,19 @@ describe("Router configuration", () => {
     expect((root as { redirect?: string })?.redirect).toBe("/sessions");
   });
 
-  it("has a /settings redirect to /settings/models", async () => {
+  it("has a /settings redirect to /settings/general", async () => {
     const routes = await getRoutes();
     const settings = routes.find((r) => r.path === "/settings");
     expect(settings).toBeDefined();
     expect((settings as { redirect?: string })?.redirect).toBe(
-      "/settings/models",
+      "/settings/general",
     );
+  });
+
+  it("has a /settings/general route", async () => {
+    const routes = await getRoutes();
+    const paths = routes.map((r) => r.path);
+    expect(paths).toContain("/settings/general");
   });
 
   it("has an /openclaw route", async () => {

@@ -1,3 +1,5 @@
+import { apiFetch } from "@/lib/apiFetch";
+
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:4000";
 
 // Recursively convert camelCase keys to snake_case for outgoing requests
@@ -42,47 +44,35 @@ class ApiClient {
   }
 
   async get<T>(path: string): Promise<T> {
-    const res = await fetch(`${BASE_URL}${path}`, { headers: this.headers() });
-    if (!res.ok) throw await this.toError(res);
-    return camelize(await res.json()) as T;
+    const raw = await apiFetch<unknown>(`${BASE_URL}${path}`, {
+      headers: this.headers(),
+    });
+    return camelize(raw) as T;
   }
 
   async post<T>(path: string, body?: unknown): Promise<T> {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const raw = await apiFetch<unknown>(`${BASE_URL}${path}`, {
       method: "POST",
       headers: this.headers(),
       body: body ? JSON.stringify(snakify(body)) : undefined,
     });
-    if (!res.ok) throw await this.toError(res);
-    return camelize(await res.json()) as T;
+    return camelize(raw) as T;
   }
 
   async put<T>(path: string, body?: unknown): Promise<T> {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    const raw = await apiFetch<unknown>(`${BASE_URL}${path}`, {
       method: "PUT",
       headers: this.headers(),
       body: body ? JSON.stringify(snakify(body)) : undefined,
     });
-    if (!res.ok) throw await this.toError(res);
-    return camelize(await res.json()) as T;
+    return camelize(raw) as T;
   }
 
   async delete(path: string): Promise<void> {
-    const res = await fetch(`${BASE_URL}${path}`, {
+    await apiFetch<unknown>(`${BASE_URL}${path}`, {
       method: "DELETE",
       headers: this.headers(),
     });
-    if (!res.ok) throw await this.toError(res);
-  }
-
-  private async toError(
-    res: Response,
-  ): Promise<{ error: string; detail?: string }> {
-    try {
-      return await res.json();
-    } catch {
-      return { error: `HTTP ${res.status}`, detail: res.statusText };
-    }
   }
 }
 

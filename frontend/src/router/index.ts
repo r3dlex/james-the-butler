@@ -66,9 +66,17 @@ const router = createRouter({
       path: "/mobile-setup",
       component: () => import("@/pages/MobileSetupPage.vue"),
     },
+
+    // ── Settings ──────────────────────────────────────────────────────────────
     {
+      // Default redirect goes to General (not Models) so there's always a
+      // "home" settings page that isn't provider-specific.
       path: "/settings",
-      redirect: "/settings/models",
+      redirect: "/settings/general",
+    },
+    {
+      path: "/settings/general",
+      component: () => import("@/pages/settings/SettingsGeneralPage.vue"),
     },
     {
       path: "/settings/models",
@@ -92,7 +100,8 @@ const router = createRouter({
     },
     {
       path: "/settings/execution-mode",
-      component: () => import("@/pages/settings/SettingsExecutionModePage.vue"),
+      component: () =>
+        import("@/pages/settings/SettingsExecutionModePage.vue"),
     },
     {
       path: "/settings/memory",
@@ -130,6 +139,7 @@ const router = createRouter({
   ],
 });
 
+// ── Auth guard ────────────────────────────────────────────────────────────────
 router.beforeEach((to) => {
   if (to.meta.public) return true;
 
@@ -138,6 +148,31 @@ router.beforeEach((to) => {
     return { path: "/login", query: { redirect: to.fullPath } };
   }
   return true;
+});
+
+// ── Background provider health check when entering Settings ──────────────────
+// Re-tests any provider that has never been tested OR whose last test is
+// older than 30 minutes. Runs silently in the background.
+router.afterEach((to, from) => {
+  // Only trigger when actually navigating *into* settings (not within it)
+  if (!to.path.startsWith("/settings")) return;
+  if (from.path.startsWith("/settings")) return;
+
+  // Lazy-import avoids circular dependency issues
+  import("@/stores/providers").then(({ useProviderStore }) => {
+    const providerStore = useProviderStore();
+    const THIRTY_MIN_MS = 30 * 60 * 1000;
+
+    providerStore.providers.forEach((p) => {
+      const isStale =
+        !p.lastTestedAt ||
+        Date.now() - new Date(p.lastTestedAt).getTime() > THIRTY_MIN_MS;
+
+      if (p.status === "untested" || (p.status === "connected" && isStale)) {
+        providerStore.testConnection(p.id).catch(() => {});
+      }
+    });
+  });
 });
 
 export default router;

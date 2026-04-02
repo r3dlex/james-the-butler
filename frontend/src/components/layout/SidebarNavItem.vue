@@ -1,14 +1,16 @@
 <template>
   <RouterLink
     :to="path"
-    class="flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors"
-    :class="
-      isActive ? 'bg-[var(--color-surface)]' : 'hover:bg-[var(--color-surface)]'
-    "
+    class="flex items-center rounded-md py-2 text-sm transition-colors"
+    :class="[
+      isActive ? 'bg-[var(--color-surface)]' : 'hover:bg-[var(--color-surface)]',
+      collapsed ? 'justify-center px-2' : 'gap-2 px-3',
+    ]"
     :style="{ color: isActive ? 'var(--color-gold)' : 'var(--color-text-dim)' }"
+    :title="collapsed ? label : undefined"
   >
-    <component :is="iconComponent" class="h-4 w-4" />
-    <span>{{ label }}</span>
+    <component :is="iconComponent" class="h-4 w-4 shrink-0" />
+    <span v-if="!collapsed">{{ label }}</span>
   </RouterLink>
 </template>
 
@@ -33,6 +35,7 @@ const props = defineProps<{
   label: string;
   path: string;
   icon: string;
+  collapsed?: boolean;
 }>();
 
 const route = useRoute();

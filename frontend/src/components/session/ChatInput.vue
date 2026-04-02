@@ -23,7 +23,7 @@
         @focus="focused = true"
         @blur="focused = false"
         @input="autoResize"
-        @keydown.enter.exact="submit"
+        @keydown.enter.exact.prevent="submit"
       />
 
       <!-- Bottom toolbar row -->
@@ -31,12 +31,12 @@
         class="absolute bottom-0 left-0 right-0 flex items-center justify-between px-2 pb-2"
       >
         <!-- Left: + button -->
-        <div class="relative">
+        <div ref="plusMenuWrapRef" class="relative">
           <button
             type="button"
             class="flex h-8 w-8 items-center justify-center rounded-lg transition-colors hover:bg-[var(--color-navy)]"
             style="color: var(--color-text-dim)"
-            @click="showPlusMenu = !showPlusMenu"
+            @click.stop="showPlusMenu = !showPlusMenu; showModelMenu = false"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -62,6 +62,7 @@
               background: var(--color-navy);
               border-color: var(--color-border);
             "
+            @click.stop
           >
             <button
               class="flex w-full items-center gap-3 px-4 py-2 text-sm transition-colors hover:bg-[var(--color-surface)]"
@@ -111,7 +112,6 @@
 
             <button
               class="flex w-full items-center gap-3 px-4 py-2 text-sm transition-colors hover:bg-[var(--color-surface)]"
-              style="color: var(--color-text)"
               :style="{
                 color: webSearchEnabled
                   ? 'var(--color-risk-green)'
@@ -204,13 +204,19 @@
         <!-- Right: model selector + send -->
         <div class="flex items-center gap-2">
           <!-- Model selector -->
-          <div class="relative">
+          <div ref="modelMenuWrapRef" class="relative">
             <button
               type="button"
               class="flex items-center gap-1 rounded-lg px-2 py-1 text-xs transition-colors hover:bg-[var(--color-navy)]"
               style="color: var(--color-text-dim)"
-              @click="showModelMenu = !showModelMenu"
+              @click.stop="showModelMenu = !showModelMenu; showPlusMenu = false"
             >
+              <!-- Provider status dot -->
+              <span
+                v-if="activeProvider"
+                class="mr-0.5 inline-block h-1.5 w-1.5 rounded-full"
+                :class="providerStatusDot"
+              />
               {{ activeModelLabel }}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -228,38 +234,110 @@
             <!-- Model dropdown -->
             <div
               v-if="showModelMenu"
-              class="absolute bottom-8 right-0 z-50 w-48 rounded-xl border py-2 shadow-xl"
+              class="absolute bottom-8 right-0 z-50 w-56 rounded-xl border py-2 shadow-xl"
               style="
                 background: var(--color-navy);
                 border-color: var(--color-border);
               "
+              @click.stop
             >
-              <button
-                v-for="model in models"
-                :key="model.id"
-                class="flex w-full items-center justify-between px-4 py-2 text-sm transition-colors hover:bg-[var(--color-surface)]"
-                :style="{
-                  color:
-                    activeModel === model.id
-                      ? 'var(--color-accent-blue)'
-                      : 'var(--color-text)',
-                }"
-                @click="selectModel(model.id)"
+              <!-- No providers configured -->
+              <div
+                v-if="providerStore.providers.length === 0"
+                class="px-4 py-3 text-xs"
+                style="color: var(--color-text-dim)"
               >
-                {{ model.label }}
-                <svg
-                  v-if="activeModel === model.id"
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="14"
-                  height="14"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="3"
+                No providers configured.
+                <RouterLink
+                  to="/settings/models"
+                  class="underline"
+                  style="color: var(--color-gold)"
+                  @click="showModelMenu = false"
                 >
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              </button>
+                  Add one in Settings
+                </RouterLink>
+              </div>
+
+              <!-- Provider + model list -->
+              <template v-else>
+                <div
+                  v-for="provider in providerStore.providers"
+                  :key="provider.id"
+                >
+                  <!-- Provider group header -->
+                  <div
+                    class="flex items-center gap-1.5 px-4 pt-2 pb-1 text-xs font-medium"
+                    style="color: var(--color-text-dim)"
+                  >
+                    <span
+                      class="inline-block h-1.5 w-1.5 rounded-full"
+                      :class="dotForStatus(provider.status)"
+                    />
+                    {{ provider.displayName }}
+                  </div>
+
+                  <!-- Models for this provider -->
+                  <template v-if="provider.models && provider.models.length">
+                    <button
+                      v-for="model in provider.models"
+                      :key="`${provider.id}:${model}`"
+                      class="flex w-full items-center justify-between px-4 py-1.5 text-sm transition-colors hover:bg-[var(--color-surface)]"
+                      :style="{
+                        color:
+                          activeProviderId === provider.id &&
+                          activeModelId === model
+                            ? 'var(--color-accent-blue)'
+                            : 'var(--color-text)',
+                      }"
+                      @click="selectModel(provider.id, model)"
+                    >
+                      {{ model }}
+                      <svg
+                        v-if="
+                          activeProviderId === provider.id &&
+                          activeModelId === model
+                        "
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="14"
+                        height="14"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="3"
+                      >
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    </button>
+                  </template>
+
+                  <!-- Fallback: provider but no models yet -->
+                  <button
+                    v-else
+                    class="flex w-full items-center justify-between px-4 py-1.5 text-sm transition-colors hover:bg-[var(--color-surface)]"
+                    :style="{
+                      color:
+                        activeProviderId === provider.id
+                          ? 'var(--color-accent-blue)'
+                          : 'var(--color-text)',
+                    }"
+                    @click="selectModel(provider.id, '')"
+                  >
+                    {{ provider.displayName }}
+                    <svg
+                      v-if="activeProviderId === provider.id"
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="14"
+                      height="14"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="3"
+                    >
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  </button>
+                </div>
+              </template>
             </div>
           </div>
 
@@ -293,28 +371,63 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, onUnmounted } from "vue";
+import { RouterLink } from "vue-router";
 import MenuItemWithSubmenu from "./MenuItemWithSubmenu.vue";
+import { useProviderStore } from "@/stores/providers";
 
 defineProps<{ disabled?: boolean }>();
 const emit = defineEmits<{ send: [text: string] }>();
 
+const providerStore = useProviderStore();
+
 const text = ref("");
 const focused = ref(false);
 const inputRef = ref<HTMLTextAreaElement | null>(null);
+const plusMenuWrapRef = ref<HTMLElement | null>(null);
+const modelMenuWrapRef = ref<HTMLElement | null>(null);
 const showPlusMenu = ref(false);
 const showModelMenu = ref(false);
 const webSearchEnabled = ref(false);
 const activeStyle = ref("normal");
-const activeModel = ref("minimax-m2.7");
 
-const models = [
-  { id: "minimax-m2.7", label: "MiniMax M2.7" },
-  { id: "claude-sonnet-4", label: "Claude Sonnet 4" },
-  { id: "claude-opus-4", label: "Claude Opus 4" },
-  { id: "gpt-4o", label: "GPT-4o" },
-  { id: "local", label: "Local Model" },
-];
+// Active provider / model selection (defaults to first connected provider)
+const activeProviderId = ref<string | null>(null);
+const activeModelId = ref<string>("");
+
+const activeProvider = computed(
+  () =>
+    providerStore.providers.find((p) => p.id === activeProviderId.value) ??
+    providerStore.providers.find((p) => p.status === "connected") ??
+    providerStore.providers[0] ??
+    null,
+);
+
+// Keep activeProviderId in sync when providers load / change
+computed(() => {
+  if (!activeProviderId.value && activeProvider.value) {
+    activeProviderId.value = activeProvider.value.id;
+    activeModelId.value = activeProvider.value.models?.[0] ?? "";
+  }
+});
+
+const activeModelLabel = computed(() => {
+  if (!activeProvider.value) return "No provider";
+  const model = activeModelId.value || activeProvider.value.models?.[0];
+  return model
+    ? `${activeProvider.value.displayName} · ${model}`
+    : activeProvider.value.displayName;
+});
+
+function dotForStatus(status: string): string {
+  if (status === "connected") return "bg-green-500";
+  if (status === "failed") return "bg-red-500";
+  return "bg-yellow-400";
+}
+
+const providerStatusDot = computed(() =>
+  dotForStatus(activeProvider.value?.status ?? "untested"),
+);
 
 const styles = [
   { id: "normal", label: "Normal" },
@@ -324,16 +437,11 @@ const styles = [
   { id: "butler", label: "Butler" },
 ];
 
-const activeModelLabel = computed(
-  () => models.find((m) => m.id === activeModel.value)?.label ?? "Model",
-);
-
 function submit() {
   const t = text.value.trim();
   if (!t) return;
   emit("send", t);
   text.value = "";
-  // Reset textarea height
   if (inputRef.value) inputRef.value.style.height = "44px";
 }
 
@@ -346,11 +454,10 @@ function autoResize() {
 
 function handleMenuAction(action: string) {
   showPlusMenu.value = false;
-  if (action === "files") {
-    // TODO: file picker
-  } else if (action === "dream") {
+  if (action === "dream") {
     text.value = "/dream";
   }
+  // files: TODO file picker
 }
 
 function toggleWebSearch() {
@@ -361,21 +468,32 @@ function setStyle(id: string) {
   activeStyle.value = id;
 }
 
-function selectModel(id: string) {
-  activeModel.value = id;
+function selectModel(providerId: string, model: string) {
+  activeProviderId.value = providerId;
+  activeModelId.value = model;
   showModelMenu.value = false;
+}
+
+// ── Outside-click handler ────────────────────────────────────────────────────
+// Extracted to a named function so it can be removed in onUnmounted,
+// preventing the "UI lock" bug (stale listener after navigation).
+
+function handleOutsideClick(e: MouseEvent) {
+  const target = e.target as Node;
+  if (plusMenuWrapRef.value && !plusMenuWrapRef.value.contains(target)) {
+    showPlusMenu.value = false;
+  }
+  if (modelMenuWrapRef.value && !modelMenuWrapRef.value.contains(target)) {
+    showModelMenu.value = false;
+  }
 }
 
 onMounted(() => {
   inputRef.value?.focus();
+  document.addEventListener("click", handleOutsideClick);
+});
 
-  // Close menus on outside click
-  document.addEventListener("click", (e) => {
-    const target = e.target as HTMLElement;
-    if (!target.closest("[data-menu]") && !target.closest("button")) {
-      showPlusMenu.value = false;
-      showModelMenu.value = false;
-    }
-  });
+onUnmounted(() => {
+  document.removeEventListener("click", handleOutsideClick);
 });
 </script>
