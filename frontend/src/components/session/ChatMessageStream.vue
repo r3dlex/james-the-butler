@@ -12,13 +12,7 @@
     <MessageBubble v-for="msg in messages" :key="msg.id" :message="msg" />
 
     <!-- Streaming assistant response -->
-    <div v-if="isStreaming" class="px-4 py-3">
-      <div
-        class="mb-1 text-xs font-semibold uppercase tracking-wide"
-        style="color: var(--color-accent-blue)"
-      >
-        James
-      </div>
+    <div v-if="isStreaming" class="px-4 py-2">
       <div
         v-if="streamingText"
         class="text-sm leading-relaxed"

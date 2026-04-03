@@ -61,6 +61,25 @@ const makeProject = (id: string, name = `Project ${id}`) => ({
   updatedAt: "2026-01-01T00:00:00Z",
 });
 
+// Stub localStorage so AppSidebar can call getItem/setItem without errors
+const localStorageData: Record<string, string> = {};
+vi.stubGlobal("localStorage", {
+  getItem: (k: string) => localStorageData[k] ?? null,
+  setItem: (k: string, v: string) => {
+    localStorageData[k] = v;
+  },
+  removeItem: (k: string) => {
+    delete localStorageData[k];
+  },
+  clear: () => {
+    for (const k of Object.keys(localStorageData)) delete localStorageData[k];
+  },
+  get length() {
+    return Object.keys(localStorageData).length;
+  },
+  key: (i: number) => Object.keys(localStorageData)[i] ?? null,
+});
+
 describe("Unified sidebar search", () => {
   beforeEach(() => {
     setActivePinia(createPinia());

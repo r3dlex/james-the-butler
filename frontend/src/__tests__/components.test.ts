@@ -185,7 +185,7 @@ describe("MessageBubble", () => {
       await import("../components/session/MessageBubble.vue");
     const message = makeTestMessage("m1", "user", "text", "Hello there");
     const wrapper = mount(MessageBubble, { props: { message } });
-    expect(wrapper.text()).toContain("You");
+    expect(wrapper.text()).toContain("Hello there");
   });
 
   it("renders assistant message", async () => {
@@ -198,7 +198,7 @@ describe("MessageBubble", () => {
       "I can help with that.",
     );
     const wrapper = mount(MessageBubble, { props: { message } });
-    expect(wrapper.text()).toContain("James");
+    expect(wrapper.text()).toContain("I can help with that.");
   });
 
   it("renders command_log content block", async () => {
