@@ -4,6 +4,8 @@ defmodule JamesWeb.SessionChannel do
 
   alias James.Sessions
   alias James.Sessions.AwayDetector
+  alias James.OpenClaw.Orchestrator
+  alias James.Workers.GitStatusWorker
 
   @impl true
   def join("session:" <> session_id, _params, socket) do
@@ -24,6 +26,63 @@ defmodule JamesWeb.SessionChannel do
         {:ok, %{messages: Enum.map(messages, &message_payload/1)},
          assign(socket, :session_id, session_id)}
     end
+  end
+
+  # ---------------------------------------------------------------------------
+  # WebRTC signaling
+  # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_in("webrtc:offer", %{"sdp" => sdp, "session_id" => session_id}, socket) do
+    # Forward the offer to the host's orchestrator.  The orchestrator broadcasts
+    # {:webrtc_offer_received, sdp, viewer_id} to the session topic, where the
+    # host's SessionChannel handle_info delivers it to the client as "webrtc:offer".
+    # If the orchestrator does not know about this session yet (cold start) or
+    # is not running (tests), we fall back to a direct broadcast so the host
+    # can still pick up the offer.
+    viewer_id = socket.assigns.current_user.id
+
+    result =
+      try do
+        Orchestrator.handle_webrtc_offer(session_id, sdp, viewer_id)
+      catch
+        :exit, {:noproc, _} -> {:error, :not_found}
+      end
+
+    case result do
+      :ok ->
+        {:reply, :ok, socket}
+
+      {:error, :not_found} ->
+        :ok =
+          Phoenix.PubSub.broadcast(
+            James.PubSub,
+            "session:#{session_id}",
+            {:webrtc_offer_received, sdp, viewer_id}
+          )
+
+        {:reply, :ok, socket}
+    end
+  end
+
+  @impl true
+  def handle_in("webrtc:answer", %{"sdp" => sdp, "session_id" => session_id}, socket) do
+    :ok =
+      Phoenix.PubSub.broadcast(James.PubSub, "session:#{session_id}", {:webrtc_answer, sdp})
+
+    {:reply, :ok, socket}
+  end
+
+  @impl true
+  def handle_in("webrtc:ice_candidate", payload, socket) do
+    :ok =
+      Phoenix.PubSub.broadcast(
+        James.PubSub,
+        "session:#{socket.assigns.session_id}",
+        {:webrtc_ice_candidate, payload}
+      )
+
+    {:reply, :ok, socket}
   end
 
   @impl true
@@ -52,6 +111,20 @@ defmodule JamesWeb.SessionChannel do
   def handle_info(:after_join, socket) do
     # Subscribe to PubSub for this session to relay events to the client
     Phoenix.PubSub.subscribe(James.PubSub, "session:#{socket.assigns.session_id}")
+
+    # Enqueue git status fetch asynchronously if session has working directories
+    session = Sessions.get_session(socket.assigns.session_id)
+
+    if session && session.working_directories != [] do
+      user = socket.assigns.current_user
+
+      _task =
+        James.TaskSupervisor
+        |> Task.Supervisor.async_nolink(GitStatusWorker, :perform, [
+          %Oban.Job{args: %{"session_id" => socket.assigns.session_id, "user_id" => user.id}}
+        ])
+    end
+
     {:noreply, socket}
   end
 
@@ -72,6 +145,16 @@ defmodule JamesWeb.SessionChannel do
 
   def handle_info({:task_updated, task}, socket) do
     push(socket, "task:updated", task_payload(task))
+    {:noreply, socket}
+  end
+
+  def handle_info({:webrtc_offer_received, sdp, viewer_id}, socket) do
+    push(socket, "webrtc:offer", %{"sdp" => sdp, "from_viewer_id" => viewer_id})
+    {:noreply, socket}
+  end
+
+  def handle_info({:webrtc_ice_candidate, payload}, socket) do
+    push(socket, "webrtc:ice_candidate", payload)
     {:noreply, socket}
   end
 

@@ -21,9 +21,13 @@ config :james, Oban,
   repo: James.Repo,
   plugins: [
     Oban.Plugins.Pruner,
-    {Oban.Plugins.Cron, crontab: [{"* * * * *", James.Workers.HostHealthWorker}]}
+    {Oban.Plugins.Cron,
+     crontab: [
+       {"* * * * *", James.Workers.HostHealthWorker},
+       {"0 3 * * *", James.Workers.CertificateRotationWorker}
+     ]}
   ],
-  queues: [default: 10, memory: 5, summaries: 3, skills: 2]
+  queues: [default: 10, memory: 5, summaries: 3, skills: 2, background: 5]
 
 # Configures the Phoenix JSON library
 config :phoenix, :json_library, Jason

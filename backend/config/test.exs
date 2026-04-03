@@ -15,6 +15,9 @@ config :james, JamesWeb.Endpoint, server: false
 # Disable Oban in tests
 config :james, Oban, testing: :inline
 
+# Disable OpenTelemetry in tests — no OTLP collector, ExUnit captures log output
+config :opentelemetry, :enabled, false
+
 # Print only warnings and errors during test
 config :logger, level: :warning
 

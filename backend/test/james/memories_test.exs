@@ -123,6 +123,82 @@ defmodule James.MemoriesTest do
     end
   end
 
+  describe "search_similar/4 with memory_types filter" do
+    test "returns only memories matching the specified memory_types" do
+      user = create_user("search_mt_#{System.unique_integer()}@example.com")
+      embedding = Enum.map(1..1536, fn _ -> 0.5 end)
+
+      create_memory(user, %{content: "Codebase fact about Elixir", embedding: embedding, memory_type: "codebase_fact"})
+      create_memory(user, %{content: "User preference for dark mode", embedding: embedding, memory_type: "user_preference"})
+      create_memory(user, %{content: "Another codebase fact", embedding: embedding, memory_type: "codebase_fact"})
+      create_memory(user, %{content: "Session summary note", embedding: embedding, memory_type: "session_summary"})
+
+      results = Memories.search_similar(user.id, embedding, 10, memory_types: ["codebase_fact"])
+
+      assert length(results) == 2
+      contents = Enum.map(results, & &1.content)
+      assert "Codebase fact about Elixir" in contents
+      assert "Another codebase fact" in contents
+      refute "User preference for dark mode" in contents
+      refute "Session summary note" in contents
+    end
+
+    test "returns empty list when no memories match the memory_types filter" do
+      user = create_user("search_mt_empty_#{System.unique_integer()}@example.com")
+      embedding = Enum.map(1..1536, fn _ -> 0.5 end)
+
+      create_memory(user, %{content: "General memory", embedding: embedding, memory_type: "general"})
+
+      results = Memories.search_similar(user.id, embedding, 10, memory_types: ["codebase_fact"])
+      assert results == []
+    end
+
+    test "memory_types filter works together with project_id" do
+      user = create_user("search_mt_proj_#{System.unique_integer()}@example.com")
+
+      {:ok, host} =
+        Hosts.create_host(%{name: "proj-host-#{System.unique_integer()}", endpoint: "http://l:1"})
+
+      {:ok, project} =
+        Projects.create_project(%{name: "My Proj", user_id: user.id})
+
+      {:ok, session_in} =
+        Sessions.create_session(%{
+          user_id: user.id, host_id: host.id, name: "In Proj",
+          project_id: project.id, agent_type: "chat"
+        })
+
+      {:ok, session_out} =
+        Sessions.create_session(%{
+          user_id: user.id, host_id: host.id, name: "Outside",
+          agent_type: "chat"
+        })
+
+      embedding = Enum.map(1..1536, fn _ -> 0.5 end)
+
+      create_memory(user, %{
+        content: "Project codebase fact",
+        embedding: embedding,
+        memory_type: "codebase_fact",
+        source_session_id: session_in.id
+      })
+
+      create_memory(user, %{
+        content: "Outside codebase fact",
+        embedding: embedding,
+        memory_type: "codebase_fact",
+        source_session_id: session_out.id
+      })
+
+      results = Memories.search_similar(user.id, embedding, 10,
+        memory_types: ["codebase_fact"], project_id: project.id)
+
+      contents = Enum.map(results, & &1.content)
+      assert "Project codebase fact" in contents
+      refute "Outside codebase fact" in contents
+    end
+  end
+
   describe "search_similar/3" do
     test "returns memories sorted by embedding similarity" do
       user = create_user("search_sim@example.com")

@@ -12,7 +12,8 @@ defmodule James.Agents.ChatAgent do
   alias James.Providers.Registry
   alias James.Workers.MemoryExtractionWorker
 
-  defstruct [:session_id, :task_id, :messages, :system_prompt, :model, :provider, :provider_opts]
+  defstruct [:session_id, :task_id, :messages, :system_prompt, :model, :provider, :provider_opts,
+              :first_user_message, :memory_context]
 
   # --- Client API ---
 
@@ -48,20 +49,37 @@ defmodule James.Agents.ChatAgent do
         %{role: normalize_role(msg.role), content: msg.content}
       end)
 
+    # Fetch memory context using the FIRST user message (for cold-start retrieval)
+    first_user_msg = messages |> Enum.filter(&(&1.role == "user")) |> List.first()
+
+    memory_context =
+      if first_user_msg do
+        user_id = session.user_id
+        case Memories.get_recent_memories(user_id, first_user_msg.content,
+               memory_types: ["user_preference", "session_summary"], limit: 5) do
+          {:ok, results} -> results
+          _ -> []
+        end
+      else
+        []
+      end
+
     # Inject working directories into system prompt
     working_dirs_context = build_working_dirs_context(session)
 
     # Inject relevant memories into system prompt
-    memory_context = build_memory_context(session)
+    previous_session_context = build_previous_session_context(session)
 
     full_system =
       system_prompt
+      |> prepend_memory_section(memory_context)
       |> append_section(working_dirs_context)
       |> append_section(
-        if memory_context != "",
-          do: "## Relevant context from previous sessions:\n" <> memory_context,
+        if previous_session_context != "",
+          do: "## Relevant context from previous sessions:\n" <> previous_session_context,
           else: ""
       )
+      |> append_section(arch_rules())
 
     state = %__MODULE__{
       session_id: session_id,
@@ -70,7 +88,9 @@ defmodule James.Agents.ChatAgent do
       system_prompt: full_system,
       model: model,
       provider: provider,
-      provider_opts: provider_opts
+      provider_opts: provider_opts,
+      first_user_message: first_user_msg,
+      memory_context: memory_context
     }
 
     # Start processing immediately
@@ -216,10 +236,16 @@ defmodule James.Agents.ChatAgent do
     )
   end
 
-  defp build_memory_context(nil), do: ""
+  defp fetch_memory_context(user_id, content) do
+    case Embeddings.generate(content) do
+      {:ok, embedding} -> format_memories(Memories.search_similar(user_id, embedding, 5))
+      {:error, _} -> ""
+    end
+  end
 
-  defp build_memory_context(session) do
-    # Get the last user message to use as query for memory retrieval
+  defp build_previous_session_context(nil), do: ""
+
+  defp build_previous_session_context(session) do
     messages = Sessions.list_messages(session.id)
     last_user_msg = messages |> Enum.filter(&(&1.role == "user")) |> List.last()
 
@@ -230,17 +256,33 @@ defmodule James.Agents.ChatAgent do
     end
   end
 
-  defp fetch_memory_context(user_id, content) do
-    case Embeddings.generate(content) do
-      {:ok, embedding} -> format_memories(Memories.search_similar(user_id, embedding, 5))
-      {:error, _} -> ""
-    end
-  end
-
   defp format_memories([]), do: ""
 
   defp format_memories(memories) do
     Enum.map_join(memories, "\n", fn m -> "- #{m.content}" end)
+  end
+
+  defp prepend_memory_section(prompt, memory_context) do
+    if length(memory_context) > 0 do
+      memory_section = """
+      ## Project Memory
+      #{Enum.map_join(memory_context, "\n", fn m -> "- #{m.content}" end)}
+      """
+      append_section(prompt, memory_section)
+    else
+      prompt
+    end
+  end
+
+  defp arch_rules do
+    """
+    ## Architectural Rules
+    - All business logic goes in `lib/james/` domain modules, NOT in controllers or channels
+    - Database queries go through `Repo` or domain modules, never raw Ecto queries in controllers
+    - Channels handle only message routing and PubSub; no business logic
+    - Workers handle async side effects; no HTTP calls or DB writes directly from GenServers
+    - New modules require corresponding unit tests in `test/james/`
+    """
   end
 
   defp enqueue_memory_extraction(session_id) do
