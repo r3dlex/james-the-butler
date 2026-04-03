@@ -10,6 +10,16 @@ vi.mock("../services/api", () => ({
 vi.mock("../services/phoenix", () => ({
   connectSocket: vi.fn(),
   disconnectSocket: vi.fn(),
+  getSocket: vi.fn(() => ({
+    channel: vi.fn(() => ({
+      join: vi.fn(() => ({ receive: vi.fn().mockReturnThis() })),
+      on: vi.fn(),
+      leave: vi.fn(),
+    })),
+    onOpen: vi.fn(),
+    onClose: vi.fn(),
+    onError: vi.fn(),
+  })),
 }));
 vi.mock("vue-router", () => ({
   useRoute: () => ({ params: { id: "session-1" } }),

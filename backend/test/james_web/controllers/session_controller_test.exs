@@ -91,6 +91,31 @@ defmodule JamesWeb.SessionControllerTest do
       assert json_response(conn, 201)["session"]["agent_type"] == "chat"
     end
 
+    test "stores working_directories when provided", %{conn: conn} do
+      user = create_user("wd_create@example.com")
+      _host = create_host()
+      conn = authed_conn(conn, user)
+
+      conn =
+        post(conn, "/api/sessions", %{
+          name: "WD Session",
+          working_directories: ["/home/user/project", "/tmp/work"]
+        })
+
+      assert json_response(conn, 201)["session"]["working_directories"] == [
+               "/home/user/project",
+               "/tmp/work"
+             ]
+    end
+
+    test "defaults working_directories to empty list", %{conn: conn} do
+      user = create_user("wd_default@example.com")
+      _host = create_host()
+      conn = authed_conn(conn, user)
+      conn = post(conn, "/api/sessions", %{name: "No WD"})
+      assert json_response(conn, 201)["session"]["working_directories"] == []
+    end
+
     test "returns 401 without auth", %{conn: conn} do
       conn = post(conn, "/api/sessions", %{name: "Unauth"})
       assert conn.status == 401
@@ -131,6 +156,18 @@ defmodule JamesWeb.SessionControllerTest do
       conn = authed_conn(conn, user)
       conn = get(conn, "/api/sessions/#{session.id}")
       assert Map.has_key?(json_response(conn, 200)["session"], "message_count")
+    end
+
+    test "returns working_directories in response", %{conn: conn} do
+      user = create_user("wd_show@example.com")
+      host = create_host()
+
+      session =
+        create_session(user, host, %{working_directories: ["/srv/app", "/data"]})
+
+      conn = authed_conn(conn, user)
+      conn = get(conn, "/api/sessions/#{session.id}")
+      assert json_response(conn, 200)["session"]["working_directories"] == ["/srv/app", "/data"]
     end
   end
 

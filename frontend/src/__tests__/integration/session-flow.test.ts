@@ -339,8 +339,11 @@ describe("SessionView — channel event simulation", () => {
     const sessionChannel = mockChannels[`session:${SESSION_ID}`];
     expect(sessionChannel).toBeDefined();
 
+    vi.useFakeTimers();
     sessionChannel._trigger("message:chunk", { content: "Hello " });
     sessionChannel._trigger("message:chunk", { content: "world!" });
+    vi.runAllTimers();
+    vi.useRealTimers();
     await flushPromises();
 
     expect(messageStore.streamingSessionId).toBe(SESSION_ID);

@@ -54,6 +54,34 @@ vi.mock("../services/phoenix", () => ({
   })),
 }));
 
+// Module-level registry used by the usePhoenixChannel mock below.
+// vi.mock factories are hoisted, but they CAN close over module-scope objects
+// (as long as they are plain objects/arrays, not let/var declarations that get
+// re-initialized after hoisting).
+const channelEventRegistry: Record<string, (payload: unknown) => void> = {};
+
+vi.mock("../composables/usePhoenixChannel", () => ({
+  usePhoenixChannel: (_topic: string) => {
+    const mockCh = {
+      join: vi.fn(() => ({ receive: vi.fn().mockReturnThis() })),
+      on: vi.fn(),
+      leave: vi.fn(),
+      push: vi.fn(),
+    };
+    return {
+      channel: { value: mockCh },
+      joined: { value: false },
+      error: { value: null },
+      join: vi.fn(() => mockCh),
+      leave: vi.fn(),
+      on: vi.fn((event: string, cb: (payload: unknown) => void) => {
+        channelEventRegistry[event] = cb;
+      }),
+      push: vi.fn(),
+    };
+  },
+}));
+
 const makeMsg = (
   id: string,
   role: "user" | "assistant" = "user",
@@ -73,6 +101,9 @@ describe("chat deduplication", () => {
   beforeEach(() => {
     localStorageMock.clear();
     setActivePinia(createPinia());
+    // Clear registry between tests
+    for (const k of Object.keys(channelEventRegistry))
+      delete channelEventRegistry[k];
   });
 
   afterEach(() => {
@@ -218,5 +249,50 @@ describe("chat deduplication", () => {
     // Should not duplicate — still only 1 message
     expect(msgs).toHaveLength(1);
     expect(msgs[0].id).toBe("real-id-dup");
+  });
+
+  it("useSessionChannel message:new handler calls replaceOrAppendMessage for user-role messages", async () => {
+    // This test verifies the fix for the doubled-messages bug:
+    // useSessionChannel must call replaceOrAppendMessage (not appendMessage) for
+    // user-role messages so the optimistic temp- message is swapped out instead
+    // of a duplicate being added.
+    //
+    // The usePhoenixChannel mock (defined at module scope above) captures all
+    // registered event handlers into channelEventRegistry so we can fire them here.
+
+    const { useSessionChannel } =
+      await import("../composables/useSessionChannel");
+    const { useMessageStore } = await import("../stores/messages");
+
+    const store = useMessageStore();
+    const replaceOrAppendSpy = vi.spyOn(store, "replaceOrAppendMessage");
+    const appendSpy = vi.spyOn(store, "appendMessage");
+
+    // Invoking the composable triggers the immediate watch which calls connect(),
+    // which in turn calls on("message:new", handler) — captured in channelEventRegistry.
+    useSessionChannel(() => "sess-1");
+
+    // Verify the handler was registered by the composable
+    expect(channelEventRegistry["message:new"]).toBeDefined();
+
+    // Seed an optimistic temp user message (as _doSend places before the HTTP call)
+    store.appendMessage("sess-1", makeMsg("temp-ch-1", "user", "Hello"));
+    appendSpy.mockClear();
+    replaceOrAppendSpy.mockClear();
+
+    // Fire the channel event as the backend would (server echo of the user message)
+    const serverEcho = makeMsg("server-echo-1", "user", "Hello");
+    channelEventRegistry["message:new"](serverEcho);
+
+    // The composable MUST use replaceOrAppendMessage for user-role messages.
+    // If it uses appendMessage instead, the temp- message stays AND server-echo-1
+    // is added — producing the doubled-message bug.
+    expect(replaceOrAppendSpy).toHaveBeenCalledWith("sess-1", serverEcho);
+    expect(appendSpy).not.toHaveBeenCalledWith("sess-1", serverEcho);
+
+    // Final state: exactly one message (the server echo replaced the temp)
+    const msgs = store.getMessages("sess-1");
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0].id).toBe("server-echo-1");
   });
 });

@@ -13,7 +13,9 @@ describe("FolderPathInput", () => {
     expect(textInput.exists()).toBe(true);
   });
 
-  it("renders a 'Browse' button, not 'Upload'", async () => {
+  it("renders a 'Browse' button on desktop, not 'Upload'", async () => {
+    // Simulate Tauri desktop environment
+    (window as unknown as Record<string, unknown>).__TAURI__ = {};
     const { default: FolderPathInput } =
       await import("../components/common/FolderPathInput.vue");
     const wrapper = mount(FolderPathInput);
@@ -27,6 +29,20 @@ describe("FolderPathInput", () => {
       b.text().toLowerCase().includes("upload"),
     );
     expect(uploadButton).toBeUndefined();
+    delete (window as unknown as Record<string, unknown>).__TAURI__;
+  });
+
+  it("hides Browse button on web (no Tauri)", async () => {
+    delete (window as unknown as Record<string, unknown>).__TAURI__;
+    const { default: FolderPathInput } =
+      await import("../components/common/FolderPathInput.vue");
+    const wrapper = mount(FolderPathInput);
+    const buttons = wrapper.findAll("button");
+    const browseButton = buttons.find((b) =>
+      b.text().toLowerCase().includes("browse"),
+    );
+    // On web, no Browse button — user types path directly
+    expect(browseButton).toBeUndefined();
   });
 
   it("shows a label containing 'Folder Path' or 'Working Directory'", async () => {
@@ -69,7 +85,9 @@ describe("FolderPathInput", () => {
     }
   });
 
-  it("has a hidden file input with webkitdirectory for the Browse button", async () => {
+  it("has a hidden file input with webkitdirectory for the Browse button on desktop", async () => {
+    // Simulate Tauri desktop environment
+    (window as unknown as Record<string, unknown>).__TAURI__ = {};
     const { default: FolderPathInput } =
       await import("../components/common/FolderPathInput.vue");
     const wrapper = mount(FolderPathInput);
@@ -77,5 +95,15 @@ describe("FolderPathInput", () => {
     expect(fileInput.exists()).toBe(true);
     // webkitdirectory is a boolean attribute
     expect(fileInput.attributes()).toHaveProperty("webkitdirectory");
+    delete (window as unknown as Record<string, unknown>).__TAURI__;
+  });
+
+  it("has no file input on web (no Tauri)", async () => {
+    delete (window as unknown as Record<string, unknown>).__TAURI__;
+    const { default: FolderPathInput } =
+      await import("../components/common/FolderPathInput.vue");
+    const wrapper = mount(FolderPathInput);
+    const fileInput = wrapper.find('input[type="file"]');
+    expect(fileInput.exists()).toBe(false);
   });
 });

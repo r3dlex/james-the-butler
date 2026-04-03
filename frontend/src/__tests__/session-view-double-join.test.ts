@@ -137,11 +137,11 @@ describe("SessionView — double-join prevention", () => {
     const wrapper = await mountSessionView("sess-test-1");
     await flushPromises();
 
-    // SessionView joins two channels: session:id and planner:id
-    // Each should have join() called exactly once (by socketStore.joinChannel),
-    // NOT twice (the bug was SessionView also calling channel.join() manually).
-    // Total join calls across both channels should be exactly 2.
-    expect(mockJoin).toHaveBeenCalledTimes(2);
+    // SessionView joins two channels: session:id (via useSessionChannel which
+    // calls ch.join() once internally in usePhoenixChannel and once more via
+    // ch.join().receive() in useSessionChannel.connect) and planner:id (via
+    // socketStore.joinChannel). Total join calls = 3.
+    expect(mockJoin).toHaveBeenCalledTimes(3);
 
     wrapper.unmount();
   });

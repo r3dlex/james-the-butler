@@ -12,6 +12,7 @@ defmodule James.Sessions.Session do
     field :status, :string, default: "active"
     field :keep_intermediates, :boolean, default: false
     field :last_used_at, :utc_datetime
+    field :working_directories, {:array, :string}, default: []
 
     belongs_to :user, James.Accounts.User
     belongs_to :host, James.Hosts.Host
@@ -35,7 +36,8 @@ defmodule James.Sessions.Session do
       :personality_id,
       :execution_mode,
       :status,
-      :keep_intermediates
+      :keep_intermediates,
+      :working_directories
     ])
     |> validate_required([:user_id])
     |> validate_inclusion(:agent_type, ["chat", "code", "research", "desktop", "browser"])

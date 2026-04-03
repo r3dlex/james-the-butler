@@ -113,18 +113,50 @@ export const useMessageStore = defineStore("messages", () => {
     }
   }
 
+  // Buffer for batching rapid streaming chunks before committing to reactive state.
+  let _pendingBuffer = "";
+  let _flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function _flushBuffer() {
+    if (_flushTimer !== null) {
+      clearTimeout(_flushTimer);
+      _flushTimer = null;
+    }
+    if (_pendingBuffer === "") return;
+    // Collapse 3+ consecutive newlines to exactly 2.
+    const normalised = _pendingBuffer.replace(/\n{3,}/g, "\n\n");
+    streamingContent.value = normalised;
+    streamingBlocks.value = [{ type: "text", text: normalised }];
+  }
+
   function startStreaming(sessionId: string) {
+    _pendingBuffer = "";
+    if (_flushTimer !== null) {
+      clearTimeout(_flushTimer);
+      _flushTimer = null;
+    }
     streamingSessionId.value = sessionId;
     streamingContent.value = "";
     streamingBlocks.value = [{ type: "text", text: "" }];
   }
 
   function appendStreamChunk(chunk: string) {
-    streamingContent.value += chunk;
-    streamingBlocks.value = [{ type: "text", text: streamingContent.value }];
+    _pendingBuffer += chunk;
+    if (_flushTimer === null) {
+      _flushTimer = setTimeout(() => {
+        _flushTimer = null;
+        _flushBuffer();
+      }, 50);
+    }
   }
 
   function stopStreaming() {
+    // Discard any pending buffer — the assistant message has been committed.
+    _pendingBuffer = "";
+    if (_flushTimer !== null) {
+      clearTimeout(_flushTimer);
+      _flushTimer = null;
+    }
     streamingSessionId.value = null;
     streamingContent.value = "";
     streamingBlocks.value = [];

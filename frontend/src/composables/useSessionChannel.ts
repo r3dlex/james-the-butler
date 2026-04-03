@@ -35,7 +35,13 @@ export function useSessionChannel(sessionId: () => string | null) {
       if (msg.role === "assistant" && messageStore.streamingSessionId === id) {
         messageStore.stopStreaming();
       }
-      messageStore.appendMessage(id, msg);
+      if (msg.role === "user") {
+        // Replace the optimistic temp- message so the server-confirmed message
+        // takes its place without duplicating the entry.
+        messageStore.replaceOrAppendMessage(id, msg);
+      } else {
+        messageStore.appendMessage(id, msg);
+      }
     });
 
     // Streaming assistant text chunk
