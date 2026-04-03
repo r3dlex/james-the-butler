@@ -22,7 +22,6 @@ defmodule James.Application do
           James.Repo,
           {Task.Supervisor, name: James.TaskSupervisor},
           {Phoenix.PubSub, name: James.PubSub},
-          James.Auth.MFASessions,
           JamesWeb.Endpoint
         ]
 
@@ -32,7 +31,6 @@ defmodule James.Application do
           {Task.Supervisor, name: James.TaskSupervisor},
           {Phoenix.PubSub, name: James.PubSub},
           {Oban, Application.fetch_env!(:james, Oban)},
-          James.Auth.MFASessions,
           James.OpenClaw.Supervisor,
           James.OpenClaw.Orchestrator,
           James.Browser.CDPConnectionPool,
