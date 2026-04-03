@@ -246,8 +246,10 @@ defmodule James.Providers.RegistryEnhancedTest do
       assert {:ok, %{module: James.Providers.Anthropic}} =
                Registry.provider_for_session(session, "chat")
 
-      # When queried for a different agent_type with no default, falls back to global
-      assert {:ok, %{module: global_mod, model: nil}} =
+      # When queried for a different agent_type with no default, falls back to
+      # the user's first provider config. Since the config is "anthropic", the
+      # default model for that type is returned.
+      assert {:ok, %{module: global_mod, model: "claude-sonnet-4-20250514"}} =
                Registry.provider_for_session(session, "research")
 
       assert global_mod == LLMProvider.configured()
