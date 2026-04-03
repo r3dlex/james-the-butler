@@ -68,7 +68,9 @@ defmodule James.CodebaseSearchTest do
 
     test "chunks large content into multiple chunks with overlap" do
       # Build content with many lines
-      lines = for i <- 1..100, do: "  line #{i} = #{String.pad_leading(Integer.to_string(i), 3, "0")},"
+      lines =
+        for i <- 1..100, do: "  line #{i} = #{String.pad_leading(Integer.to_string(i), 3, "0")},"
+
       content = "defmodule Example do\n" <> Enum.join(lines, "\n") <> "\nend\n"
 
       chunks = CodebaseSearch.chunk_content(content, 50, 10)

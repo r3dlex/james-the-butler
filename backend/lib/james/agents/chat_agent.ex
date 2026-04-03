@@ -12,8 +12,17 @@ defmodule James.Agents.ChatAgent do
   alias James.Providers.Registry
   alias James.Workers.MemoryExtractionWorker
 
-  defstruct [:session_id, :task_id, :messages, :system_prompt, :model, :provider, :provider_opts,
-              :first_user_message, :memory_context]
+  defstruct [
+    :session_id,
+    :task_id,
+    :messages,
+    :system_prompt,
+    :model,
+    :provider,
+    :provider_opts,
+    :first_user_message,
+    :memory_context
+  ]
 
   # --- Client API ---
 
@@ -55,8 +64,11 @@ defmodule James.Agents.ChatAgent do
     memory_context =
       if first_user_msg do
         user_id = session.user_id
+
         case Memories.get_recent_memories(user_id, first_user_msg.content,
-               memory_types: ["user_preference", "session_summary"], limit: 5) do
+               memory_types: ["user_preference", "session_summary"],
+               limit: 5
+             ) do
           {:ok, results} -> results
           _ -> []
         end
@@ -268,6 +280,7 @@ defmodule James.Agents.ChatAgent do
       ## Project Memory
       #{Enum.map_join(memory_context, "\n", fn m -> "- #{m.content}" end)}
       """
+
       append_section(prompt, memory_section)
     else
       prompt

@@ -60,7 +60,11 @@ defmodule James.CodebaseSearch do
 
   Runs non-blocking via `TaskSupervisor.async_nolink`.
   """
-  @spec index_working_directory(user_id :: Ecto.UUID.t(), dir_path :: String.t(), opts :: Keyword.t()) ::
+  @spec index_working_directory(
+          user_id :: Ecto.UUID.t(),
+          dir_path :: String.t(),
+          opts :: Keyword.t()
+        ) ::
           {:ok, task :: Task.t()} | {:error, String.t()}
   def index_working_directory(user_id, dir_path, opts \\ []) when is_binary(dir_path) do
     extensions = Keyword.get(opts, :extensions, @default_extensions)
@@ -145,7 +149,9 @@ defmodule James.CodebaseSearch do
   Chunks text content into overlapping segments.
   Returns `[{chunk_text, starting_line_number}, ...]`.
   """
-  @spec chunk_content(String.t(), pos_integer(), non_neg_integer()) :: [{String.t(), non_neg_integer()}]
+  @spec chunk_content(String.t(), pos_integer(), non_neg_integer()) :: [
+          {String.t(), non_neg_integer()}
+        ]
   def chunk_content(content, chunk_size, chunk_overlap) when is_binary(content) do
     lines = String.split(content, "\n")
     do_chunk_lines(lines, [], chunk_size, chunk_overlap, 0, [])
@@ -174,6 +180,7 @@ defmodule James.CodebaseSearch do
           output
           |> String.split("\n", trim: true)
           |> Enum.map(&Path.join(dir_path, &1))
+
         {:ok, files}
 
       {error, _} ->
@@ -268,6 +275,7 @@ defmodule James.CodebaseSearch do
       # Emit completed chunk
       new_offset = line_offset + length(chunk_lines) - overlap
       new_buffer = Enum.take(chunk_lines, -overlap)
+
       do_chunk_lines(rest, new_buffer, chunk_size, overlap, max(new_offset, line_offset + 1), [
         {chunk_text, line_offset} | chunks
       ])
@@ -303,7 +311,10 @@ defmodule James.CodebaseSearch do
   end
 
   defp cosine_score(query_embedding, chunk_embedding) do
-    dot = Enum.zip(query_embedding, chunk_embedding) |> Enum.reduce(0.0, fn {a, b}, acc -> a * b + acc end)
+    dot =
+      Enum.zip(query_embedding, chunk_embedding)
+      |> Enum.reduce(0.0, fn {a, b}, acc -> a * b + acc end)
+
     norm_q = :math.sqrt(Enum.reduce(query_embedding, 0.0, fn x, acc -> x * x + acc end))
     norm_c = :math.sqrt(Enum.reduce(chunk_embedding, 0.0, fn x, acc -> x * x + acc end))
 

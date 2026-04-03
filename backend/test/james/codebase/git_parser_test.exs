@@ -60,7 +60,10 @@ defmodule James.Codebase.GitParserTest do
     end
 
     test "parses ignored (!) status" do
-      assert GitParser.parse_status_line("!! .gitignore") == %{path: ".gitignore", status: :ignored}
+      assert GitParser.parse_status_line("!! .gitignore") == %{
+               path: ".gitignore",
+               status: :ignored
+             }
     end
 
     test "handles unknown status codes gracefully" do
@@ -88,7 +91,8 @@ defmodule James.Codebase.GitParserTest do
     end
 
     test "ignores summary lines without file path" do
-      assert GitParser.parse_stat_line(" 3 files changed, 10 insertions(+), 5 deletions(-)") == nil
+      assert GitParser.parse_stat_line(" 3 files changed, 10 insertions(+), 5 deletions(-)") ==
+               nil
     end
   end
 end

@@ -128,10 +128,29 @@ defmodule James.MemoriesTest do
       user = create_user("search_mt_#{System.unique_integer()}@example.com")
       embedding = Enum.map(1..1536, fn _ -> 0.5 end)
 
-      create_memory(user, %{content: "Codebase fact about Elixir", embedding: embedding, memory_type: "codebase_fact"})
-      create_memory(user, %{content: "User preference for dark mode", embedding: embedding, memory_type: "user_preference"})
-      create_memory(user, %{content: "Another codebase fact", embedding: embedding, memory_type: "codebase_fact"})
-      create_memory(user, %{content: "Session summary note", embedding: embedding, memory_type: "session_summary"})
+      create_memory(user, %{
+        content: "Codebase fact about Elixir",
+        embedding: embedding,
+        memory_type: "codebase_fact"
+      })
+
+      create_memory(user, %{
+        content: "User preference for dark mode",
+        embedding: embedding,
+        memory_type: "user_preference"
+      })
+
+      create_memory(user, %{
+        content: "Another codebase fact",
+        embedding: embedding,
+        memory_type: "codebase_fact"
+      })
+
+      create_memory(user, %{
+        content: "Session summary note",
+        embedding: embedding,
+        memory_type: "session_summary"
+      })
 
       results = Memories.search_similar(user.id, embedding, 10, memory_types: ["codebase_fact"])
 
@@ -147,7 +166,11 @@ defmodule James.MemoriesTest do
       user = create_user("search_mt_empty_#{System.unique_integer()}@example.com")
       embedding = Enum.map(1..1536, fn _ -> 0.5 end)
 
-      create_memory(user, %{content: "General memory", embedding: embedding, memory_type: "general"})
+      create_memory(user, %{
+        content: "General memory",
+        embedding: embedding,
+        memory_type: "general"
+      })
 
       results = Memories.search_similar(user.id, embedding, 10, memory_types: ["codebase_fact"])
       assert results == []
@@ -164,13 +187,18 @@ defmodule James.MemoriesTest do
 
       {:ok, session_in} =
         Sessions.create_session(%{
-          user_id: user.id, host_id: host.id, name: "In Proj",
-          project_id: project.id, agent_type: "chat"
+          user_id: user.id,
+          host_id: host.id,
+          name: "In Proj",
+          project_id: project.id,
+          agent_type: "chat"
         })
 
       {:ok, session_out} =
         Sessions.create_session(%{
-          user_id: user.id, host_id: host.id, name: "Outside",
+          user_id: user.id,
+          host_id: host.id,
+          name: "Outside",
           agent_type: "chat"
         })
 
@@ -190,8 +218,11 @@ defmodule James.MemoriesTest do
         source_session_id: session_out.id
       })
 
-      results = Memories.search_similar(user.id, embedding, 10,
-        memory_types: ["codebase_fact"], project_id: project.id)
+      results =
+        Memories.search_similar(user.id, embedding, 10,
+          memory_types: ["codebase_fact"],
+          project_id: project.id
+        )
 
       contents = Enum.map(results, & &1.content)
       assert "Project codebase fact" in contents

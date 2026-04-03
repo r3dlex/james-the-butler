@@ -93,7 +93,13 @@ defmodule James.Workers.MemoryExtractionWorker do
 
   defp store_memory(%{type: type, content: content}, user_id, session_id) do
     memory_type = valid_memory_type(type)
-    attrs = %{user_id: user_id, content: content, source_session_id: session_id, memory_type: memory_type}
+
+    attrs = %{
+      user_id: user_id,
+      content: content,
+      source_session_id: session_id,
+      memory_type: memory_type
+    }
 
     case Embeddings.generate(content) do
       {:ok, embedding} ->
@@ -106,7 +112,12 @@ defmodule James.Workers.MemoryExtractionWorker do
 
   # Backward compatible: handle string memories (legacy format)
   defp store_memory(text, user_id, session_id) when is_binary(text) do
-    attrs = %{user_id: user_id, content: text, source_session_id: session_id, memory_type: "general"}
+    attrs = %{
+      user_id: user_id,
+      content: text,
+      source_session_id: session_id,
+      memory_type: "general"
+    }
 
     case Embeddings.generate(text) do
       {:ok, embedding} ->
@@ -117,7 +128,10 @@ defmodule James.Workers.MemoryExtractionWorker do
     end
   end
 
-  defp valid_memory_type(type) when type in ~w(general codebase_fact user_preference session_summary codebase_navigation), do: type
+  defp valid_memory_type(type)
+       when type in ~w(general codebase_fact user_preference session_summary codebase_navigation),
+       do: type
+
   defp valid_memory_type(_), do: "general"
 
   defp extract_memories(conversation) do

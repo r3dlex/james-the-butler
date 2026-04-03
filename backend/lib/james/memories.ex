@@ -104,7 +104,8 @@ defmodule James.Memories do
   def get_recent_memories(user_id, query_text, opts \\ []) do
     with {:ok, embedding} <- James.Embeddings.generate(query_text) do
       search_similar(user_id, embedding, Keyword.get(opts, :limit, 5),
-        memory_types: Keyword.get(opts, :memory_types))
+        memory_types: Keyword.get(opts, :memory_types)
+      )
     end
   end
 
