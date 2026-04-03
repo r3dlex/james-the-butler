@@ -19,6 +19,9 @@ defmodule James.Memories.Memory do
     memory
     |> cast(attrs, [:user_id, :content, :embedding, :source_session_id, :memory_type])
     |> validate_required([:user_id, :content])
-    |> validate_inclusion(:memory_type, ~w(general codebase_fact user_preference session_summary codebase_navigation))
+    |> validate_inclusion(
+      :memory_type,
+      ~w(general codebase_fact user_preference session_summary codebase_navigation)
+    )
   end
 end
