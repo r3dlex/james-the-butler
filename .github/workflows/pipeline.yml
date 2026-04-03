@@ -130,7 +130,9 @@ jobs:
         run: mix format --check-formatted
 
       - name: Credo
-        run: mix credo --strict
+        run: MIX_ENV=test mix credo --strict
+        env:
+          MIX_ENV: test
 
       - name: Setup database
         run: mix ecto.create && mix ecto.migrate
