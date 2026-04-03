@@ -127,6 +127,7 @@ defmodule James.Sessions do
   def create_message(attrs) do
     %Message{}
     |> Message.changeset(attrs)
+    |> Ecto.Changeset.put_change(:inserted_at, DateTime.utc_now())
     |> Repo.insert()
   end
 
