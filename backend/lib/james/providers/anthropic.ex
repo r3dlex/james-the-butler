@@ -141,16 +141,18 @@ defmodule James.Providers.Anthropic do
   end
 
   defp consume_stream(resp, acc, on_chunk) do
+    ref = resp.body.ref
+
     receive do
-      {_, ^resp, {:data, data}} ->
+      {^ref, {:data, data}} ->
         {events, new_buffer} = parse_sse(acc.buffer <> data)
         new_acc = process_events(events, %{acc | buffer: new_buffer}, on_chunk)
         consume_stream(resp, new_acc, on_chunk)
 
-      {_, ^resp, :done} ->
+      {^ref, :done} ->
         finalize_result(acc)
 
-      {_, ^resp, {:error, _reason}} ->
+      {^ref, {:error, _reason}} ->
         finalize_result(acc)
     after
       120_000 ->
@@ -314,10 +316,19 @@ defmodule James.Providers.Anthropic do
   defp extract_usage(_), do: %{}
 
   defp normalize_usage(usage) when is_map(usage) do
-    %{
-      input_tokens: usage["input_tokens"] || 0,
-      output_tokens: usage["output_tokens"] || 0
-    }
+    result = %{}
+
+    result =
+      if Map.has_key?(usage, "input_tokens"),
+        do: Map.put(result, :input_tokens, usage["input_tokens"] || 0),
+        else: result
+
+    result =
+      if Map.has_key?(usage, "output_tokens"),
+        do: Map.put(result, :output_tokens, usage["output_tokens"] || 0),
+        else: result
+
+    result
   end
 
   defp normalize_usage(_), do: %{}

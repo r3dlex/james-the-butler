@@ -219,6 +219,7 @@ defmodule James.Providers.Registry do
   # We use the globally configured provider module so that test environments
   # continue to use the mock; the api_key (and optional base_url) are injected
   # as opts so the caller authenticates with the user's DB credentials.
+  # A default model is derived from the provider type when none is explicitly set.
   defp resolve_from_user_config(nil) do
     {:ok, %{module: LLMProvider.configured(), model: nil, opts: []}}
   end
@@ -234,9 +235,17 @@ defmodule James.Providers.Registry do
           |> maybe_put(:api_key, config.decrypted_api_key)
           |> maybe_put(:base_url, config.base_url)
 
-        {:ok, %{module: LLMProvider.configured(), model: nil, opts: opts}}
+        model = default_model_for_type(config.provider_type)
+        {:ok, %{module: LLMProvider.configured(), model: model, opts: opts}}
     end
   end
+
+  defp default_model_for_type("minimax"), do: "MiniMax-M2.7"
+  defp default_model_for_type("anthropic"), do: "claude-sonnet-4-20250514"
+  defp default_model_for_type("openai"), do: "gpt-4o"
+  defp default_model_for_type("openai_codex"), do: "gpt-4o"
+  defp default_model_for_type("gemini"), do: "gemini-2.0-flash"
+  defp default_model_for_type(_), do: nil
 
   # Fetch ProviderConfig and map provider_type → module, returning credentials as opts.
   defp resolve_from_provider_config(config_id, model_name) do
