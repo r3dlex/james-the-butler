@@ -278,7 +278,12 @@ defmodule James.Workers.MemoryExtractionWorkerTest do
       user = create_user()
       session = create_session(user)
 
-      Sessions.create_message(%{session_id: session.id, role: "user", content: "The codebase uses Elixir."})
+      Sessions.create_message(%{
+        session_id: session.id,
+        role: "user",
+        content: "The codebase uses Elixir."
+      })
+
       Sessions.create_message(%{session_id: session.id, role: "assistant", content: "I see."})
 
       MockLLMProvider.push_response(
@@ -303,13 +308,19 @@ defmodule James.Workers.MemoryExtractionWorkerTest do
       user = create_user()
       session = create_session(user)
 
-      Sessions.create_message(%{session_id: session.id, role: "user", content: "I prefer dark mode."})
+      Sessions.create_message(%{
+        session_id: session.id,
+        role: "user",
+        content: "I prefer dark mode."
+      })
+
       Sessions.create_message(%{session_id: session.id, role: "assistant", content: "Got it."})
 
       MockLLMProvider.push_response(
         {:ok,
          %{
-           content: ~s([{"type": "user_preference", "content": "User prefers dark mode"}, {"type": "codebase_navigation", "content": "Settings are in config/"}]),
+           content:
+             ~s([{"type": "user_preference", "content": "User prefers dark mode"}, {"type": "codebase_navigation", "content": "Settings are in config/"}]),
            usage: %{input_tokens: 20, output_tokens: 10}
          }}
       )
