@@ -274,6 +274,83 @@ defmodule James.Workers.MemoryExtractionWorkerTest do
       assert phoenix_mem.embedding == nil
     end
 
+    test "extracts memory_type from map-format response and stores it correctly" do
+      user = create_user()
+      session = create_session(user)
+
+      Sessions.create_message(%{session_id: session.id, role: "user", content: "The codebase uses Elixir."})
+      Sessions.create_message(%{session_id: session.id, role: "assistant", content: "I see."})
+
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: ~s([{"type": "codebase_fact", "content": "Codebase is written in Elixir"}]),
+           usage: %{input_tokens: 20, output_tokens: 10}
+         }}
+      )
+
+      job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
+      assert :ok = MemoryExtractionWorker.perform(job)
+
+      memories = Memories.list_memories(user.id)
+      assert Enum.any?(memories, fn m -> m.content == "Codebase is written in Elixir" end)
+
+      saved_memory = Enum.find(memories, fn m -> m.content == "Codebase is written in Elixir" end)
+      assert saved_memory.memory_type == "codebase_fact"
+    end
+
+    test "extracts memory_type from mixed-type response and stores each type correctly" do
+      user = create_user()
+      session = create_session(user)
+
+      Sessions.create_message(%{session_id: session.id, role: "user", content: "I prefer dark mode."})
+      Sessions.create_message(%{session_id: session.id, role: "assistant", content: "Got it."})
+
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: ~s([{"type": "user_preference", "content": "User prefers dark mode"}, {"type": "codebase_navigation", "content": "Settings are in config/"}]),
+           usage: %{input_tokens: 20, output_tokens: 10}
+         }}
+      )
+
+      job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
+      assert :ok = MemoryExtractionWorker.perform(job)
+
+      memories = Memories.list_memories(user.id)
+
+      dark_mode = Enum.find(memories, fn m -> m.content == "User prefers dark mode" end)
+      assert dark_mode.memory_type == "user_preference"
+
+      settings = Enum.find(memories, fn m -> m.content == "Settings are in config/" end)
+      assert settings.memory_type == "codebase_navigation"
+    end
+
+    test "backward compatible: legacy string-only response stores as general memory_type" do
+      user = create_user()
+      session = create_session(user)
+
+      Sessions.create_message(%{session_id: session.id, role: "user", content: "Hello"})
+      Sessions.create_message(%{session_id: session.id, role: "assistant", content: "Hi!"})
+
+      MockLLMProvider.push_response(
+        {:ok,
+         %{
+           content: ~s(["User said hello"]),
+           usage: %{input_tokens: 10, output_tokens: 5}
+         }}
+      )
+
+      job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
+      assert :ok = MemoryExtractionWorker.perform(job)
+
+      memories = Memories.list_memories(user.id)
+      assert Enum.any?(memories, fn m -> m.content == "User said hello" end)
+
+      saved_memory = Enum.find(memories, fn m -> m.content == "User said hello" end)
+      assert saved_memory.memory_type == "general"
+    end
+
     test "is idempotent — running twice stores no duplicates" do
       user = create_user()
       session = create_session(user)

@@ -8,6 +8,7 @@ defmodule James.Memories.Memory do
   schema "memories" do
     field :content, :string
     field :embedding, Pgvector.Ecto.Vector
+    field :memory_type, :string, default: "general"
     field :inserted_at, :utc_datetime
 
     belongs_to :user, James.Accounts.User
@@ -16,7 +17,8 @@ defmodule James.Memories.Memory do
 
   def changeset(memory, attrs) do
     memory
-    |> cast(attrs, [:user_id, :content, :embedding, :source_session_id])
+    |> cast(attrs, [:user_id, :content, :embedding, :source_session_id, :memory_type])
     |> validate_required([:user_id, :content])
+    |> validate_inclusion(:memory_type, ~w(general codebase_fact user_preference session_summary codebase_navigation))
   end
 end

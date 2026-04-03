@@ -61,16 +61,23 @@ defmodule James.Memories do
   @doc """
   Searches memories using vector cosine distance when embeddings exist.
   Accepts optional `project_id:` keyword argument to scope results to
-  sessions belonging to a specific project.
+  sessions belonging to a specific project. Accepts optional `memory_types:`
+  list to filter by one or more memory types.
   """
   def search_similar(user_id, embedding, limit \\ 10, opts \\ []) do
     project_id = Keyword.get(opts, :project_id)
+    memory_types = Keyword.get(opts, :memory_types)
 
     query =
       from m in Memory,
-        where: m.user_id == ^user_id,
-        order_by: fragment("embedding <=> ?", ^embedding),
-        limit: ^limit
+        where: m.user_id == ^user_id
+
+    query =
+      if memory_types do
+        from m in query, where: m.memory_type in ^memory_types
+      else
+        query
+      end
 
     query =
       if project_id do
@@ -82,7 +89,23 @@ defmodule James.Memories do
         query
       end
 
-    Repo.all(query)
+    from(m in query,
+      order_by: fragment("embedding <=> ?", ^embedding),
+      limit: ^limit
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Searches recent memories by generating an embedding for the query text
+  and performing vector similarity search. Accepts optional `memory_types:`
+  list to filter by one or more memory types and `limit:` (default 5).
+  """
+  def get_recent_memories(user_id, query_text, opts \\ []) do
+    with {:ok, embedding} <- James.Embeddings.generate(query_text) do
+      search_similar(user_id, embedding, Keyword.get(opts, :limit, 5),
+        memory_types: Keyword.get(opts, :memory_types))
+    end
   end
 
   @doc """

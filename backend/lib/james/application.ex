@@ -7,7 +7,7 @@ defmodule James.Application do
   def start(_type, _args) do
     # Attach OpenTelemetry instrumentation before starting any supervised
     # processes so that events emitted during startup are captured.
-    if Mix.env() != :test, do: James.Telemetry.setup()
+    James.Telemetry.setup()
 
     children = children_for_env()
 
@@ -20,18 +20,24 @@ defmodule James.Application do
       :test ->
         [
           James.Repo,
+          {Task.Supervisor, name: James.TaskSupervisor},
           {Phoenix.PubSub, name: James.PubSub},
+          James.Auth.MFASessions,
           JamesWeb.Endpoint
         ]
 
       _ ->
         [
           James.Repo,
+          {Task.Supervisor, name: James.TaskSupervisor},
           {Phoenix.PubSub, name: James.PubSub},
           {Oban, Application.fetch_env!(:james, Oban)},
+          James.Auth.MFASessions,
           James.OpenClaw.Supervisor,
           James.OpenClaw.Orchestrator,
+          James.Browser.CDPConnectionPool,
           James.Planner.MetaPlanner,
+          James.Channels.TURNCredentials,
           James.Providers.ProviderOAuth,
           James.Plugins.Registry,
           JamesWeb.Endpoint
