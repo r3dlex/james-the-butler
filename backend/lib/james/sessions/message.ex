@@ -10,7 +10,7 @@ defmodule James.Sessions.Message do
     field :content, :string
     field :token_count, :integer
     field :model, :string
-    field :inserted_at, :utc_datetime
+    field :inserted_at, :utc_datetime_usec
 
     belongs_to :session, James.Sessions.Session
   end

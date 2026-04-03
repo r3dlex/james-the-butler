@@ -97,7 +97,7 @@ defmodule James.Sessions do
     Repo.all(
       from m in Message,
         where: m.session_id == ^session_id,
-        order_by: [asc: m.inserted_at]
+        order_by: [asc: m.inserted_at, asc: m.id]
     )
   end
 
@@ -119,7 +119,7 @@ defmodule James.Sessions do
             m.session_id == ^session_id and
               m.id != ^after_message_id and
               m.inserted_at >= ^anchor_inserted_at,
-          order_by: [asc: m.inserted_at]
+          order_by: [asc: m.inserted_at, asc: m.id]
       )
     end
   end
