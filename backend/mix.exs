@@ -24,7 +24,14 @@ defmodule James.MixProject do
           # Auto-generated Ecto type handler for pgvector
           James.PostgresTypes,
           # Auto-generated Phoenix route helpers
-          JamesWeb.Router.Helpers
+          JamesWeb.Router.Helpers,
+          # Workers/modules with infrastructure dependencies (git, DB pools, HTTP)
+          James.Workers.GitStatusWorker,
+          James.CodebaseSearch,
+          James.Providers.ConnectionTester,
+          James.Repo,
+          James.Providers.ModelCatalog,
+          James.Channels.TelegramBot
         ]
       ]
     ]

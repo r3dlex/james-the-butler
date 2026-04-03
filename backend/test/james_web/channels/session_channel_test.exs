@@ -104,8 +104,9 @@ defmodule JamesWeb.SessionChannelTest do
 
   describe "webrtc signaling" do
     # James.OpenClaw.Orchestrator is not started in tests (no process).
-    # SessionChannel catches the :noproc exit and falls back to a direct
-    # PubSub broadcast of {:webrtc_offer_received, ...} — we assert that path.
+    # SessionChannel catches the :noproc exit and UndefinedFunctionError
+    # and falls back to a direct PubSub broadcast of
+    # {:webrtc_offer_received, ...} — we assert that path.
 
     test "handle_in(webrtc:offer) broadcasts {:webrtc_offer_received, sdp, viewer_id} to session" do
       user = create_user()
