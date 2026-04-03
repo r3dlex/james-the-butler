@@ -96,6 +96,7 @@ export const useSessionStore = defineStore("sessions", () => {
         personality_id: payload.personalityId,
         execution_mode: payload.executionMode,
         keep_intermediates: payload.keepIntermediates,
+        working_directories: payload.workingDirectories ?? [],
       });
       // Mark as not user-set when the name was auto-generated
       const session = {

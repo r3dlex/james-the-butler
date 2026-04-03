@@ -31,7 +31,8 @@ defmodule JamesWeb.SessionController do
       project_id: Map.get(params, "project_id"),
       agent_type: Map.get(params, "agent_type", "chat"),
       personality_id: Map.get(params, "personality_id"),
-      execution_mode: Map.get(params, "execution_mode")
+      execution_mode: Map.get(params, "execution_mode"),
+      working_directories: Map.get(params, "working_directories", [])
     }
 
     case Sessions.create_session(attrs) do
@@ -219,7 +220,8 @@ defmodule JamesWeb.SessionController do
       project_id: session.project_id,
       host_id: session.host_id,
       inserted_at: session.inserted_at,
-      last_used_at: session.last_used_at
+      last_used_at: session.last_used_at,
+      working_directories: session.working_directories
     }
 
     Map.merge(base, extra)

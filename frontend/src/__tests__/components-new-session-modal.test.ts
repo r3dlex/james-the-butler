@@ -100,23 +100,47 @@ describe("NewSessionModal", () => {
     wrapper.unmount();
   });
 
-  it("has a FolderPathInput with a text field and a Browse button (not a raw file upload)", async () => {
+  it("has a FolderPathInput with a text field and a Browse button on desktop (not a raw file upload)", async () => {
+    // Simulate Tauri desktop so Browse button and file input are rendered
+    (window as unknown as Record<string, unknown>).__TAURI__ = {};
     const wrapper = await mountModal();
     const text = wrapper.text();
 
     // Primary UX is a text field for typing paths — not an "Upload" button
     expect(text).not.toMatch(/upload/i);
 
-    // Should have a "Browse" button (secondary action via FolderPathInput)
+    // Should have a "Browse" button (secondary action via FolderPathInput, desktop only)
     expect(text).toMatch(/browse/i);
 
     // Should have a text input for typing the path
     const textInput = wrapper.find("input[type='text']");
     expect(textInput.exists()).toBe(true);
 
-    // Should also have a hidden file input for the native Browse action
+    // Should also have a hidden file input for the native Browse action (desktop only)
     const fileInput = wrapper.find("input[type='file']");
     expect(fileInput.exists()).toBe(true);
+    wrapper.unmount();
+    delete (window as unknown as Record<string, unknown>).__TAURI__;
+  });
+
+  it("has a FolderPathInput with only a text field on web (no Tauri)", async () => {
+    delete (window as unknown as Record<string, unknown>).__TAURI__;
+    const wrapper = await mountModal();
+    const text = wrapper.text();
+
+    // Primary UX is a text field for typing paths — not an "Upload" button
+    expect(text).not.toMatch(/upload/i);
+
+    // On web, no Browse button — user types path directly
+    expect(text).not.toMatch(/browse/i);
+
+    // Should still have a text input for typing the path
+    const textInput = wrapper.find("input[type='text']");
+    expect(textInput.exists()).toBe(true);
+
+    // No file input on web
+    const fileInput = wrapper.find("input[type='file']");
+    expect(fileInput.exists()).toBe(false);
     wrapper.unmount();
   });
 

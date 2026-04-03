@@ -48,15 +48,20 @@ defmodule James.Agents.ChatAgent do
         %{role: normalize_role(msg.role), content: msg.content}
       end)
 
+    # Inject working directories into system prompt
+    working_dirs_context = build_working_dirs_context(session)
+
     # Inject relevant memories into system prompt
     memory_context = build_memory_context(session)
 
     full_system =
-      if memory_context != "" do
-        system_prompt <> "\n\n## Relevant context from previous sessions:\n" <> memory_context
-      else
-        system_prompt
-      end
+      system_prompt
+      |> append_section(working_dirs_context)
+      |> append_section(
+        if memory_context != "",
+          do: "## Relevant context from previous sessions:\n" <> memory_context,
+          else: ""
+      )
 
     state = %__MODULE__{
       session_id: session_id,
@@ -255,6 +260,17 @@ defmodule James.Agents.ChatAgent do
         :ok
     end
   end
+
+  defp build_working_dirs_context(nil), do: "No specific working directory is configured."
+
+  defp build_working_dirs_context(%{working_directories: [_ | _] = dirs}) do
+    "Working directories available: " <> Enum.join(dirs, ", ")
+  end
+
+  defp build_working_dirs_context(_session), do: "No specific working directory is configured."
+
+  defp append_section(prompt, ""), do: prompt
+  defp append_section(prompt, section), do: prompt <> "\n\n" <> section
 
   defp resolve_system_prompt(nil), do: default_system_prompt()
   defp resolve_system_prompt(session), do: Personality.resolve_system_prompt(session)

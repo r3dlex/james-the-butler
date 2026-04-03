@@ -133,11 +133,14 @@ describe("useMessageStore", () => {
   });
 
   it("appendStreamChunk accumulates streaming content", async () => {
+    vi.useFakeTimers();
     const { useMessageStore } = await import("../stores/messages");
     const store = useMessageStore();
     store.startStreaming("sess-6");
     store.appendStreamChunk("Hello");
     store.appendStreamChunk(" World");
+    vi.runAllTimers();
+    vi.useRealTimers();
     expect(store.streamingContent).toBe("Hello World");
     expect(store.streamingBlocks[0].text).toBe("Hello World");
   });

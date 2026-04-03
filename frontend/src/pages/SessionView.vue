@@ -342,6 +342,7 @@ import { useMessageStore } from "@/stores/messages";
 import { useTaskStore } from "@/stores/tasks";
 import { useSocketStore } from "@/stores/socket";
 import { useTokenStore } from "@/stores/tokens";
+import { useSessionChannel } from "@/composables/useSessionChannel";
 import { api } from "@/services/api";
 import type { Message } from "@/types/message";
 import type { ExecutionMode } from "@/types/session";
@@ -363,6 +364,10 @@ const sessionId = computed(() => route.params.id as string);
 const session = computed(
   () => sessionStore.sessions.find((s) => s.id === sessionId.value) ?? null,
 );
+
+// Join the session Phoenix channel — handles message:new, message:chunk,
+// task:updated, artifact:created and wires them to the stores.
+useSessionChannel(() => sessionId.value);
 const messages = computed(() => messageStore.getMessages(sessionId.value));
 const isStreaming = computed(
   () => messageStore.streamingSessionId === sessionId.value,
@@ -617,64 +622,6 @@ onMounted(() => {
     }
   }, 5_000);
 
-  // Join session channel — the join reply carries the full message history
-  const channel = socketStore.joinChannel(
-    `session:${sessionId.value}`,
-    {},
-    (response) => {
-      const rawMsgs = response.messages as
-        | Array<Record<string, unknown>>
-        | undefined;
-      if (Array.isArray(rawMsgs) && rawMsgs.length > 0) {
-        const normalized = rawMsgs.map((m) => ({
-          id: m.id as string,
-          sessionId: sessionId.value,
-          role: m.role as Message["role"],
-          content: m.content,
-          attachments: [],
-          tokenCount: 0,
-          createdAt:
-            (m.insertedAt as string) ||
-            (m.inserted_at as string) ||
-            new Date().toISOString(),
-        })) as Message[];
-        messageStore.setMessages(sessionId.value, normalized);
-      } else if (!messageStore.getMessages(sessionId.value).length) {
-        messageStore.setMessages(sessionId.value, []);
-      }
-    },
-  );
-
-  channel.on("message:new", (payload: unknown) => {
-    const msg = payload as Message;
-    if (
-      msg.role === "assistant" &&
-      messageStore.streamingSessionId === sessionId.value
-    ) {
-      messageStore.stopStreaming();
-      streamingStartedAt.value = null;
-    }
-    if (msg.role === "user") {
-      messageStore.replaceOrAppendMessage(sessionId.value, msg);
-    } else {
-      messageStore.appendMessage(sessionId.value, msg);
-    }
-  });
-
-  channel.on("message:chunk", (payload: unknown) => {
-    const { content } = payload as { content: string };
-    if (messageStore.streamingSessionId !== sessionId.value) {
-      messageStore.startStreaming(sessionId.value);
-      streamingStartedAt.value = Date.now();
-    }
-    messageStore.appendStreamChunk(content);
-  });
-
-  channel.on("task:updated", (payload: unknown) => {
-    taskStore.updateTask(payload as import("@/types/task").Task);
-  });
-  channel.on("artifact:created", () => {});
-
   // Planner channel
   const plannerChannel = socketStore.joinChannel(`planner:${sessionId.value}`);
   plannerChannel.on("planner:step", (payload: unknown) => {
@@ -698,7 +645,6 @@ onUnmounted(() => {
     clearInterval(streamingTimeoutInterval);
     streamingTimeoutInterval = null;
   }
-  socketStore.leaveChannel(`session:${sessionId.value}`);
   socketStore.leaveChannel(`planner:${sessionId.value}`);
   sessionStore.setActive(null);
   sendQueue.value = [];

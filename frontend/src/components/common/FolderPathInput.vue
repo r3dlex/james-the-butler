@@ -17,7 +17,9 @@
         style="border-color: var(--color-border); color: var(--color-text)"
         @keydown.enter.prevent="submitPath"
       />
+      <!-- Browse button only shown on Tauri desktop; web browsers get real path from text input -->
       <button
+        v-if="isDesktop"
         type="button"
         class="shrink-0 rounded border px-2 py-1.5 text-xs transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
         style="border-color: var(--color-border); color: var(--color-text-dim)"
@@ -26,8 +28,9 @@
         Browse
       </button>
     </div>
-    <!-- Hidden webkitdirectory input for native folder browsing -->
+    <!-- Hidden webkitdirectory input for native folder browsing (Tauri desktop only) -->
     <input
+      v-if="isDesktop"
       ref="fileInputRef"
       type="file"
       webkitdirectory
@@ -39,6 +42,7 @@
 
 <script setup lang="ts">
 import { ref } from "vue";
+import { usePlatform } from "@/composables/usePlatform";
 
 withDefaults(
   defineProps<{
@@ -57,6 +61,8 @@ const emit = defineEmits<{
   select: [path: string];
 }>();
 
+const { isDesktop } = usePlatform();
+
 const textInputRef = ref<HTMLInputElement | null>(null);
 const fileInputRef = ref<HTMLInputElement | null>(null);
 const pathDraft = ref("");
@@ -70,7 +76,11 @@ function submitPath() {
 }
 
 function openBrowse() {
-  fileInputRef.value?.click();
+  if (isDesktop.value) {
+    // On Tauri desktop: use the hidden webkitdirectory input to open native dialog.
+    // The file.path property returned by Tauri contains the real absolute path.
+    fileInputRef.value?.click();
+  }
 }
 
 function onFileInputChange(event: Event) {
@@ -79,8 +89,7 @@ function onFileInputChange(event: Event) {
   if (!files || files.length === 0) return;
 
   const firstFile = files[0];
-  // In Tauri/Electron contexts file.path is available (absolute path).
-  // In web browsers we get the webkitRelativePath (relative).
+  // In Tauri contexts file.path is available (absolute path).
   const folderPath =
     (firstFile as unknown as { path?: string }).path ||
     (firstFile.webkitRelativePath
@@ -88,6 +97,7 @@ function onFileInputChange(event: Event) {
       : firstFile.name);
 
   if (folderPath) {
+    pathDraft.value = folderPath;
     emit("select", folderPath);
   }
 
