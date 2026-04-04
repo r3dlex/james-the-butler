@@ -55,6 +55,8 @@ defmodule James.Hosts.Cluster do
     end
   end
 
+  def rotate_certificates, do: :not_implemented
+
   def status do
     hosts = Hosts.list_hosts()
 

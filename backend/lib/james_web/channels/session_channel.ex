@@ -45,10 +45,10 @@ defmodule JamesWeb.SessionChannel do
     result =
       try do
         Orchestrator.handle_webrtc_offer(session_id, sdp, viewer_id)
-      catch
-        :exit, {:noproc, _} -> {:error, :not_found}
       rescue
         UndefinedFunctionError -> {:error, :not_found}
+      catch
+        :exit, {:noproc, _} -> {:error, :not_found}
       end
 
     case result do
