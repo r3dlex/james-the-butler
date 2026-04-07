@@ -131,7 +131,7 @@ defmodule James.CodebaseSearchTest do
         Memories.create_memory(%{
           user_id: user.id,
           content: "def hello do\n  :world\nend",
-          embedding: Enum.map(1..1536, fn _ -> 0.1 end),
+          embedding: Enum.map(1..384, fn _ -> 0.1 end),
           memory_type: "codebase_navigation",
           metadata: %{file: "test.ex", line: 0}
         })
@@ -158,8 +158,8 @@ defmodule James.CodebaseSearchTest do
   describe "search ordering" do
     test "results are sorted by similarity score descending", %{user: user} do
       # Pre-seed memories with embeddings that should rank differently
-      embedding1 = Enum.map(1..1536, fn _ -> 0.1 end)
-      embedding2 = Enum.map(1..1536, fn _ -> 0.9 end)
+      embedding1 = Enum.map(1..384, fn _ -> 0.1 end)
+      embedding2 = Enum.map(1..384, fn _ -> 0.9 end)
 
       {:ok, _} =
         Memories.create_memory(%{

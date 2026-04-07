@@ -126,7 +126,7 @@ defmodule James.MemoriesTest do
   describe "search_similar/4 with memory_types filter" do
     test "returns only memories matching the specified memory_types" do
       user = create_user("search_mt_#{System.unique_integer()}@example.com")
-      embedding = Enum.map(1..1536, fn _ -> 0.5 end)
+      embedding = Enum.map(1..384, fn _ -> 0.5 end)
 
       create_memory(user, %{
         content: "Codebase fact about Elixir",
@@ -164,7 +164,7 @@ defmodule James.MemoriesTest do
 
     test "returns empty list when no memories match the memory_types filter" do
       user = create_user("search_mt_empty_#{System.unique_integer()}@example.com")
-      embedding = Enum.map(1..1536, fn _ -> 0.5 end)
+      embedding = Enum.map(1..384, fn _ -> 0.5 end)
 
       create_memory(user, %{
         content: "General memory",
@@ -202,7 +202,7 @@ defmodule James.MemoriesTest do
           agent_type: "chat"
         })
 
-      embedding = Enum.map(1..1536, fn _ -> 0.5 end)
+      embedding = Enum.map(1..384, fn _ -> 0.5 end)
 
       create_memory(user, %{
         content: "Project codebase fact",
@@ -233,7 +233,7 @@ defmodule James.MemoriesTest do
   describe "search_similar/3" do
     test "returns memories sorted by embedding similarity" do
       user = create_user("search_sim@example.com")
-      embedding = Enum.map(1..1536, fn i -> rem(i, 10) / 10.0 end)
+      embedding = Enum.map(1..384, fn i -> rem(i, 10) / 10.0 end)
       create_memory(user, %{content: "Similar memory", embedding: embedding})
       create_memory(user, %{content: "Other memory"})
 
@@ -246,7 +246,7 @@ defmodule James.MemoriesTest do
 
     test "returns empty list when user has no memories" do
       user = create_user("search_empty@example.com")
-      embedding = Enum.map(1..1536, fn _ -> 0.0 end)
+      embedding = Enum.map(1..384, fn _ -> 0.0 end)
       results = Memories.search_similar(user.id, embedding)
       assert results == []
     end
@@ -301,7 +301,7 @@ defmodule James.MemoriesTest do
           agent_type: "chat"
         })
 
-      embedding = Enum.map(1..1536, fn _ -> 0.5 end)
+      embedding = Enum.map(1..384, fn _ -> 0.5 end)
 
       create_memory(user, %{
         content: "Project memory",
