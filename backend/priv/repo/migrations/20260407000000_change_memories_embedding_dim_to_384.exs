@@ -15,7 +15,7 @@ defmodule James.Repo.Migrations.ChangeMemoriesEmbeddingDimTo384 do
       remove :embedding_old
     end
 
-    create index(:memories, [:embedding], name: :memories_embedding_idx, using: "hnsw", opclass: "vector_cosine_ops")
+    execute("CREATE INDEX memories_embedding_idx ON memories USING hnsw (embedding vector_cosine_ops)")
   end
 
   def down do
@@ -32,6 +32,6 @@ defmodule James.Repo.Migrations.ChangeMemoriesEmbeddingDimTo384 do
       remove :embedding_old
     end
 
-    create index(:memories, [:embedding], name: :memories_embedding_idx, using: "hnsw", opclass: "vector_cosine_ops")
+    execute("CREATE INDEX memories_embedding_idx ON memories USING hnsw (embedding vector_cosine_ops)")
   end
 end
