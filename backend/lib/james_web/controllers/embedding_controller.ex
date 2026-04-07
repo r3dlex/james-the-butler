@@ -5,13 +5,8 @@ defmodule JamesWeb.EmbeddingController do
 
   # POST /api/embeddings
   def create(conn, %{"text" => text}) do
-    case Embeddings.generate(text) do
-      {:ok, embedding} ->
-        conn |> json(%{embedding: embedding})
-
-      {:error, reason} ->
-        conn |> put_status(:service_unavailable) |> json(%{error: reason})
-    end
+    {:ok, embedding} = Embeddings.generate(text)
+    conn |> json(%{embedding: embedding})
   end
 
   def create(conn, _params) do

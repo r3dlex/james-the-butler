@@ -199,19 +199,16 @@ defmodule JamesCli.Socket do
     case frame do
       {:text, data} ->
         case Jason.decode(data) do
-          {:ok, %{"event" => "message:chunk", "payload" => payload}} ->
-            chunk = payload["chunk"] || ""
-            apply(handler, :on_chunk, [chunk])
+          {:ok, %{"event" => "message:chunk", "payload" => %{"chunk" => chunk}}} ->
+            handler.on_chunk(chunk)
             handle_ws_frames(rest, state, handler)
 
-          {:ok, %{"event" => "message:end", "payload" => payload}} ->
-            final = payload["content"] || ""
-            apply(handler, :on_end, [final])
+          {:ok, %{"event" => "message:end", "payload" => %{"content" => content}}} ->
+            handler.on_end(content)
             handle_ws_frames(rest, state, handler)
 
-          {:ok, %{"event" => "message:error", "payload" => payload}} ->
-            error = payload["error"] || "Unknown error"
-            apply(handler, :on_error, [error])
+          {:ok, %{"event" => "message:error", "payload" => %{"error" => error}}} ->
+            handler.on_error(error)
             handle_ws_frames(rest, state, handler)
 
           {:ok, %{"event" => "phx_reply", "payload" => %{"status" => "ok"}}} ->
@@ -219,7 +216,7 @@ defmodule JamesCli.Socket do
 
           {:ok,
            %{"event" => "phx_reply", "payload" => %{"status" => "error", "reason" => reason}}} ->
-            apply(handler, :on_error, ["Join failed: #{reason}"])
+            handler.on_error("Join failed: #{reason}")
             handle_ws_frames(rest, state, handler)
 
           _ ->

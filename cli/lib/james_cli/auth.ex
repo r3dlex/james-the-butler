@@ -79,6 +79,8 @@ defmodule JamesCli.Auth do
           {:halt, {:error, "Network error: #{inspect(reason)}"}}
       end
     end)
+
+    # credo:disable-next-line Credo.Check.Refactor.Nesting
   end
 
   @doc """

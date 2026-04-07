@@ -93,34 +93,30 @@ defmodule James.CodebaseSearch do
   codebase_navigation memories for the user.
   """
   @spec search(user_id :: Ecto.UUID.t(), query :: String.t(), limit :: pos_integer()) ::
-          {:ok, [search_result]} | {:error, String.t()}
+          {:ok, [search_result]}
   def search(user_id, query, limit \\ 5) when is_binary(query) and limit > 0 do
-    case Embeddings.generate(query) do
-      {:ok, embedding} ->
-        memories =
-          from(m in Memory,
-            where: m.user_id == ^user_id,
-            where: m.memory_type == "codebase_navigation",
-            order_by: fragment("embedding <=> ?", ^embedding),
-            limit: ^limit
-          )
-          |> Repo.all()
+    {:ok, embedding} = Embeddings.generate(query)
 
-        results =
-          Enum.map(memories, fn memory ->
-            %{
-              content: memory.content,
-              file: metadata_for(memory).file,
-              line: metadata_for(memory).line,
-              score: cosine_score(embedding, memory.embedding)
-            }
-          end)
+    memories =
+      from(m in Memory,
+        where: m.user_id == ^user_id,
+        where: m.memory_type == "codebase_navigation",
+        order_by: fragment("embedding <=> ?", ^embedding),
+        limit: ^limit
+      )
+      |> Repo.all()
 
-        {:ok, results}
+    results =
+      Enum.map(memories, fn memory ->
+        %{
+          content: memory.content,
+          file: metadata_for(memory).file,
+          line: metadata_for(memory).line,
+          score: cosine_score(embedding, memory.embedding)
+        }
+      end)
 
-      {:error, reason} ->
-        {:error, "embedding generation failed: #{reason}"}
-    end
+    {:ok, results}
   end
 
   @doc """
@@ -232,9 +228,7 @@ defmodule James.CodebaseSearch do
               metadata: meta
             })
           end)
-
-        {:error, reason} ->
-          Logger.warning("Batch embedding failed: #{reason}")
+      end
       end
     end)
   end

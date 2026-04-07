@@ -115,18 +115,19 @@ defmodule JamesCli.Commands do
     session_id = Map.get(extras, "session")
     message = Map.get(extras, "message") || Map.get(extras, "msg")
 
-    if is_nil(session_id) do
-      {:error, "Usage: james chat --session <id> --message \"text\""}
+    with nil <- session_id,
+         false <- is_nil(message) do
+      case Client.chat(config, session_id, message) do
+        {:ok, response} -> {:ok, Formatter.format(response, fmt)}
+        {:error, err} -> {:error, "Chat failed: #{inspect(err)}"}
+      end
     else
-      if message do
-        case Client.chat(config, session_id, message) do
-          {:ok, response} -> {:ok, Formatter.format(response, fmt)}
-          {:error, err} -> {:error, "Chat failed: #{inspect(err)}"}
-        end
-      else
+      nil ->
+        {:error, "Usage: james chat --session <id> --message \"text\""}
+
+      true ->
         {:error,
          "Interactive chat not yet implemented. Use --message \"text\" for single-shot chat."}
-      end
     end
   end
 
