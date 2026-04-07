@@ -238,7 +238,7 @@ defmodule James.Workers.MemoryExtractionWorkerTest do
       assert length(elixir_memories) == 1
     end
 
-    test "stores memory without embedding when embedding service fails" do
+    test "stores memory with embedding when embedding generation runs (Bumblebee fallback stores zeros)" do
       user = create_user()
       session = create_session(user)
 
@@ -262,16 +262,17 @@ defmodule James.Workers.MemoryExtractionWorkerTest do
          }}
       )
 
-      # Embedding service will fail (no API key configured in test)
+      # Bumblebee falls back to zeros when unavailable, so embedding is always stored
       job = %Oban.Job{args: %{"session_id" => session.id, "user_id" => user.id}}
       assert :ok = MemoryExtractionWorker.perform(job)
 
       memories = Memories.list_memories(user.id)
-      assert Enum.any?(memories, fn m -> m.content =~ "Phoenix" end)
-
-      # Embedding should be nil since service is not configured in tests
       phoenix_mem = Enum.find(memories, fn m -> m.content =~ "Phoenix" end)
-      assert phoenix_mem.embedding == nil
+      assert phoenix_mem
+      # Embedding is always a 384-element vector (zeros when Bumblebee unavailable)
+      assert embedded = phoenix_mem.embedding
+      assert is_struct(embedded, Pgvector)
+      assert length(Pgvector.to_list(embedded)) == 384
     end
 
     test "extracts memory_type from map-format response and stores it correctly" do

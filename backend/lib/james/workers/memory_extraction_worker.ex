@@ -101,13 +101,8 @@ defmodule James.Workers.MemoryExtractionWorker do
       memory_type: memory_type
     }
 
-    case Embeddings.generate(content) do
-      {:ok, embedding} ->
-        Memories.create_memory(Map.put(attrs, :embedding, embedding))
-
-      {:error, _} ->
-        Memories.create_memory(attrs)
-    end
+    {:ok, embedding} = Embeddings.generate(content)
+    Memories.create_memory(Map.put(attrs, :embedding, embedding))
   end
 
   # Backward compatible: handle string memories (legacy format)
@@ -119,13 +114,8 @@ defmodule James.Workers.MemoryExtractionWorker do
       memory_type: "general"
     }
 
-    case Embeddings.generate(text) do
-      {:ok, embedding} ->
-        Memories.create_memory(Map.put(attrs, :embedding, embedding))
-
-      {:error, _} ->
-        Memories.create_memory(attrs)
-    end
+    {:ok, embedding} = Embeddings.generate(text)
+    Memories.create_memory(Map.put(attrs, :embedding, embedding))
   end
 
   defp valid_memory_type(type)
