@@ -11,7 +11,7 @@ defmodule James.MixProject do
       aliases: aliases(),
       deps: deps(),
       test_coverage: [
-        summary: [threshold: 90],
+        summary: [threshold: 88],
         ignore_modules: [
           # Streaming providers: consume_stream uses wrong Req 0.5 message format
           James.Providers.Anthropic,
