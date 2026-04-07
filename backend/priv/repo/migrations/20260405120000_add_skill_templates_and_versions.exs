@@ -3,7 +3,7 @@ defmodule James.Repo.Migrations.AddSkillTemplatesAndVersions do
 
   def change do
     create table(:skill_templates) do
-      add :skill_id, references(:skills, on_delete: :delete_all), null: false
+      add :skill_id, references(:skills, type: :uuid, on_delete: :delete_all), null: false
       add :name, :string, null: false
       add :description, :string
       add :content, :text
@@ -15,7 +15,7 @@ defmodule James.Repo.Migrations.AddSkillTemplatesAndVersions do
     create unique_index(:skill_templates, [:skill_id])
 
     create table(:skill_versions) do
-      add :skill_id, references(:skills, on_delete: :delete_all), null: false
+      add :skill_id, references(:skills, type: :uuid, on_delete: :delete_all), null: false
       add :version_number, :integer, null: false
       add :content, :text, null: false
       add :change_summary, :string
