@@ -269,8 +269,10 @@ defmodule James.Workers.MemoryExtractionWorkerTest do
       memories = Memories.list_memories(user.id)
       phoenix_mem = Enum.find(memories, fn m -> m.content =~ "Phoenix" end)
       assert phoenix_mem
-      # Embedding is always a 384-element list (zeros when Bumblebee unavailable)
-      assert is_list(phoenix_mem.embedding) and length(phoenix_mem.embedding) == 384
+      # Embedding is always a 384-element vector (zeros when Bumblebee unavailable)
+      assert embedded = phoenix_mem.embedding
+      assert is_struct(embedded, Pgvector)
+      assert length(Pgvector.to_list(embedded)) == 384
     end
 
     test "extracts memory_type from map-format response and stores it correctly" do

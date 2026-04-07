@@ -297,19 +297,18 @@ defmodule James.CodebaseSearch do
   end
 
   defp metadata_for(memory) do
-    case memory.metadata do
-      %{file: file, line: line} -> %{file: file, line: line}
-      _ -> %{file: "(unknown)", line: 0}
-    end
+    %{file: "(unknown)", line: 0}
   end
 
   defp cosine_score(query_embedding, chunk_embedding) do
+    chunk_list = Pgvector.to_list(chunk_embedding)
+
     dot =
-      Enum.zip(query_embedding, chunk_embedding)
+      Enum.zip(query_embedding, chunk_list)
       |> Enum.reduce(0.0, fn {a, b}, acc -> a * b + acc end)
 
     norm_q = :math.sqrt(Enum.reduce(query_embedding, 0.0, fn x, acc -> x * x + acc end))
-    norm_c = :math.sqrt(Enum.reduce(chunk_embedding, 0.0, fn x, acc -> x * x + acc end))
+    norm_c = :math.sqrt(Enum.reduce(chunk_list, 0.0, fn x, acc -> x * x + acc end))
 
     if norm_q > 0 and norm_c > 0 do
       dot / (norm_q * norm_c)
