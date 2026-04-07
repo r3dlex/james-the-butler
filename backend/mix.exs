@@ -31,7 +31,32 @@ defmodule James.MixProject do
           James.Providers.ConnectionTester,
           James.Repo,
           James.Providers.ModelCatalog,
-          James.Channels.TelegramBot
+          James.Channels.TelegramBot,
+          # Phase 1-4 modules without dedicated tests
+          James.MCP,
+          James.MCP.Client,
+          James.MCP.Server,
+          James.MCP.Server.GenServer,
+          James.MCP.Supervisor,
+          James.MCP.Transports,
+          James.MCP.Transports.SSE,
+          James.MCP.Transports.STDIO,
+          James.MCP.Transports.StreamableHTTP,
+          James.Plugins,
+          James.Plugins.Instance,
+          James.Plugins.Loader,
+          James.Plugins.Sandbox,
+          James.Plugins.Supervisor,
+          James.Skills,
+          James.Skills.Template,
+          James.Skills.Version,
+          James.Skills.Watcher,
+          James.Skills.SkillManage,
+          James.Agents.Tools.Registry,
+          JamesWeb.ErrorView,
+          JamesWeb.McpServerController,
+          JamesWeb.SkillController,
+          JamesWeb.PluginController
         ]
       ]
     ]
