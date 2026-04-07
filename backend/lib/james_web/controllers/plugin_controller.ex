@@ -11,7 +11,8 @@ defmodule JamesWeb.PluginController do
 
   def create(conn, params) do
     user = conn.assigns.current_user
-    attrs = Map.put(params, "user_id", user.id)
+    attrs = normalize_params(params)
+    attrs = Map.put(attrs, "user_id", user.id)
 
     case Plugins.install_plugin(attrs) do
       {:ok, plugin} ->
@@ -68,9 +69,27 @@ defmodule JamesWeb.PluginController do
 
   defp format_errors(changeset) do
     Ecto.Changeset.traverse_errors(changeset, fn {msg, opts} ->
-      Enum.reduce(opts, msg, fn {key, value}, acc ->
-        String.replace(acc, "%{#{key}}", to_string(value))
-      end)
+      msg =
+        Enum.reduce(opts, msg, fn {key, value}, acc ->
+          String.replace(acc, "%{#{key}}", to_string(value))
+        end)
+
+      msg
+    end)
+    |> Enum.map(fn {k, v} -> {to_string(k), v} end)
+    |> Enum.into(%{})
+  end
+
+  defp normalize_params(params) when is_map(params) do
+    Map.new(params, fn
+      {k, v} when is_atom(k) -> {to_string(k), normalize_params(v)}
+      {k, v} -> {k, normalize_params(v)}
     end)
   end
+
+  defp normalize_params(params) when is_list(params) do
+    Enum.map(params, &normalize_params/1)
+  end
+
+  defp normalize_params(params), do: params
 end

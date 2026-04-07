@@ -116,26 +116,16 @@ defmodule James.Skills.Watcher do
     Process.send_after(self(), :poll, interval)
   end
 
-  # Snapshot current mtimes for all .md files in dir.
+  # Snapshot current mtimes for all .md files in dir (recursive).
   defp snapshot_mtimes(dir) do
-    case File.ls(dir) do
-      {:ok, files} ->
-        files
-        |> Enum.filter(&String.ends_with?(&1, ".md"))
-        |> Enum.reduce(%{}, &add_mtime(dir, &1, &2))
+    paths = Path.wildcard(dir <> "/**/*.md")
 
-      {:error, _} ->
-        %{}
-    end
-  end
-
-  defp add_mtime(dir, file, acc) do
-    path = Path.join(dir, file)
-
-    case File.stat(path, time: :posix) do
-      {:ok, %{mtime: mtime}} -> Map.put(acc, path, mtime)
-      _ -> acc
-    end
+    Enum.reduce(paths, %{}, fn path, acc ->
+      case File.stat(path, time: :posix) do
+        {:ok, %{mtime: mtime}} -> Map.put(acc, path, mtime)
+        _ -> acc
+      end
+    end)
   end
 
   # Returns {list_of_changed_paths, new_mtime_map}.

@@ -50,6 +50,7 @@ defmodule James.MixProject do
   defp deps do
     [
       {:phoenix, "~> 1.7"},
+      {:phoenix_html, "~> 4.0"},
       {:phoenix_ecto, "~> 4.4"},
       {:ecto_sql, "~> 3.10"},
       {:postgrex, ">= 0.0.0"},
@@ -70,7 +71,11 @@ defmodule James.MixProject do
       {:opentelemetry_exporter, "~> 1.6"},
       {:opentelemetry_phoenix, "~> 1.1"},
       {:opentelemetry_ecto, "~> 1.2"},
-      {:opentelemetry_oban, "~> 1.0"}
+      {:opentelemetry_oban, "~> 1.0"},
+      # ML / AI inference
+      {:bumblebee, "~> 0.5"},
+      {:nx, "~> 0.9"},
+      {:stb_image, "~> 0.6.10"}
     ]
   end
 

@@ -11,8 +11,13 @@ defmodule JamesCli.MixProject do
       escript: escript(),
       deps: deps(),
       aliases: aliases(),
-      test_coverage: [tool: ExCoveralls, summary: [threshold: 85]],
-      preferred_cli_env: [
+      test_coverage: [tool: ExCoveralls, summary: [threshold: 85]]
+    ]
+  end
+
+  def cli do
+    [
+      preferred_envs: [
         coveralls: :test,
         "coveralls.detail": :test,
         "coveralls.html": :test
@@ -41,6 +46,7 @@ defmodule JamesCli.MixProject do
       {:toml, "~> 0.7"},
       {:jason, "~> 1.4"},
       {:req, "~> 0.5"},
+      {:mint_web_socket, "~> 1.0"},
       {:excoveralls, "~> 0.18", only: :test},
       {:mox, "~> 1.1", only: :test},
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
