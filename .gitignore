@@ -29,3 +29,7 @@ backend/xref_graph.dot
 
 # OMC runtime state
 .omc/
+.omx/
+
+# Coverage
+coverage/

@@ -17,6 +17,7 @@
     "tauri:build": "tauri build"
   },
   "dependencies": {
+    "@primevue/themes": "^4.5.4",
     "@tailwindcss/typography": "^0.5.19",
     "@tailwindcss/vite": "^4.2.2",
     "@vueuse/core": "^14.2.1",
@@ -26,6 +27,7 @@
     "markdown-it": "^14.1.1",
     "phoenix": "^1.8.5",
     "pinia": "^2.1.0",
+    "primevue": "^4.5.5",
     "radix-vue": "^1.9.17",
     "tailwindcss": "^4.2.2",
     "vue": "^3.4.0",
@@ -38,6 +40,7 @@
     "@types/markdown-it": "^14.1.2",
     "@typescript-eslint/parser": "^8.58.0",
     "@vitejs/plugin-vue": "^5.0.0",
+    "@vitest/coverage-v8": "^2.1.9",
     "@vue/test-utils": "^2.4.0",
     "eslint": "^9.0.0",
     "eslint-plugin-vue": "^10.8.0",

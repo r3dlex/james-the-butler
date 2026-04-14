@@ -101,6 +101,7 @@ const props = withDefaults(
 const emit = defineEmits<{
   confirm: [];
   cancel: [];
+  hide: [];
 }>();
 
 const visible = computed({
