@@ -27,7 +27,8 @@ describe("ErrorBanner — rendering", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("renders the message text", async () => {
-    const { default: ErrorBanner } = await import("@/components/ui/ErrorBanner.vue");
+    const { default: ErrorBanner } =
+      await import("@/components/ui/ErrorBanner.vue");
     const wrapper = mount(ErrorBanner, {
       props: { message: "Something went wrong" },
     });
@@ -36,7 +37,8 @@ describe("ErrorBanner — rendering", () => {
   });
 
   it("renders empty content when message is null", async () => {
-    const { default: ErrorBanner } = await import("@/components/ui/ErrorBanner.vue");
+    const { default: ErrorBanner } =
+      await import("@/components/ui/ErrorBanner.vue");
     const wrapper = mount(ErrorBanner, {
       props: { message: null },
     });
@@ -50,7 +52,8 @@ describe("ErrorBanner — dismiss emit", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('emits "dismiss" when close button is clicked', async () => {
-    const { default: ErrorBanner } = await import("@/components/ui/ErrorBanner.vue");
+    const { default: ErrorBanner } =
+      await import("@/components/ui/ErrorBanner.vue");
     const wrapper = mount(ErrorBanner, {
       props: { message: "Error!", dismissible: true },
     });
@@ -69,18 +72,24 @@ describe("ErrorBanner — dismissible prop", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("Message receives closable=true when dismissible=true", async () => {
-    const { default: ErrorBanner } = await import("@/components/ui/ErrorBanner.vue");
+    const { default: ErrorBanner } =
+      await import("@/components/ui/ErrorBanner.vue");
     const wrapper = mount(ErrorBanner, {
       props: { message: "Alert", dismissible: true },
     });
-    expect(wrapper.find("[data-testid='message']").attributes("data-closable")).toBe("true");
+    expect(
+      wrapper.find("[data-testid='message']").attributes("data-closable"),
+    ).toBe("true");
   });
 
   it("Message receives closable=false when dismissible=false", async () => {
-    const { default: ErrorBanner } = await import("@/components/ui/ErrorBanner.vue");
+    const { default: ErrorBanner } =
+      await import("@/components/ui/ErrorBanner.vue");
     const wrapper = mount(ErrorBanner, {
       props: { message: "Alert", dismissible: false },
     });
-    expect(wrapper.find("[data-testid='message']").attributes("data-closable")).toBe("false");
+    expect(
+      wrapper.find("[data-testid='message']").attributes("data-closable"),
+    ).toBe("false");
   });
 });

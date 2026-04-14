@@ -91,7 +91,9 @@ describe("useTaskStore — error paths", () => {
   });
 
   it("approveTask calls POST with correct path", async () => {
-    mockPost.mockResolvedValueOnce({ task: makeTask("task-3", { status: "approved" }) });
+    mockPost.mockResolvedValueOnce({
+      task: makeTask("task-3", { status: "approved" }),
+    });
     const { useTaskStore } = await import("@/stores/tasks");
     const store = useTaskStore();
     await store.approveTask("task-3");
@@ -99,7 +101,9 @@ describe("useTaskStore — error paths", () => {
   });
 
   it("rejectTask calls POST with correct path", async () => {
-    mockPost.mockResolvedValueOnce({ task: makeTask("task-4", { status: "rejected" }) });
+    mockPost.mockResolvedValueOnce({
+      task: makeTask("task-4", { status: "rejected" }),
+    });
     const { useTaskStore } = await import("@/stores/tasks");
     const store = useTaskStore();
     await store.rejectTask("task-4");

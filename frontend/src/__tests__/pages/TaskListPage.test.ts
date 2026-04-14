@@ -55,7 +55,9 @@ describe("TaskListPage — onMounted coverage (2 functions)", () => {
     const { useTaskStore } = await import("@/stores/tasks");
     const store = useTaskStore();
     // Add a pending destructive task so approve/reject buttons appear
-    store.updateTask(makeTask("t1", { status: "pending", riskLevel: "destructive" }));
+    store.updateTask(
+      makeTask("t1", { status: "pending", riskLevel: "destructive" }),
+    );
     const approveSpy = vi.spyOn(store, "approveTask");
 
     const { default: TaskListPage } = await import("@/pages/TaskListPage.vue");
@@ -71,7 +73,9 @@ describe("TaskListPage — onMounted coverage (2 functions)", () => {
       },
     });
 
-    const approveBtn = wrapper.findAll("button").find((b) => b.text() === "Approve");
+    const approveBtn = wrapper
+      .findAll("button")
+      .find((b) => b.text() === "Approve");
     await approveBtn!.trigger("click");
 
     expect(approveSpy).toHaveBeenCalledWith("t1");

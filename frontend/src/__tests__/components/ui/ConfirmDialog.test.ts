@@ -42,17 +42,23 @@ describe("ConfirmDialog — props", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("renders with default labels when props are not provided", async () => {
-    const { default: ConfirmDialog } = await import("@/components/ui/ConfirmDialog.vue");
+    const { default: ConfirmDialog } =
+      await import("@/components/ui/ConfirmDialog.vue");
     const wrapper = mount(ConfirmDialog, {
       props: { open: true, title: "Are you sure?" },
     });
     // The Dialog stub renders its footer via the footer slot
-    expect(wrapper.find("[data-testid='dialog-footer']").text()).toContain("Confirm");
-    expect(wrapper.find("[data-testid='dialog-footer']").text()).toContain("Cancel");
+    expect(wrapper.find("[data-testid='dialog-footer']").text()).toContain(
+      "Confirm",
+    );
+    expect(wrapper.find("[data-testid='dialog-footer']").text()).toContain(
+      "Cancel",
+    );
   });
 
   it("renders with custom labels when provided", async () => {
-    const { default: ConfirmDialog } = await import("@/components/ui/ConfirmDialog.vue");
+    const { default: ConfirmDialog } =
+      await import("@/components/ui/ConfirmDialog.vue");
     const wrapper = mount(ConfirmDialog, {
       props: {
         open: true,
@@ -61,8 +67,12 @@ describe("ConfirmDialog — props", () => {
         cancelLabel: "Keep it",
       },
     });
-    expect(wrapper.find("[data-testid='dialog-footer']").text()).toContain("Delete it");
-    expect(wrapper.find("[data-testid='dialog-footer']").text()).toContain("Keep it");
+    expect(wrapper.find("[data-testid='dialog-footer']").text()).toContain(
+      "Delete it",
+    );
+    expect(wrapper.find("[data-testid='dialog-footer']").text()).toContain(
+      "Keep it",
+    );
   });
 });
 
@@ -70,14 +80,13 @@ describe("ConfirmDialog — emits", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('emits "confirm" when confirm button is clicked', async () => {
-    const { default: ConfirmDialog } = await import("@/components/ui/ConfirmDialog.vue");
+    const { default: ConfirmDialog } =
+      await import("@/components/ui/ConfirmDialog.vue");
     const wrapper = mount(ConfirmDialog, {
       props: { open: true, title: "Confirm?", confirmLabel: "Go" },
     });
 
-    const confirmBtn = wrapper
-      .findAll("button")
-      .find((b) => b.text() === "Go");
+    const confirmBtn = wrapper.findAll("button").find((b) => b.text() === "Go");
     await confirmBtn!.trigger("click");
 
     expect(wrapper.emitted("confirm")).toBeTruthy();
@@ -85,7 +94,8 @@ describe("ConfirmDialog — emits", () => {
   });
 
   it('emits "cancel" when cancel button is clicked', async () => {
-    const { default: ConfirmDialog } = await import("@/components/ui/ConfirmDialog.vue");
+    const { default: ConfirmDialog } =
+      await import("@/components/ui/ConfirmDialog.vue");
     const wrapper = mount(ConfirmDialog, {
       props: { open: true, title: "Confirm?", cancelLabel: "Abort" },
     });
@@ -100,7 +110,8 @@ describe("ConfirmDialog — emits", () => {
   });
 
   it('emits "cancel" when dialog emits hide event', async () => {
-    const { default: ConfirmDialog } = await import("@/components/ui/ConfirmDialog.vue");
+    const { default: ConfirmDialog } =
+      await import("@/components/ui/ConfirmDialog.vue");
     const wrapper = mount(ConfirmDialog, {
       props: { open: true, title: "Confirm?" },
     });
@@ -119,7 +130,8 @@ describe("ConfirmDialog — visible prop", () => {
   beforeEach(() => vi.clearAllMocks());
 
   it("dialog is present when open=true", async () => {
-    const { default: ConfirmDialog } = await import("@/components/ui/ConfirmDialog.vue");
+    const { default: ConfirmDialog } =
+      await import("@/components/ui/ConfirmDialog.vue");
     const wrapper = mount(ConfirmDialog, {
       props: { open: true, title: "Visible" },
     });
@@ -127,7 +139,8 @@ describe("ConfirmDialog — visible prop", () => {
   });
 
   it("dialog is absent when open=false", async () => {
-    const { default: ConfirmDialog } = await import("@/components/ui/ConfirmDialog.vue");
+    const { default: ConfirmDialog } =
+      await import("@/components/ui/ConfirmDialog.vue");
     const wrapper = mount(ConfirmDialog, {
       props: { open: false, title: "Hidden" },
     });
