@@ -11,6 +11,7 @@ export interface Project {
   repoUrl: string | null;
   insertedAt: string;
   updatedAt: string;
+  sessionCount?: number;
 }
 
 export interface ProjectSession {

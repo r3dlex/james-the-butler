@@ -1,4 +1,5 @@
 <template>
+  <ToastContainer />
   <AppShell v-if="auth.isAuthenticated">
     <RouterView />
   </AppShell>
@@ -13,6 +14,7 @@ import { useProviderStore } from "@/stores/providers";
 import { useSessionStore } from "@/stores/sessions";
 import { useProjectStore } from "@/stores/projects";
 import AppShell from "@/components/layout/AppShell.vue";
+import ToastContainer from "@/components/common/ToastContainer.vue";
 
 const auth = useAuthStore();
 const providerStore = useProviderStore();

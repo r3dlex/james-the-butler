@@ -55,9 +55,9 @@ export const useSocketStore = defineStore("socket", () => {
 
     channel
       .join()
-      .receive("ok", (response: Record<string, unknown>) => {
+      .receive("ok", (response) => {
         channels.value.set(topic, channel);
-        onJoin?.(response);
+        onJoin?.(response as Record<string, unknown>);
       })
       .receive("error", () => {
         channels.value.delete(topic);

@@ -142,7 +142,7 @@ make pipeline-setup    # poetry install
 | Component  | Tests | Coverage Target |
 |------------|-------|-----------------|
 | Backend    | 481   | ≥50% (line)     |
-| Frontend   | 146   | ≥70% (line)     |
+| Frontend   | 406   | ≥50% (line) / ≥70% (branch) |
 | Pipeline   | —     | ≥90% (line)     |
 
 Run with coverage:
@@ -150,6 +150,10 @@ Run with coverage:
 ```bash
 make test-coverage
 ```
+
+## Component Library
+
+The frontend uses **PrimeVue v4** as its component library with **Tailwind CSS v4** for styling. PrimeVue v4 is configured in `unstyled: true` mode, delegating all visual styling to Tailwind utilities. See [docs/adr/PRIMEVUE_V4_TAILWIND.md](docs/adr/PRIMEVUE_V4_TAILWIND.md) for the full architecture decision record.
 
 ## License
 

@@ -21,6 +21,22 @@ export default [
       "vue/multi-word-component-names": "off",
     },
   },
+  // PrimeVue-first convention: discourage raw <button> in ui components dir.
+  // Use PrimeVue Button instead (import from 'primevue/button').
+  // Icon button wrappers (have class/style) are exempt.
+  {
+    files: ["src/components/ui/**/*.vue"],
+    rules: {
+      "vue/no-restricted-html-elements": [
+        "warn",
+        {
+          element: "button",
+          message:
+            "Prefer PrimeVue Button component. Import: import Button from 'primevue/button'",
+        },
+      ],
+    },
+  },
   {
     ignores: ["dist/**", "node_modules/**", "src-tauri/**"],
   },
