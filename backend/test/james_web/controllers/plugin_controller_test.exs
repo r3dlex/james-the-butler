@@ -9,11 +9,13 @@ defmodule JamesWeb.PluginControllerTest do
   end
 
   defp install_plugin(user, attrs \\ %{}) do
-    {:ok, plugin} =
-      Plugins.install_plugin(
-        Map.merge(%{user_id: user.id, name: "my-plugin", version: "1.0.0"}, attrs)
-      )
+    attrs =
+      for {k, v} <-
+            Map.merge(%{"user_id" => user.id, "name" => "my-plugin", "version" => "1.0.0"}, attrs),
+          into: %{},
+          do: {to_string(k), v}
 
+    {:ok, plugin} = Plugins.install_plugin(attrs)
     plugin
   end
 

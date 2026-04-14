@@ -6,6 +6,7 @@ defmodule JamesWeb.SessionChannel do
   alias James.Sessions.AwayDetector
   alias James.OpenClaw.Orchestrator
   alias James.Workers.GitStatusWorker
+  alias James.Tasks
 
   @impl true
   def join("session:" <> session_id, _params, socket) do
@@ -25,6 +26,100 @@ defmodule JamesWeb.SessionChannel do
 
         {:ok, %{messages: Enum.map(messages, &message_payload/1)},
          assign(socket, :session_id, session_id)}
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # message:new
+  # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_in("message:new", %{"content" => content, "session_id" => session_id}, socket) do
+    socket_session_id = socket.assigns.session_id
+
+    if session_id != socket_session_id do
+      {:reply, {:error, :forbidden}, socket}
+    else
+      session = Sessions.get_session(socket_session_id)
+
+      if is_nil(session) do
+        {:reply, {:error, :session_not_found}, socket}
+      else
+        case Sessions.create_message(%{
+               session_id: session_id,
+               role: "user",
+               content: content
+             }) do
+          {:ok, message} ->
+            :ok =
+              Phoenix.PubSub.broadcast(
+                James.PubSub,
+                "session:#{session_id}",
+                {:user_message, message}
+              )
+
+            {:reply, :ok, socket}
+
+          {:error, _changeset} ->
+            {:reply, {:error, :internal_error}, socket}
+        end
+      end
+    end
+  end
+
+  # ---------------------------------------------------------------------------
+  # task:approve / task:reject
+  # ---------------------------------------------------------------------------
+
+  @impl true
+  def handle_in("task:approve", %{"task_id" => task_id}, socket) do
+    socket_session_id = socket.assigns.session_id
+
+    case Tasks.get_task(task_id) do
+      nil ->
+        {:reply, {:error, :not_found}, socket}
+
+      task ->
+        if task.session_id != socket_session_id do
+          {:reply, {:error, :forbidden}, socket}
+        else
+          {:ok, updated_task} = Tasks.update_task_status(task, "approved")
+
+          :ok =
+            Phoenix.PubSub.broadcast(
+              James.PubSub,
+              "session:#{socket_session_id}",
+              {:task_updated, updated_task}
+            )
+
+          {:reply, :ok, socket}
+        end
+    end
+  end
+
+  @impl true
+  def handle_in("task:reject", %{"task_id" => task_id}, socket) do
+    socket_session_id = socket.assigns.session_id
+
+    case Tasks.get_task(task_id) do
+      nil ->
+        {:reply, {:error, :not_found}, socket}
+
+      task ->
+        if task.session_id != socket_session_id do
+          {:reply, {:error, :forbidden}, socket}
+        else
+          {:ok, updated_task} = Tasks.update_task_status(task, "rejected")
+
+          :ok =
+            Phoenix.PubSub.broadcast(
+              James.PubSub,
+              "session:#{socket_session_id}",
+              {:task_updated, updated_task}
+            )
+
+          {:reply, :ok, socket}
+        end
     end
   end
 
@@ -52,9 +147,6 @@ defmodule JamesWeb.SessionChannel do
       end
 
     case result do
-      :ok ->
-        {:reply, :ok, socket}
-
       {:error, :not_found} ->
         :ok =
           Phoenix.PubSub.broadcast(

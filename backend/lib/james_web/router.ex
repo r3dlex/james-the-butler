@@ -102,6 +102,14 @@ defmodule JamesWeb.Router do
     post "/plugins/:id/enable", PluginController, :enable
     post "/plugins/:id/disable", PluginController, :disable
 
+    # MCP Servers
+    resources "/settings/mcp-servers", McpServerController, only: [:index, :create, :delete]
+    post "/settings/mcp-servers/:id/start", McpServerController, :start
+    post "/settings/mcp-servers/:id/stop", McpServerController, :stop
+
+    # Skills
+    resources "/settings/skills", SkillController, only: [:index, :create, :update, :delete]
+
     # Hooks
     resources "/hooks", HookController, only: [:index, :create, :update, :delete]
 

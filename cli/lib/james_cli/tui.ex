@@ -1,87 +1,67 @@
 defmodule JamesCli.Tui do
   @moduledoc """
-  Terminal UI helpers for James CLI.
+  Simple ANSI TUI helpers for the interactive REPL.
 
-  Provides ANSI-colored formatting for user messages, assistant responses,
-  spinner frames, session headers, and status lines — giving the CLI a
-  Claude Code-like interactive appearance.
+  Provides colored output, spinners, and formatted assistant/user messages.
+  This is a lightweight ANSI-only TUI — not Ratatui (which requires Rust).
   """
 
-  @user_prefix "❯ "
-  @spinner_frames ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
+  @spinner_chars ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"]
 
-  @doc "Formats a user-typed message with bold gold styling and a '❯' prefix."
-  @spec format_user(String.t()) :: String.t()
-  def format_user(message) do
-    IO.ANSI.format([:bright, :yellow, @user_prefix, :reset, :bright, message, :reset], true)
-    |> IO.chardata_to_string()
-  end
-
-  @doc "Formats an assistant response with default text color and a trailing reset."
-  @spec format_assistant(String.t()) :: String.t()
-  def format_assistant(message) do
-    IO.ANSI.format([:default_color, message, :reset], true)
-    |> IO.chardata_to_string()
-  end
-
-  @doc "Returns the list of spinner animation frame strings."
-  @spec spinner_frames() :: [String.t()]
-  def spinner_frames, do: @spinner_frames
-
-  @doc "Returns a styled header line showing the session id."
-  @spec header(String.t()) :: String.t()
+  @doc "Returns the session header."
   def header(session_id) do
-    IO.ANSI.format(
-      [
-        :bright,
-        :cyan,
-        "─── James ",
-        :reset,
-        :cyan,
-        "· session ",
-        :bright,
-        session_id,
-        :reset,
-        :cyan,
-        " ───",
-        :reset
-      ],
-      true
-    )
+    [
+      :cyan,
+      "\n╔══════════════════════════════════════════════╗\n",
+      "║  James CLI — Session #{String.pad_trailing(session_id, 20)}║\n",
+      "╚══════════════════════════════════════════════╝",
+      :reset
+    ]
+    |> IO.ANSI.format()
     |> IO.chardata_to_string()
   end
 
-  @doc "Returns a styled dim status line (e.g. 'thinking…')."
-  @spec status_line(String.t()) :: String.t()
+  @doc "Returns a status line in faint gray."
   def status_line(text) do
-    IO.ANSI.format([:faint, :italic, text, :reset], true)
+    IO.ANSI.format([:faint, text]) |> IO.chardata_to_string()
+  end
+
+  @doc "Formats a message from the assistant (server) in green."
+  def format_assistant(text) do
+    [:green, "assistant: ", :reset, text]
+    |> IO.ANSI.format()
     |> IO.chardata_to_string()
   end
 
-  @doc """
-  Spawns a spinner in a background task.  Call `stop_spinner/1` with the
-  returned pid to stop it and clear the line.
-  """
-  @spec start_spinner(String.t()) :: pid()
-  def start_spinner(label \\ "thinking") do
-    spawn(fn -> spin_loop(@spinner_frames, label) end)
+  @doc "Formats a user input echo."
+  def format_user(text) do
+    [:bright, :blue, "you: ", :reset, text]
+    |> IO.ANSI.format()
+    |> IO.chardata_to_string()
   end
 
-  @doc "Stops a running spinner and clears the spinner line."
-  @spec stop_spinner(pid()) :: :ok
+  @doc "Starts a text spinner. Returns a pid."
+  def start_spinner(label) do
+    spawn(fn -> spinner_loop(label, 0) end)
+  end
+
+  @doc "Stops a spinner given its pid."
   def stop_spinner(pid) do
-    Process.exit(pid, :kill)
-    # Clear the spinner line
-    IO.write("\r" <> String.duplicate(" ", 40) <> "\r")
-    :ok
+    send(pid, :stop)
   end
 
-  # --- Private ---
+  defp spinner_loop(label, idx) do
+    char = Enum.at(@spinner_chars, rem(idx, length(@spinner_chars)))
+    msg = IO.ANSI.format([:cyan, "\r#{char} ", :faint, label, :reset]) |> IO.chardata_to_string()
 
-  defp spin_loop(frames, label) do
-    Enum.each(Stream.cycle(frames), fn frame ->
-      IO.write("\r" <> status_line("#{frame} #{label}..."))
-      Process.sleep(100)
-    end)
+    receive do
+      :stop ->
+        IO.write("\r" <> String.duplicate(" ", 60) <> "\r")
+        :ok
+    after
+      80 ->
+        IO.write(msg)
+        spinner_loop(label, idx + 1)
+    end
   end
 end

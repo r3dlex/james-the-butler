@@ -4,17 +4,14 @@ defmodule JamesCli.TuiTest do
   alias JamesCli.Tui
 
   describe "format_user/1" do
-    test "wraps message in bold ANSI escape codes" do
+    test "returns the message text" do
       result = Tui.format_user("hello world")
       assert result =~ "hello world"
-      # Should contain ANSI bold or color escape sequences
-      assert result =~ "\e["
     end
 
     test "includes a user indicator prefix" do
       result = Tui.format_user("my message")
-      # Should have some kind of 'you' or '>' indicator
-      assert result =~ ~r/[>❯▶]/
+      assert result =~ "you:"
     end
   end
 
@@ -24,18 +21,9 @@ defmodule JamesCli.TuiTest do
       assert result =~ "response text"
     end
 
-    test "includes ANSI reset at the end" do
+    test "includes an assistant indicator prefix" do
       result = Tui.format_assistant("some reply")
-      assert String.ends_with?(result, IO.ANSI.reset())
-    end
-  end
-
-  describe "spinner_frames/0" do
-    test "returns a non-empty list of frame strings" do
-      frames = Tui.spinner_frames()
-      assert is_list(frames)
-      assert frames != []
-      assert Enum.all?(frames, &is_binary/1)
+      assert result =~ "assistant:"
     end
   end
 
@@ -43,7 +31,7 @@ defmodule JamesCli.TuiTest do
     test "returns a styled header string containing the session id" do
       result = Tui.header("session-abc")
       assert result =~ "session-abc"
-      assert result =~ "\e["
+      assert result =~ "James CLI"
     end
   end
 
@@ -51,6 +39,14 @@ defmodule JamesCli.TuiTest do
     test "returns a styled status string" do
       result = Tui.status_line("thinking...")
       assert result =~ "thinking..."
+    end
+  end
+
+  describe "start_spinner/1 and stop_spinner/1" do
+    test "start_spinner returns a pid" do
+      pid = Tui.start_spinner("test")
+      assert is_pid(pid)
+      Tui.stop_spinner(pid)
     end
   end
 end

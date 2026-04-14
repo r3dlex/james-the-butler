@@ -249,10 +249,8 @@ defmodule James.Agents.ChatAgent do
   end
 
   defp fetch_memory_context(user_id, content) do
-    case Embeddings.generate(content) do
-      {:ok, embedding} -> format_memories(Memories.search_similar(user_id, embedding, 5))
-      {:error, _} -> ""
-    end
+    {:ok, embedding} = Embeddings.generate(content)
+    format_memories(Memories.search_similar(user_id, embedding, 5))
   end
 
   defp build_previous_session_context(nil), do: ""

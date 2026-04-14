@@ -274,6 +274,9 @@ defmodule James.OpenClaw.Orchestrator do
   #   checks last_activity_at on the session record).
   # ---------------------------------------------------------------------------
 
+  @doc "Handle a WebRTC offer from a viewer (returns :not_found so caller falls back to broadcast)."
+  def handle_webrtc_offer(_session_id, _sdp, _viewer_id), do: {:error, :not_found}
+
   # ---------------------------------------------------------------------------
   # Private
   # ---------------------------------------------------------------------------

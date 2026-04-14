@@ -5,17 +5,17 @@ defmodule JamesCli.Completions do
   Supports Bash, Zsh, and Fish shells.
   """
 
-  @commands ~w[session chat skill memory host project task hook completion version help]
+  @commands ~w[session chat skill memory host project task hook login logout completion version help tui]
 
   @subcommands %{
-    "session" => ~w[list show create archive],
-    "chat" => ~w[send],
-    "skill" => ~w[list show create update delete],
-    "memory" => ~w[list search delete],
-    "host" => ~w[list show register ping],
+    "session" => ~w[list show create delete],
+    "chat" => ~w[],
+    "skill" => ~w[list create delete],
+    "memory" => ~w[list],
+    "host" => ~w[list show],
     "project" => ~w[list show create],
-    "task" => ~w[list show],
-    "hook" => ~w[list show create update delete enable disable],
+    "task" => ~w[list show approve reject],
+    "hook" => ~w[list show create delete],
     "completion" => ~w[bash zsh fish]
   }
 

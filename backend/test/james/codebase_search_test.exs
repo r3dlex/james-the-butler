@@ -116,13 +116,9 @@ defmodule James.CodebaseSearchTest do
   end
 
   describe "search result structure" do
-    test "search returns error when embeddings unavailable" do
-      # When no API key is configured, embedding generation returns error
-      # We verify the search function handles this gracefully
-      result = CodebaseSearch.search("fake-user-id", "test query", 5)
-
-      # The function should return either ok with list or error
-      assert is_tuple(result)
+    test "search returns ok with empty list when no memories match" do
+      result = CodebaseSearch.search("00000000-0000-0000-0000-000000000000", "test query", 5)
+      assert result == {:ok, []}
     end
 
     test "clear_index removes codebase_navigation memories", %{user: user} do
@@ -131,9 +127,8 @@ defmodule James.CodebaseSearchTest do
         Memories.create_memory(%{
           user_id: user.id,
           content: "def hello do\n  :world\nend",
-          embedding: Enum.map(1..1536, fn _ -> 0.1 end),
-          memory_type: "codebase_navigation",
-          metadata: %{file: "test.ex", line: 0}
+          embedding: Enum.map(1..384, fn _ -> 0.1 end),
+          memory_type: "codebase_navigation"
         })
 
       # Verify it exists
@@ -158,16 +153,15 @@ defmodule James.CodebaseSearchTest do
   describe "search ordering" do
     test "results are sorted by similarity score descending", %{user: user} do
       # Pre-seed memories with embeddings that should rank differently
-      embedding1 = Enum.map(1..1536, fn _ -> 0.1 end)
-      embedding2 = Enum.map(1..1536, fn _ -> 0.9 end)
+      embedding1 = Enum.map(1..384, fn _ -> 0.1 end)
+      embedding2 = Enum.map(1..384, fn _ -> 0.9 end)
 
       {:ok, _} =
         Memories.create_memory(%{
           user_id: user.id,
           content: "about elixir programming",
           embedding: embedding1,
-          memory_type: "codebase_navigation",
-          metadata: %{file: "elixir.ex", line: 0}
+          memory_type: "codebase_navigation"
         })
 
       {:ok, _} =
@@ -175,8 +169,7 @@ defmodule James.CodebaseSearchTest do
           user_id: user.id,
           content: "completely unrelated content xyz",
           embedding: embedding2,
-          memory_type: "codebase_navigation",
-          metadata: %{file: "other.ex", line: 0}
+          memory_type: "codebase_navigation"
         })
 
       # Search with a query that should match elixir content

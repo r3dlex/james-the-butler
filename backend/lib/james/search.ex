@@ -99,30 +99,26 @@ defmodule James.Search do
   end
 
   defp semantic_search(query_text, user_id, _opts, limit) do
-    case Embeddings.generate(query_text) do
-      {:ok, embedding} ->
-        from(m in James.Memories.Memory,
-          join: s in Session,
-          on: m.source_session_id == s.id,
-          where: m.user_id == ^user_id,
-          select: %{
-            session_id: s.id,
-            session_name: s.name,
-            agent_type: s.agent_type,
-            host_id: s.host_id,
-            excerpt: m.content,
-            last_used_at: s.last_used_at,
-            score: fragment("1 - (embedding <=> ?)", ^embedding)
-          },
-          order_by: fragment("embedding <=> ?", ^embedding),
-          limit: ^limit
-        )
-        |> Repo.all()
-        |> Enum.map(&Map.put(&1, :source, :semantic))
+    {:ok, embedding} = Embeddings.generate(query_text)
 
-      {:error, _} ->
-        []
-    end
+    from(m in James.Memories.Memory,
+      join: s in Session,
+      on: m.source_session_id == s.id,
+      where: m.user_id == ^user_id,
+      select: %{
+        session_id: s.id,
+        session_name: s.name,
+        agent_type: s.agent_type,
+        host_id: s.host_id,
+        excerpt: m.content,
+        last_used_at: s.last_used_at,
+        score: fragment("1 - (embedding <=> ?)", ^embedding)
+      },
+      order_by: fragment("embedding <=> ?", ^embedding),
+      limit: ^limit
+    )
+    |> Repo.all()
+    |> Enum.map(&Map.put(&1, :source, :semantic))
   end
 
   defp apply_filters(query, opts) do

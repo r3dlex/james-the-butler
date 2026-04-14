@@ -26,20 +26,14 @@
                 Choose your colour scheme.
               </p>
             </div>
-            <select
+            <Select
               v-model="settings.theme"
-              class="rounded border bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]"
-              style="
-                border-color: var(--color-border);
-                color: var(--color-text);
-                background: var(--color-navy-deep);
-              "
+              :options="themeOptions"
+              optionLabel="label"
+              optionValue="value"
+              class="w-40"
               @change="onThemeChange"
-            >
-              <option value="dark">Dark</option>
-              <option value="light">Light</option>
-              <option value="system">System</option>
-            </select>
+            />
           </div>
         </div>
       </section>
@@ -65,19 +59,14 @@
                 How new sessions run actions by default.
               </p>
             </div>
-            <select
+            <Select
               v-model="settings.defaultExecutionMode"
-              class="rounded border bg-transparent px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]"
-              style="
-                border-color: var(--color-border);
-                color: var(--color-text);
-                background: var(--color-navy-deep);
-              "
+              :options="executionModeOptions"
+              optionLabel="label"
+              optionValue="value"
+              class="w-48"
               @change="save"
-            >
-              <option value="direct">Direct (auto-approve)</option>
-              <option value="supervised">Supervised (manual approve)</option>
-            </select>
+            />
           </div>
 
           <!-- Keep intermediates -->
@@ -90,29 +79,7 @@
                 Retain tool-call and reasoning messages in the chat view.
               </p>
             </div>
-            <button
-              type="button"
-              role="switch"
-              :aria-checked="settings.keepIntermediates"
-              class="relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors"
-              :style="{
-                background: settings.keepIntermediates
-                  ? 'var(--color-gold)'
-                  : 'var(--color-border)',
-              }"
-              @click="
-                settings.keepIntermediates = !settings.keepIntermediates;
-                save();
-              "
-            >
-              <span
-                class="pointer-events-none inline-block h-4 w-4 transform rounded-full shadow-sm transition-transform"
-                style="background: var(--color-navy-deep)"
-                :class="
-                  settings.keepIntermediates ? 'translate-x-4' : 'translate-x-0'
-                "
-              />
-            </button>
+            <InputSwitch v-model="settings.keepIntermediates" @change="save" />
           </div>
         </div>
       </section>
@@ -214,6 +181,8 @@ import { reactive, onMounted } from "vue";
 import { useLogoSrc } from "@/composables/useLogoSrc";
 import { applyTheme } from "@/utils/theme";
 import type { ThemeMode } from "@/utils/theme";
+import Select from "primevue/select";
+import InputSwitch from "primevue/inputswitch";
 
 const logoSrc = useLogoSrc();
 const STORAGE_KEY = "james_general_settings";
@@ -229,6 +198,17 @@ const defaults: GeneralSettings = {
   defaultExecutionMode: "direct",
   keepIntermediates: false,
 };
+
+const themeOptions = [
+  { label: "Dark", value: "dark" },
+  { label: "Light", value: "light" },
+  { label: "System", value: "system" },
+];
+
+const executionModeOptions = [
+  { label: "Direct (auto-approve)", value: "direct" },
+  { label: "Supervised (manual approve)", value: "supervised" },
+];
 
 const settings = reactive<GeneralSettings>({ ...defaults });
 

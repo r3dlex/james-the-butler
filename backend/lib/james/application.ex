@@ -33,11 +33,19 @@ defmodule James.Application do
           {Oban, Application.fetch_env!(:james, Oban)},
           James.OpenClaw.Supervisor,
           James.OpenClaw.Orchestrator,
-          James.Browser.CDPConnectionPool,
+          # James.Browser.CDPConnectionPool,  # removed: module does not exist
           James.Planner.MetaPlanner,
           James.Channels.TURNCredentials,
           James.Providers.ProviderOAuth,
           James.Plugins.Registry,
+          James.Agents.Tools.Registry,
+          {Registry, keys: :unique, name: James.Plugins.Instance.Registry},
+          James.Plugins.Supervisor,
+          {Registry, keys: :unique, name: James.MCP.Server.Registry},
+          James.MCP.Supervisor,
+          James.Skills,
+          {James.Skills.Bridge, export_dir: System.user_home() <> "/.claude/skills"},
+          {James.Skills.Watcher, dir: System.user_home() <> "/.claude/skills"},
           JamesWeb.Endpoint
         ]
     end

@@ -1,37 +1,41 @@
 <template>
-  <span
-    class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium"
-    :style="{ background: bgColor, color: textColor }"
-  >
-    {{ label }}
-  </span>
+  <Tag
+    :value="label"
+    :severity="tagSeverity"
+    :pt="{
+      root: {
+        class:
+          'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+      },
+    }"
+  />
 </template>
 
 <script setup lang="ts">
 import { computed } from "vue";
+import Tag from "primevue/tag";
 import type { RiskLevel } from "@/types/task";
 
 const props = defineProps<{ level: RiskLevel }>();
 
-const config: Record<RiskLevel, { bg: string; text: string; label: string }> = {
+const config: Record<
+  RiskLevel,
+  { label: string; severity: "success" | "warn" | "danger" }
+> = {
   read_only: {
-    bg: "rgba(74, 222, 128, 0.15)",
-    text: "var(--color-risk-green)",
     label: "Read Only",
+    severity: "success",
   },
   additive: {
-    bg: "rgba(96, 165, 250, 0.15)",
-    text: "var(--color-risk-blue)",
     label: "Additive",
+    severity: "warn",
   },
   destructive: {
-    bg: "rgba(248, 113, 113, 0.15)",
-    text: "var(--color-risk-red)",
     label: "Destructive",
+    severity: "danger",
   },
 };
 
-const bgColor = computed(() => config[props.level].bg);
-const textColor = computed(() => config[props.level].text);
+const tagSeverity = computed(() => config[props.level].severity);
 const label = computed(() => config[props.level].label);
 </script>

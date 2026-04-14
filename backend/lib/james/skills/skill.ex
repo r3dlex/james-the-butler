@@ -9,15 +9,14 @@ defmodule James.Skills.Skill do
     field :name, :string
     field :content_hash, :string
     field :content, :string
-    field :scope, :string, default: "global"
 
     timestamps(type: :utc_datetime)
   end
 
   def changeset(skill, attrs) do
     skill
-    |> cast(attrs, [:name, :content_hash, :content, :scope])
+    |> cast(attrs, [:name, :content_hash, :content])
     |> validate_required([:name, :content_hash, :content])
-    |> unique_constraint(:content_hash)
+    |> unique_constraint(:name)
   end
 end

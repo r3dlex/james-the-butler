@@ -3,10 +3,12 @@ import { ref } from "vue";
 import { api } from "@/services/api";
 import type { ModelConfig } from "@/types/model";
 import type { McpServer } from "@/types/mcp";
+import type { Skill } from "@/types/skill";
 
 export const useSettingsStore = defineStore("settings", () => {
   const modelConfig = ref<ModelConfig | null>(null);
   const mcpServers = ref<McpServer[]>([]);
+  const skills = ref<Skill[]>([]);
   const loading = ref(false);
   const error = ref<string | null>(null);
 
@@ -100,9 +102,63 @@ export const useSettingsStore = defineStore("settings", () => {
     }
   }
 
+  async function fetchSkills() {
+    loading.value = true;
+    error.value = null;
+    try {
+      const data = await api.get<{ skills: Skill[] }>("/api/settings/skills");
+      skills.value = data.skills;
+    } catch (e: unknown) {
+      error.value =
+        e && typeof e === "object" && "error" in e
+          ? String((e as { error: unknown }).error)
+          : "Failed to fetch skills";
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function addSkill(
+    skill: Omit<Skill, "id" | "content_hash" | "inserted_at">,
+  ) {
+    loading.value = true;
+    error.value = null;
+    try {
+      const data = await api.post<{ skill: Skill }>(
+        "/api/settings/skills",
+        skill,
+      );
+      skills.value.push(data.skill);
+    } catch (e: unknown) {
+      error.value =
+        e && typeof e === "object" && "error" in e
+          ? String((e as { error: unknown }).error)
+          : "Failed to add skill";
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function removeSkill(id: string) {
+    loading.value = true;
+    error.value = null;
+    try {
+      await api.delete(`/api/settings/skills/${id}`);
+      skills.value = skills.value.filter((s) => s.id !== id);
+    } catch (e: unknown) {
+      error.value =
+        e && typeof e === "object" && "error" in e
+          ? String((e as { error: unknown }).error)
+          : "Failed to remove skill";
+    } finally {
+      loading.value = false;
+    }
+  }
+
   return {
     modelConfig,
     mcpServers,
+    skills,
     loading,
     error,
     fetchModelConfig,
@@ -110,5 +166,8 @@ export const useSettingsStore = defineStore("settings", () => {
     fetchMcpServers,
     addMcpServer,
     removeMcpServer,
+    fetchSkills,
+    addSkill,
+    removeSkill,
   };
 });

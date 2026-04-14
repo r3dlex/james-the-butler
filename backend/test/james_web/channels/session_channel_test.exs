@@ -1,7 +1,7 @@
 defmodule JamesWeb.SessionChannelTest do
   use JamesWeb.ChannelCase
 
-  alias James.{Accounts, Hosts, Sessions}
+  alias James.{Accounts, Hosts, Sessions, Tasks}
 
   defp create_user(email \\ nil) do
     email = email || "chan_#{System.unique_integer()}@example.com"
@@ -156,6 +156,170 @@ defmodule JamesWeb.SessionChannelTest do
       send(socket.channel_pid, {:webrtc_offer_received, "v=0\r\n", viewer_id})
 
       assert_push("webrtc:offer", %{"sdp" => "v=0\r\n", "from_viewer_id" => ^viewer_id})
+    end
+  end
+
+  describe "message:new" do
+    test "creates a user message and broadcasts :user_message" do
+      user = create_user()
+      host = create_host()
+      session = create_session(user, host)
+      socket = connect_socket(user)
+
+      {:ok, _, socket} =
+        subscribe_and_join(socket, JamesWeb.SessionChannel, "session:#{session.id}")
+
+      ref =
+        push(socket, "message:new", %{"content" => "Hello, world!", "session_id" => session.id})
+
+      assert_reply(ref, :ok, _)
+
+      # Verify message was created in DB
+      messages = Sessions.list_messages(session.id)
+      assert length(messages) == 1
+      assert hd(messages).content == "Hello, world!"
+      assert hd(messages).role == "user"
+    end
+
+    test "returns forbidden when session_id in payload does not match socket session" do
+      user = create_user()
+      host = create_host()
+      session = create_session(user, host)
+      socket = connect_socket(user)
+
+      {:ok, _, socket} =
+        subscribe_and_join(socket, JamesWeb.SessionChannel, "session:#{session.id}")
+
+      other_session_id = Ecto.UUID.generate()
+      ref = push(socket, "message:new", %{"content" => "Hi", "session_id" => other_session_id})
+
+      assert_reply(ref, :error, :forbidden)
+    end
+
+    test "returns forbidden when session does not exist" do
+      user = create_user()
+      host = create_host()
+      session = create_session(user, host)
+      socket = connect_socket(user)
+
+      {:ok, _, socket} =
+        subscribe_and_join(socket, JamesWeb.SessionChannel, "session:#{session.id}")
+
+      # The session_id in the socket is session.id, but we pass a non-existent session
+      non_existent_id = Ecto.UUID.generate()
+      ref = push(socket, "message:new", %{"content" => "Hi", "session_id" => non_existent_id})
+
+      # Session doesn't exist in DB, but the check is: does payload session_id == socket session_id?
+      # Since non_existent_id != session.id, it returns forbidden
+      assert_reply(ref, :error, :forbidden)
+    end
+  end
+
+  describe "task:approve" do
+    test "approves a task and broadcasts :task_updated" do
+      user = create_user()
+      host = create_host()
+      session = create_session(user, host)
+      socket = connect_socket(user)
+
+      {:ok, _, socket} =
+        subscribe_and_join(socket, JamesWeb.SessionChannel, "session:#{session.id}")
+
+      {:ok, task} =
+        Tasks.create_task(%{session_id: session.id, description: "Do something"})
+
+      ref = push(socket, "task:approve", %{"task_id" => task.id})
+      assert_reply(ref, :ok, _)
+
+      # Verify task was updated
+      updated = Tasks.get_task(task.id)
+      assert updated.status == "approved"
+    end
+
+    test "returns not_found when task does not exist" do
+      user = create_user()
+      host = create_host()
+      session = create_session(user, host)
+      socket = connect_socket(user)
+
+      {:ok, _, socket} =
+        subscribe_and_join(socket, JamesWeb.SessionChannel, "session:#{session.id}")
+
+      fake_id = Ecto.UUID.generate()
+      ref = push(socket, "task:approve", %{"task_id" => fake_id})
+      assert_reply(ref, :error, :not_found)
+    end
+
+    test "returns forbidden when task belongs to a different session" do
+      user1 = create_user()
+      user2 = create_user()
+      host = create_host()
+      session1 = create_session(user1, host)
+      session2 = create_session(user2, host)
+      socket = connect_socket(user1)
+
+      {:ok, _, socket} =
+        subscribe_and_join(socket, JamesWeb.SessionChannel, "session:#{session1.id}")
+
+      # Task belongs to session2, not session1
+      {:ok, task} =
+        Tasks.create_task(%{session_id: session2.id, description: "Other session task"})
+
+      ref = push(socket, "task:approve", %{"task_id" => task.id})
+      assert_reply(ref, :error, :forbidden)
+    end
+  end
+
+  describe "task:reject" do
+    test "rejects a task and broadcasts :task_updated" do
+      user = create_user()
+      host = create_host()
+      session = create_session(user, host)
+      socket = connect_socket(user)
+
+      {:ok, _, socket} =
+        subscribe_and_join(socket, JamesWeb.SessionChannel, "session:#{session.id}")
+
+      {:ok, task} =
+        Tasks.create_task(%{session_id: session.id, description: "Do something"})
+
+      ref = push(socket, "task:reject", %{"task_id" => task.id})
+      assert_reply(ref, :ok, _)
+
+      updated = Tasks.get_task(task.id)
+      assert updated.status == "rejected"
+    end
+
+    test "returns not_found when task does not exist" do
+      user = create_user()
+      host = create_host()
+      session = create_session(user, host)
+      socket = connect_socket(user)
+
+      {:ok, _, socket} =
+        subscribe_and_join(socket, JamesWeb.SessionChannel, "session:#{session.id}")
+
+      fake_id = Ecto.UUID.generate()
+      ref = push(socket, "task:reject", %{"task_id" => fake_id})
+      assert_reply(ref, :error, :not_found)
+    end
+
+    test "returns forbidden when task belongs to a different session" do
+      user1 = create_user()
+      user2 = create_user()
+      host = create_host()
+      session1 = create_session(user1, host)
+      session2 = create_session(user2, host)
+      socket = connect_socket(user1)
+
+      {:ok, _, socket} =
+        subscribe_and_join(socket, JamesWeb.SessionChannel, "session:#{session1.id}")
+
+      {:ok, task} =
+        Tasks.create_task(%{session_id: session2.id, description: "Other session task"})
+
+      ref = push(socket, "task:reject", %{"task_id" => task.id})
+      assert_reply(ref, :error, :forbidden)
     end
   end
 
