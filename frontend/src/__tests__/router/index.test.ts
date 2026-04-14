@@ -33,9 +33,9 @@ const mockProviderStoreImpl = vi.fn(() => ({
       id: "p1",
       status: "untested" as const,
       lastTestedAt: null as string | null,
-      testConnection: mockTestConnection,
     },
   ],
+  testConnection: mockTestConnection,
 }));
 
 vi.mock("@/stores/auth", () => ({
@@ -100,9 +100,9 @@ it("afterEach: navigating into /settings triggers provider health check", async 
         id: "p1",
         status: "untested" as const,
         lastTestedAt: null as string | null,
-        testConnection: mockTestConnection,
       },
     ],
+    testConnection: mockTestConnection,
   });
 
   await router.push("/settings/general");
