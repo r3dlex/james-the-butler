@@ -28,7 +28,8 @@ backend/xref_graph.dot
 .claude/worktrees/
 
 # OMC runtime state
-.omc/
+.omc/*
+!.omc/plans/
 .omx/
 
 # Coverage

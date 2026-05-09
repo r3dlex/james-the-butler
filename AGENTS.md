@@ -85,6 +85,23 @@ James should automatically detect when a workspace is a git repository and provi
   - pytest for testing, ruff for linting, mypy for type checking
   - Integrates with GitHub Actions (see `.github/workflows/`)
 
+### CLI (Elixir escript)
+
+- **Location**: `cli/`
+- **Spec**: `spec/README.md` (ADR: [ADR-012](docs/adr/012-cli-escript.md))
+- **Language**: Elixir escript
+- **Zero-install**: Run `mix deps.get` — no global tooling beyond Elixir/Erlang required
+- **Key commands**: `make cli-setup`, `make cli-test`, `make cli-test-coverage`, `make cli-build`, `make cli-lint`
+- **Coverage target**: 85% line coverage (see [ADR-012](docs/adr/012-cli-escript.md))
+- **Output binary**: `james` — compiled via `mix escript.build`
+- **Conventions**:
+  - Config lives at `~/.james/config.toml` (TOML via `:toml` library)
+  - Output formats: `text` (default), `json`, `stream_json` (newline-delimited)
+  - Interactive mode via `JamesCli.Repl`; headless mode via `--non-interactive`
+  - Shell completions: bash, zsh, fish via `james completion <shell>`
+  - All HTTP calls use `Req` with Bearer token auth from config
+  - Format with `mix format` before committing
+
 ## Architecture Gate (Archgate)
 
 The pipeline runner includes an `archgate` command that validates architectural rules on every PR (see [ADR-008](docs/adr/008-archgate-enforcement.md)):
