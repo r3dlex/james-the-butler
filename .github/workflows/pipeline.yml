@@ -8,12 +8,18 @@ on:
   workflow_dispatch:
 
 jobs:
-  archgate:
-    name: Architecture Gate
-    runs-on: ubuntu-latest
+  # --------------------------------------------------------------------------
+  # Architecture Gate
+  # --------------------------------------------------------------------------
+  _archgate-self-hosted:
+    name: "Architecture Gate (self-hosted)"
+    runs-on: [self-hosted, ubuntu-latest]
+    continue-on-error: true
     defaults:
       run:
         working-directory: tools/pipeline_runner
+    outputs:
+      passed: ${{ steps.mark.outputs.passed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,12 +38,58 @@ jobs:
       - name: Run architecture gate
         run: poetry run pipeline-runner archgate
 
-  pipeline-lint:
-    name: Pipeline Runner Lint
+      - id: mark
+        if: success()
+        working-directory: ${{ github.workspace }}
+        run: echo "passed=true" >> "$GITHUB_OUTPUT"
+
+  archgate:
+    name: Architecture Gate
+    needs: _archgate-self-hosted
+    if: always()
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: tools/pipeline_runner
+    steps:
+      - name: Route
+        working-directory: ${{ github.workspace }}
+        run: echo "self-hosted passed=${{ needs._archgate-self-hosted.outputs.passed }}"
+
+      - uses: actions/checkout@v4
+        if: needs._archgate-self-hosted.outputs.passed != 'true'
+
+      - name: Install Poetry
+        if: needs._archgate-self-hosted.outputs.passed != 'true'
+        run: pipx install poetry
+
+      - uses: actions/setup-python@v5
+        if: needs._archgate-self-hosted.outputs.passed != 'true'
+        with:
+          python-version: "3.12"
+          cache: poetry
+          cache-dependency-path: tools/pipeline_runner/poetry.lock
+
+      - name: Install dependencies
+        if: needs._archgate-self-hosted.outputs.passed != 'true'
+        run: poetry install
+
+      - name: Run architecture gate
+        if: needs._archgate-self-hosted.outputs.passed != 'true'
+        run: poetry run pipeline-runner archgate
+
+  # --------------------------------------------------------------------------
+  # Pipeline Runner Lint
+  # --------------------------------------------------------------------------
+  _pipeline-lint-self-hosted:
+    name: "Pipeline Runner Lint (self-hosted)"
+    runs-on: [self-hosted, ubuntu-latest]
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: tools/pipeline_runner
+    outputs:
+      passed: ${{ steps.mark.outputs.passed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -62,12 +114,66 @@ jobs:
       - name: Mypy
         run: poetry run mypy src/
 
-  pipeline-test:
-    name: Pipeline Runner Tests
+      - id: mark
+        if: success()
+        working-directory: ${{ github.workspace }}
+        run: echo "passed=true" >> "$GITHUB_OUTPUT"
+
+  pipeline-lint:
+    name: Pipeline Runner Lint
+    needs: _pipeline-lint-self-hosted
+    if: always()
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: tools/pipeline_runner
+    steps:
+      - name: Route
+        working-directory: ${{ github.workspace }}
+        run: echo "self-hosted passed=${{ needs._pipeline-lint-self-hosted.outputs.passed }}"
+
+      - uses: actions/checkout@v4
+        if: needs._pipeline-lint-self-hosted.outputs.passed != 'true'
+
+      - name: Install Poetry
+        if: needs._pipeline-lint-self-hosted.outputs.passed != 'true'
+        run: pipx install poetry
+
+      - uses: actions/setup-python@v5
+        if: needs._pipeline-lint-self-hosted.outputs.passed != 'true'
+        with:
+          python-version: "3.12"
+          cache: poetry
+          cache-dependency-path: tools/pipeline_runner/poetry.lock
+
+      - name: Install dependencies
+        if: needs._pipeline-lint-self-hosted.outputs.passed != 'true'
+        run: poetry install
+
+      - name: Ruff check
+        if: needs._pipeline-lint-self-hosted.outputs.passed != 'true'
+        run: poetry run ruff check .
+
+      - name: Ruff format
+        if: needs._pipeline-lint-self-hosted.outputs.passed != 'true'
+        run: poetry run ruff format --check .
+
+      - name: Mypy
+        if: needs._pipeline-lint-self-hosted.outputs.passed != 'true'
+        run: poetry run mypy src/
+
+  # --------------------------------------------------------------------------
+  # Pipeline Runner Tests
+  # --------------------------------------------------------------------------
+  _pipeline-test-self-hosted:
+    name: "Pipeline Runner Tests (self-hosted)"
+    runs-on: [self-hosted, ubuntu-latest]
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: tools/pipeline_runner
+    outputs:
+      passed: ${{ steps.mark.outputs.passed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -86,9 +192,53 @@ jobs:
       - name: Run tests with coverage
         run: poetry run pytest --cov=pipeline_runner --cov-report=term-missing
 
-  backend-test:
-    name: Backend Tests
+      - id: mark
+        if: success()
+        working-directory: ${{ github.workspace }}
+        run: echo "passed=true" >> "$GITHUB_OUTPUT"
+
+  pipeline-test:
+    name: Pipeline Runner Tests
+    needs: _pipeline-test-self-hosted
+    if: always()
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tools/pipeline_runner
+    steps:
+      - name: Route
+        working-directory: ${{ github.workspace }}
+        run: echo "self-hosted passed=${{ needs._pipeline-test-self-hosted.outputs.passed }}"
+
+      - uses: actions/checkout@v4
+        if: needs._pipeline-test-self-hosted.outputs.passed != 'true'
+
+      - name: Install Poetry
+        if: needs._pipeline-test-self-hosted.outputs.passed != 'true'
+        run: pipx install poetry
+
+      - uses: actions/setup-python@v5
+        if: needs._pipeline-test-self-hosted.outputs.passed != 'true'
+        with:
+          python-version: "3.12"
+          cache: poetry
+          cache-dependency-path: tools/pipeline_runner/poetry.lock
+
+      - name: Install dependencies
+        if: needs._pipeline-test-self-hosted.outputs.passed != 'true'
+        run: poetry install
+
+      - name: Run tests with coverage
+        if: needs._pipeline-test-self-hosted.outputs.passed != 'true'
+        run: poetry run pytest --cov=pipeline_runner --cov-report=term-missing
+
+  # --------------------------------------------------------------------------
+  # Backend Tests (Elixir + Postgres)
+  # --------------------------------------------------------------------------
+  _backend-test-self-hosted:
+    name: "Backend Tests (self-hosted)"
+    runs-on: [self-hosted, ubuntu-latest]
+    continue-on-error: true
     defaults:
       run:
         working-directory: backend
@@ -106,6 +256,8 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
+    outputs:
+      passed: ${{ steps.mark.outputs.passed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -141,12 +293,92 @@ jobs:
           MIX_ENV: test
           DB_PORT: 5432
 
-  frontend-test:
-    name: Frontend Tests
+      - id: mark
+        if: success()
+        working-directory: ${{ github.workspace }}
+        run: echo "passed=true" >> "$GITHUB_OUTPUT"
+
+  backend-test:
+    name: Backend Tests
+    needs: _backend-test-self-hosted
+    if: always()
     runs-on: ubuntu-latest
     defaults:
       run:
+        working-directory: backend
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: james_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+    steps:
+      - name: Route
+        working-directory: ${{ github.workspace }}
+        run: echo "self-hosted passed=${{ needs._backend-test-self-hosted.outputs.passed }}"
+
+      - uses: actions/checkout@v4
+        if: needs._backend-test-self-hosted.outputs.passed != 'true'
+
+      - uses: erlef/setup-beam@v1
+        if: needs._backend-test-self-hosted.outputs.passed != 'true'
+        with:
+          elixir-version: "1.18"
+          otp-version: "27"
+
+      - name: Cache deps
+        if: needs._backend-test-self-hosted.outputs.passed != 'true'
+        uses: actions/cache@v4
+        with:
+          path: backend/deps
+          key: mix-${{ hashFiles('backend/mix.lock') }}
+
+      - name: Install dependencies
+        if: needs._backend-test-self-hosted.outputs.passed != 'true'
+        run: mix deps.get
+
+      - name: Compile
+        if: needs._backend-test-self-hosted.outputs.passed != 'true'
+        run: mix compile
+
+      - name: Check formatting
+        if: needs._backend-test-self-hosted.outputs.passed != 'true'
+        run: mix format --check-formatted
+
+      - name: Setup database
+        if: needs._backend-test-self-hosted.outputs.passed != 'true'
+        run: mix ecto.create && mix ecto.migrate
+        env:
+          MIX_ENV: test
+          DB_PORT: 5432
+
+      - name: Run tests
+        if: needs._backend-test-self-hosted.outputs.passed != 'true'
+        run: mix test --cover || (echo "::error::mix test --cover failed — see output above" && exit 1)
+        env:
+          MIX_ENV: test
+          DB_PORT: 5432
+
+  # --------------------------------------------------------------------------
+  # Frontend Tests (Node)
+  # --------------------------------------------------------------------------
+  _frontend-test-self-hosted:
+    name: "Frontend Tests (self-hosted)"
+    runs-on: [self-hosted, ubuntu-latest]
+    continue-on-error: true
+    defaults:
+      run:
         working-directory: frontend
+    outputs:
+      passed: ${{ steps.mark.outputs.passed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -165,12 +397,58 @@ jobs:
       - name: Test
         run: npm test
 
-  cli-test:
-    name: CLI Tests
+      - id: mark
+        if: success()
+        working-directory: ${{ github.workspace }}
+        run: echo "passed=true" >> "$GITHUB_OUTPUT"
+
+  frontend-test:
+    name: Frontend Tests
+    needs: _frontend-test-self-hosted
+    if: always()
     runs-on: ubuntu-latest
     defaults:
       run:
+        working-directory: frontend
+    steps:
+      - name: Route
+        working-directory: ${{ github.workspace }}
+        run: echo "self-hosted passed=${{ needs._frontend-test-self-hosted.outputs.passed }}"
+
+      - uses: actions/checkout@v4
+        if: needs._frontend-test-self-hosted.outputs.passed != 'true'
+
+      - uses: actions/setup-node@v4
+        if: needs._frontend-test-self-hosted.outputs.passed != 'true'
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        if: needs._frontend-test-self-hosted.outputs.passed != 'true'
+        run: rm -rf node_modules && npm ci
+
+      - name: Lint
+        if: needs._frontend-test-self-hosted.outputs.passed != 'true'
+        run: npm run lint
+
+      - name: Test
+        if: needs._frontend-test-self-hosted.outputs.passed != 'true'
+        run: npm test
+
+  # --------------------------------------------------------------------------
+  # CLI Tests (Elixir)
+  # --------------------------------------------------------------------------
+  _cli-test-self-hosted:
+    name: "CLI Tests (self-hosted)"
+    runs-on: [self-hosted, ubuntu-latest]
+    continue-on-error: true
+    defaults:
+      run:
         working-directory: cli
+    outputs:
+      passed: ${{ steps.mark.outputs.passed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -200,12 +478,72 @@ jobs:
       - name: Run tests with coverage
         run: mix test --cover
 
-  docs-build:
-    name: Docs Build
+      - id: mark
+        if: success()
+        working-directory: ${{ github.workspace }}
+        run: echo "passed=true" >> "$GITHUB_OUTPUT"
+
+  cli-test:
+    name: CLI Tests
+    needs: _cli-test-self-hosted
+    if: always()
     runs-on: ubuntu-latest
     defaults:
       run:
+        working-directory: cli
+    steps:
+      - name: Route
+        working-directory: ${{ github.workspace }}
+        run: echo "self-hosted passed=${{ needs._cli-test-self-hosted.outputs.passed }}"
+
+      - uses: actions/checkout@v4
+        if: needs._cli-test-self-hosted.outputs.passed != 'true'
+
+      - uses: erlef/setup-beam@v1
+        if: needs._cli-test-self-hosted.outputs.passed != 'true'
+        with:
+          elixir-version: "1.18"
+          otp-version: "27"
+
+      - name: Cache deps
+        if: needs._cli-test-self-hosted.outputs.passed != 'true'
+        uses: actions/cache@v4
+        with:
+          path: cli/deps
+          key: mix-cli-${{ hashFiles('cli/mix.lock') }}
+
+      - name: Install dependencies
+        if: needs._cli-test-self-hosted.outputs.passed != 'true'
+        run: mix deps.get
+
+      - name: Compile
+        if: needs._cli-test-self-hosted.outputs.passed != 'true'
+        run: mix compile
+
+      - name: Check formatting
+        if: needs._cli-test-self-hosted.outputs.passed != 'true'
+        run: mix format --check-formatted
+
+      - name: Credo
+        if: needs._cli-test-self-hosted.outputs.passed != 'true'
+        run: mix credo --strict
+
+      - name: Run tests with coverage
+        if: needs._cli-test-self-hosted.outputs.passed != 'true'
+        run: mix test --cover
+
+  # --------------------------------------------------------------------------
+  # Docs Build (Node)
+  # --------------------------------------------------------------------------
+  _docs-build-self-hosted:
+    name: "Docs Build (self-hosted)"
+    runs-on: [self-hosted, ubuntu-latest]
+    continue-on-error: true
+    defaults:
+      run:
         working-directory: docs
+    outputs:
+      passed: ${{ steps.mark.outputs.passed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -221,12 +559,54 @@ jobs:
       - name: Build docs
         run: npm run build
 
-  mobile-test:
-    name: Mobile Tests
+      - id: mark
+        if: success()
+        working-directory: ${{ github.workspace }}
+        run: echo "passed=true" >> "$GITHUB_OUTPUT"
+
+  docs-build:
+    name: Docs Build
+    needs: _docs-build-self-hosted
+    if: always()
     runs-on: ubuntu-latest
     defaults:
       run:
+        working-directory: docs
+    steps:
+      - name: Route
+        working-directory: ${{ github.workspace }}
+        run: echo "self-hosted passed=${{ needs._docs-build-self-hosted.outputs.passed }}"
+
+      - uses: actions/checkout@v4
+        if: needs._docs-build-self-hosted.outputs.passed != 'true'
+
+      - uses: actions/setup-node@v4
+        if: needs._docs-build-self-hosted.outputs.passed != 'true'
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: docs/package-lock.json
+
+      - name: Install dependencies
+        if: needs._docs-build-self-hosted.outputs.passed != 'true'
+        run: npm ci
+
+      - name: Build docs
+        if: needs._docs-build-self-hosted.outputs.passed != 'true'
+        run: npm run build
+
+  # --------------------------------------------------------------------------
+  # Mobile Tests (Flutter)
+  # --------------------------------------------------------------------------
+  _mobile-test-self-hosted:
+    name: "Mobile Tests (self-hosted)"
+    runs-on: [self-hosted, ubuntu-latest]
+    continue-on-error: true
+    defaults:
+      run:
         working-directory: mobile
+    outputs:
+      passed: ${{ steps.mark.outputs.passed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -244,4 +624,46 @@ jobs:
         run: dart format --set-exit-if-changed .
 
       - name: Test
+        run: flutter test
+
+      - id: mark
+        if: success()
+        working-directory: ${{ github.workspace }}
+        run: echo "passed=true" >> "$GITHUB_OUTPUT"
+
+  mobile-test:
+    name: Mobile Tests
+    needs: _mobile-test-self-hosted
+    if: always()
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - name: Route
+        working-directory: ${{ github.workspace }}
+        run: echo "self-hosted passed=${{ needs._mobile-test-self-hosted.outputs.passed }}"
+
+      - uses: actions/checkout@v4
+        if: needs._mobile-test-self-hosted.outputs.passed != 'true'
+
+      - uses: subosito/flutter-action@v2
+        if: needs._mobile-test-self-hosted.outputs.passed != 'true'
+        with:
+          channel: stable
+
+      - name: Install dependencies
+        if: needs._mobile-test-self-hosted.outputs.passed != 'true'
+        run: flutter pub get
+
+      - name: Analyze
+        if: needs._mobile-test-self-hosted.outputs.passed != 'true'
+        run: flutter analyze
+
+      - name: Format check
+        if: needs._mobile-test-self-hosted.outputs.passed != 'true'
+        run: dart format --set-exit-if-changed .
+
+      - name: Test
+        if: needs._mobile-test-self-hosted.outputs.passed != 'true'
         run: flutter test
